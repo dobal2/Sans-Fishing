@@ -41,14 +41,14 @@ end
 local function connectToolEvents(char)
 	char.ChildAdded:Connect(function(child)
 		if child:IsA("Tool") then
-			wait(0.05)
+			task.wait(0.05)
 			updateAllOtherPrompts()
 		end
 	end)
 
 	char.ChildRemoved:Connect(function(child)
 		if child:IsA("Tool") then
-			wait(0.05)
+			task.wait(0.05)
 			updateAllOtherPrompts()
 		end
 	end)
@@ -57,10 +57,10 @@ end
 -- Handle other player character added
 local function onOtherPlayerCharacterAdded(character)
 	-- Wait for ProximityPrompt to be created then update state
-	spawn(function()
+	task.spawn(function()
 		local hrp = character:WaitForChild("HumanoidRootPart")
 		hrp:WaitForChild("ReceiveFishPrompt")
-		wait(0.1)
+		task.wait(0.1)
 		updateOtherPlayerPrompt(character)
 	end)
 end

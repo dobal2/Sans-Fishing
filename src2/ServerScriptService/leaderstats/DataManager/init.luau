@@ -5,7 +5,8 @@ local DonationLeaderboard = DataStoreService:GetOrderedDataStore("DonationLeader
 local PlaytimeLeaderboard = DataStoreService:GetOrderedDataStore("PlaytimeLeaderBoard")
 local ProfileService = require(script.ProfileService)
 
-local DATA_TEMPLATE = { -- Data template
+-- Default data applied to new or reconciled profiles
+local DATA_TEMPLATE = {
 	Coins = 2000;
 	Donations = 0;
 	CurrentRod = "FishingRod";
@@ -140,7 +141,7 @@ function DataManager:GetProfileStore()
 	return ProfileStore
 end
 
--- Move to bottom after module definition
+-- Listen for offline trap-delete signals written to ReplicatedStorage
 game:GetService("ReplicatedStorage").ChildAdded:Connect(function(child)
 	if child.Name:find("DeleteTrapData_") and child:IsA("StringValue") then
 		local parts = string.split(child.Name, "_")

@@ -1,12 +1,14 @@
 -- FishingServerModule (ModuleScript in ReplicatedStorage.Modules)
 local MarketplaceService = game:GetService("MarketplaceService")
 local BadgeService = game:GetService("BadgeService")
-local SANS_BADGE_ID = 2468526859123734
-
-
--- Retry gamepass ID
-local RETRY_GAMEPASS_ID = 1290056221
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local SANS_BADGE_ID = 2468526859123734
+local RETRY_GAMEPASS_ID = 1290056221
 local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 local CastSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Cast")
 local FishingSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Reel")
@@ -33,7 +35,6 @@ function FishingServer.init(tool)
 
 	self:_bindEvents()
 
-	local Players = game:GetService("Players")
 	self.playerLeavingConnection = Players.PlayerRemoving:Connect(function(leavingPlayer)
 		if self.player == leavingPlayer then
 			if self.hookedFishHandle then
@@ -54,7 +55,7 @@ local function getBaseFishName(fishName)
 	if not fishName then return nil end
 
 	-- Get all base fish names from FishData
-	local FishData = require(game.ReplicatedStorage.Modules:WaitForChild("FishDataModule"))
+	local FishData = require(ReplicatedStorage.Modules:WaitForChild("FishDataModule"))
 	local allBaseFishNames = {}
 
 	-- Collect base fish names from all rarities
@@ -249,7 +250,7 @@ end
 
 function FishingServer:_getValidatedToolConfig(player)
 	-- Load Config module
-	local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+	local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 
 	-- Verify player has a character
 	if not player.Character then
@@ -376,7 +377,7 @@ function FishingServer:_validateAttempt(player, payload)
 		self.successCount = (self.successCount or 0) + 1
 
 		-- Get DifficultyMod from Config
-		local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+		local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 		local toolConfig = Config[self.tool.Name]
 		local difficultyMod = 1  -- Default
 
@@ -394,13 +395,13 @@ function FishingServer:_validateAttempt(player, payload)
 		-- Save current difficulty for retry
 		self.currentDifficultyMod = difficultyMod
 
-		local difficulty = require(game.ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
+		local difficulty = require(ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
 			.GetModifiedSetting(self.fishInfo.name, difficultyMod)
 
 		if self.successCount >= difficulty.attempts then
 			self:_resolveFishing(player, "success")
 		else
-			local newSessionId = game:GetService("HttpService"):GenerateGUID(false)
+			local newSessionId = HttpService:GenerateGUID(false)
 			self.sessionId = newSessionId
 
 			-- Reset server timer for next attempt
@@ -419,7 +420,7 @@ function FishingServer:_validateAttempt(player, payload)
 			self.hasUsedRetry = true
 
 
-			local newSessionId = game:GetService("HttpService"):GenerateGUID(false)
+			local newSessionId = HttpService:GenerateGUID(false)
 			self.sessionId = newSessionId
 
 			-- Reset server timer for retry
@@ -428,7 +429,7 @@ function FishingServer:_validateAttempt(player, payload)
 			-- Use original difficulty (saved value or recalculate)
 			local difficultyMod = self.currentDifficultyMod
 			if not difficultyMod then
-				local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+				local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 				local toolConfig = Config[self.tool.Name]
 				difficultyMod = 1
 
@@ -454,7 +455,7 @@ function FishingServer:_validateAttempt(player, payload)
 				isRetry = true
 			})
 
-			game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(
+			ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(
 				player,
 				"Gamepass Retry! One more chance!"
 			)
@@ -561,7 +562,7 @@ function FishingServer:_checkInventoryLimit(player)
 
 	if totalItemCount >= inventoryLimit then
 		-- Notify client
-		local noticeEvent = game:GetService("ReplicatedStorage"):FindFirstChild("FishNoticeEvent")
+		local noticeEvent = ReplicatedStorage:FindFirstChild("FishNoticeEvent")
 		if noticeEvent then
 			local hasExpansion = self:_hasInventoryExpansionGamepass(player)
 			local message = hasExpansion and
@@ -826,7 +827,7 @@ function FishingServer:_checkMaterial()
 			bodyPosition.Parent = self.baitPart
 
 
-			local sessionId = game:GetService("HttpService"):GenerateGUID(false)
+			local sessionId = HttpService:GenerateGUID(false)
 			self.sessionId = sessionId
 			self.successCount = 0
 
@@ -943,7 +944,7 @@ function FishingServer:_checkMaterial()
 			end
 
 			-- Get DifficultyMod from Config
-			local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+			local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 			local toolConfig = Config[self.tool.Name]
 			local difficultyMod = 1  -- Default
 
@@ -964,7 +965,7 @@ function FishingServer:_checkMaterial()
 				rarity = fishInfo.rarity,
 				sessionId = sessionId,
 				toolName = self.tool.Name,
-				difficultyMod = difficultyMod  -- Value from Config
+				difficultyMod = difficultyMod
 			})
 		end
 	end)
@@ -1061,7 +1062,7 @@ function FishingServer:_resolveFishing(player, result)
 		-- Sync ice block position during tween
 		local connection = nil
 		if iceBlock and iceOffset then
-			connection = game:GetService("RunService").Heartbeat:Connect(function()
+			connection = RunService.Heartbeat:Connect(function()
 				if handle and handle.Parent and iceBlock and iceBlock.Parent then
 					iceBlock.CFrame = handle.CFrame * iceOffset
 				end
@@ -1091,8 +1092,8 @@ function FishingServer:_resolveFishing(player, result)
 					newGetSound.Volume = 1
 					newGetSound:Play()
 
-					game:GetService("Debris"):AddItem(newGetSound, 1)
-					game:GetService("Debris"):AddItem(attachment, 1)
+					Debris:AddItem(newGetSound, 1)
+					Debris:AddItem(attachment, 1)
 				end
 			end
 		end)
@@ -1121,7 +1122,7 @@ function FishingServer:_resolveFishing(player, result)
 			if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
 				-- Load FishIceEffect module
 				local success, FishIceEffect = pcall(function()
-					return require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("FishIceEffectModule"))
+					return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishIceEffectModule"))
 				end)
 
 				if success then
@@ -1241,7 +1242,7 @@ function FishingServer:_resolveFishing(player, result)
 								fishBool.Value = true
 
 								-- New fish discovered notification (using base name)
-								game:GetService("ReplicatedStorage"):WaitForChild("DiscoverNoticeEvent"):FireClient(
+								ReplicatedStorage:WaitForChild("DiscoverNoticeEvent"):FireClient(
 									player,
 									"New Fish Discovered: " .. baseFishName .. "!"
 								)
@@ -1302,7 +1303,7 @@ function FishingServer:_resolveFishing(player, result)
 			end
 
 			-- Success notification
-			game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(
+			ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(
 				player,
 				string.format("You got %s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
 			)
@@ -1327,7 +1328,7 @@ function FishingServer:_resolveFishing(player, result)
 		end
 
 		-- Fail notification
-		game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(player, "Nice try! Give it another shot!")
+		ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(player, "Nice try! Give it another shot!")
 	end
 
 	-- Clean up sounds
@@ -1361,7 +1362,7 @@ function FishingServer:_showFishCaughtNotice()
 		soundClone:Play()
 
 		-- Remove after playing
-		game:GetService("Debris"):AddItem(soundClone, 3)
+		Debris:AddItem(soundClone, 3)
 	end
 
 	-- Get GUI template from ReplicatedStorage

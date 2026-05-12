@@ -1,5 +1,6 @@
-local DataManager = require(game.ServerScriptService.leaderstats.DataManager)
+local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
+local DataManager = require(ServerScriptService.leaderstats.DataManager)
 local surfaceGui = workspace:WaitForChild("DonationBoard"):WaitForChild("LeadBoardPart"):WaitForChild("SurfaceGui")
 --local NextUpdateGui = workspace:WaitForChild("DonationBoard"):WaitForChild("NextUpdateValue"):WaitForChild("SurfaceGui")
 

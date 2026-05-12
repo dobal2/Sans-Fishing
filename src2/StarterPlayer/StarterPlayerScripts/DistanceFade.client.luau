@@ -60,7 +60,7 @@ local function applyEffectToWallParts()
 	-- Automatically apply effect to newly added parts
 	wallFolder.ChildAdded:Connect(function(child)
 		if child:IsA("BasePart") then
-			wait() -- Wait for part to fully load
+			task.wait() -- Wait for part to fully load
 			distanceFade:AddFace(child, Enum.NormalId.Front)
 			distanceFade:AddFace(child, Enum.NormalId.Back)
 			distanceFade:AddFace(child, Enum.NormalId.Left)

@@ -1,6 +1,7 @@
 local ADMINS = {1853104124} -- Admin list by UserId
 
 local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
 local banStore = DataStoreService:GetDataStore("TestBannedUsers")
 
 -- Permanently ban a player
@@ -15,7 +16,7 @@ local function unbanPlayer(id)
 end
 
 -- Check ban status when player joins
-game.Players.PlayerAdded:Connect(function(player)
+Players.PlayerAdded:Connect(function(player)
 	local banData = banStore:GetAsync(player.UserId)
 	if banData then
 		player:Kick("You've been banned by creator")
@@ -30,7 +31,7 @@ game.Players.PlayerAdded:Connect(function(player)
 
 		if command == ":ban" then
 			local username = splitMsg[2]
-			local playerBanned = game.Players:FindFirstChild(username)
+			local playerBanned = Players:FindFirstChild(username)
 			if playerBanned then
 				banPlayer(playerBanned)
 			end

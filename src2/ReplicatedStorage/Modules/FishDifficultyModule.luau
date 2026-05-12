@@ -148,8 +148,8 @@ function FishDifficulty.TestAllRarities()
 end
 
 -- Run test on module load
-spawn(function()
-	wait(2)
+task.spawn(function()
+	task.wait(2)
 	FishDifficulty.TestAllRarities()
 end)
 

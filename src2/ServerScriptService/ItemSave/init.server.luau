@@ -1,14 +1,16 @@
 -- Full item loader excluding rods (supports Festival + Frozen fish)
 local SAVE_ON_DEATH = true
 
-local ItemsFolder = game.ServerStorage:WaitForChild("Fishes")
 local ServerStorage = game:GetService("ServerStorage")
-local DataManager = require(script.DataManager)
-local moduleScript = game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("FishDataModule")
-local FishIceEffect = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("FishIceEffectModule"))
-local WeatherSystemModule = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
-local FishData = require(moduleScript)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+
+local ItemsFolder = ServerStorage:WaitForChild("Fishes")
+local DataManager = require(script.DataManager)
+local moduleScript = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule")
+local FishIceEffect = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishIceEffectModule"))
+local WeatherSystemModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
+local FishData = require(moduleScript)
 
 -- Real-time inventory tracking table per player
 local PlayerInventoryTracker = {}

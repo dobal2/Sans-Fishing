@@ -1,7 +1,10 @@
-local remote = game:GetService("ReplicatedStorage"):WaitForChild("BuyFishingRod")
-local RodData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("RodDataModule"))
-local setFavoriteRemote = game:GetService("ReplicatedStorage"):WaitForChild("SetFavoriteRemote")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+
+local remote = ReplicatedStorage:WaitForChild("BuyFishingRod")
+local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
+local setFavoriteRemote = ReplicatedStorage:WaitForChild("SetFavoriteRemote")
 
 -- Robux rod gamepass ID
 local ROBUX_ROD_GAMEPASS_ID = 1410895892
@@ -116,7 +119,7 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 
 	-- Equip rod
 	currentRod.Value = item.storageName
-	local storageItem = game.ServerStorage:FindFirstChild(item.storageName)
+	local storageItem = ServerStorage:FindFirstChild(item.storageName)
 	if storageItem then
 		storageItem:Clone().Parent = plr:FindFirstChild("Backpack") or plr
 	else

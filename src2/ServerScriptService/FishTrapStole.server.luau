@@ -1,7 +1,7 @@
--- Global FishTrap purchase handler (place in ServerScriptService)
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
 
 -- Developer Product ID
 local FISH_TRAP_HARVEST_PRODUCT_ID = 3381869322
@@ -37,7 +37,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 					completeSignal.Parent = ReplicatedStorage
 
 					-- Remove signal after 3 seconds
-					game:GetService("Debris"):AddItem(completeSignal, 3)
+					Debris:AddItem(completeSignal, 3)
 
 					-- Remove purchase data
 					purchaseData:Destroy()

@@ -120,7 +120,7 @@ end)
 
 game:BindToClose(function()
 	if RunService:IsStudio() then
-		wait(1)
+		task.wait(1)
 	else
 		for _, p in pairs(Players:GetPlayers()) do
 			save(p)

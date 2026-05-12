@@ -89,7 +89,7 @@ local function setupBoatSecurity(boat, ownerUserId, ownerName)
 	-- Apply security to newly added VehicleSeats
 	boat.DescendantAdded:Connect(function(obj)
 		if obj:IsA("VehicleSeat") then
-			wait(0.1) -- Small delay
+			task.wait(0.1)
 			secureVehicleSeat(obj)
 		end
 	end)

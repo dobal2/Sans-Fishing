@@ -4,6 +4,7 @@ FishingClient.__index = FishingClient
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 local FishDifficulty = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDifficultyModule"))
 local Config = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishingConfigModule"))
 local failSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fail")
@@ -84,7 +85,6 @@ function FishingClient.init(tool)
 	return self
 end
 
-local MarketplaceService = game:GetService("MarketplaceService")
 local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
 
 -- Check inventory expansion gamepass on client
@@ -110,7 +110,7 @@ function FishingClient:_shakeFrame()
 	local shakeDuration = 0.12
 	local shakeCount = 20
 
-	spawn(function()
+	task.spawn(function()
 		local shakeTime = shakeDuration / shakeCount
 
 		for i = 1, shakeCount do
@@ -195,7 +195,7 @@ function FishingClient:_rotateHitZone()
 
 	local originalRotation = self.hitZone.Rotation
 
-	spawn(function()
+	task.spawn(function()
 		local rotateLeft = TweenService:Create(self.hitZone,
 			TweenInfo.new(0.1, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{Rotation = originalRotation - 10}
@@ -234,7 +234,7 @@ function FishingClient:_showHitText(hitType, hitPosition)
 	hitText.Position = UDim2.new(sliderPos.X.Scale, sliderPos.X.Offset - 60, sliderPos.Y.Scale, sliderPos.Y.Offset - 60)
 	hitText.Parent = self.frame
 
-	spawn(function()
+	task.spawn(function()
 		local moveUp = TweenService:Create(hitText,
 			TweenInfo.new(1.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{
@@ -896,8 +896,8 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 
 	self:_closeGui() -- Remove existing GUI
 
-	local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
-	local FishDifficulty = require(game.ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
+	local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+	local FishDifficulty = require(ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
 
 	local toolName = serverToolName or self.tool.Name
 	local toolConfig = Config[toolName]

@@ -135,10 +135,10 @@ local function waitForLeaderstats()
 	end)
 
 	-- Periodically check gamepass status changes
-	spawn(function()
+	task.spawn(function()
 		local lastGamepassStatus = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
 		while true do
-			wait(5) -- Check every 5 seconds
+			task.wait(5) -- Check every 5 seconds
 			local currentGamepassStatus = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
 			if currentGamepassStatus ~= lastGamepassStatus then
 				updateProximityText(robuxProximity, "RobuxFishTrap")

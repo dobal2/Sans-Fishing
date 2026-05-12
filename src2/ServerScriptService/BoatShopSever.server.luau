@@ -1,6 +1,6 @@
--- Boat shop server code
-local remote = game:GetService("ReplicatedStorage"):WaitForChild("BuyBoat")
-local BoatData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("BoatDataModule"))
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remote = ReplicatedStorage:WaitForChild("BuyBoat")
+local BoatData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BoatDataModule"))
 
 remote.OnServerEvent:Connect(function(plr, boatName)
 	local boat = BoatData.Boats[boatName]

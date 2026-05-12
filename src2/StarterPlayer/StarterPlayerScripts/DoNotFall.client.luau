@@ -1,4 +1,4 @@
-repeat wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
 
 local spawnLocation = workspace:WaitForChild("SpawnLocation")
 local Players = game:GetService("Players")

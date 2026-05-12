@@ -77,7 +77,7 @@ function DataManager.OnPlayerAdded(player)
 			end)
 
 			-- Restore fish traps (process offline delete signals first)
-			spawn(function()
+			task.spawn(function()
 				DataManager:CheckOfflineDeleteSignals(player)
 				DataManager:RestorePlayerFishTraps(player)
 			end)
@@ -114,10 +114,9 @@ function DataManager:UpdateData(player, key, data)
 end
 
 function DataManager:CheckOfflineDeleteSignals(player)
-
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-	-- Process existing delete signals
+	-- Process queued trap-delete signals for this player
 	for _, child in pairs(ReplicatedStorage:GetChildren()) do
 		-- Individual delete
 		if child.Name:find("DeleteTrapData_" .. player.Name .. "_") and child:IsA("StringValue") then
@@ -299,9 +298,8 @@ function DataManager:RestorePlayerFishTraps(player)
 		local trapId = string.sub(latestTrap.key, 14) -- Remove "FishTrapData_"
 
 
-		-- Check if already in world
-		if existingTrapsInWorld[trapId] then
-		else
+		-- Restore trap if not already present in world
+		if not existingTrapsInWorld[trapId] then
 			-- Restore trap
 			local trapType = trapData.trapType or "BasicFishTrap"
 			local config = FISHTRAP_CONFIGS[trapType] or FISHTRAP_CONFIGS["BasicFishTrap"]

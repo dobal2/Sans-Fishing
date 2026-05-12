@@ -24,8 +24,8 @@ function FishTrapManager.PlaceFishTrap(player, trapName, position, rotation)
 
 	local trapId = DataManager:PlaceFishTrap(player, trapName, position, rotation)
 
-	if trapId then
-	else
+	if not trapId then
+		warn("PlaceFishTrap failed for player:", player.Name)
 	end
 
 	return trapId
@@ -126,7 +126,7 @@ local function initialize()
 			end
 		end
 
-		wait(3) -- Allow time to save
+		task.wait(3)
 	end)
 
 end

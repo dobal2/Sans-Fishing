@@ -1,5 +1,6 @@
-local DataManager = require(game.ServerScriptService.leaderstats.DataManager)
+local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
+local DataManager = require(ServerScriptService.leaderstats.DataManager)
 local surfaceGui = workspace:WaitForChild("LeaderBoard"):WaitForChild("LeadBoardPart"):WaitForChild("SurfaceGui")
 
 -- Excluded user list (stored in lowercase for case-insensitive comparison)

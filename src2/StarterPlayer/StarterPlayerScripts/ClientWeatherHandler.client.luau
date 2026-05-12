@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 
 -- Load firework sound (safe, waits indefinitely)
 local fireworkSound = nil
-spawn(function()
+task.spawn(function()
 	local sounds = ReplicatedStorage:WaitForChild("Sounds")
 	fireworkSound = sounds:WaitForChild("firework")
 end)
@@ -318,21 +318,20 @@ end
 local function startFireworkLoop()
 	if fireworkLoopConnection then return end
 
-	fireworkLoopConnection = spawn(function()
+	fireworkLoopConnection = task.spawn(function()
 		while isFireworkActive do
 			-- Launch 1-3 fireworks simultaneously
 			local fireworkCount = math.random(1, 3)
 
 			for i = 1, fireworkCount do
-				spawn(function()
+				task.spawn(function()
 					-- Small delay per firework
-					wait(math.random() * 0.5)
+					task.wait(math.random() * 0.5)
 					createClientFireworkEffect()
 				end)
 			end
 
-			-- Varied interval (1-5 seconds)
-			wait(math.random() * 4 + 1)
+			task.wait(math.random() * 4 + 1)
 		end
 	end)
 end
@@ -355,7 +354,7 @@ local function handleWeatherChange(newWeather)
 
 	if newWeather == "Rain" then
 		local success, err = pcall(function()
-			wait(0.5)
+			task.wait(0.5)
 			RainModule:Enable()
 		end)
 		if not success then
@@ -416,8 +415,8 @@ fireworkEffectEvent.OnClientEvent:Connect(function()
 		-- Launch 1-2 simultaneously on server signal
 		local count = math.random(1, 2)
 		for i = 1, count do
-			spawn(function()
-				wait(math.random() * 0.3)
+			task.spawn(function()
+				task.wait(math.random() * 0.3)
 				createClientFireworkEffect()
 			end)
 		end

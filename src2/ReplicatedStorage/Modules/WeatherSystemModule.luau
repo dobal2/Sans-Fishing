@@ -1,22 +1,22 @@
 local WeatherSystem = {}
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local serverStorage = game:GetService("ServerStorage")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local snowPart = serverStorage:WaitForChild("SnowPart")
 
--- 🔒 보안 설정
+-- Security seed to prevent client spoofing
 local WEATHER_SECRET_KEY = "WEATHER_" .. math.random(100000, 999999) .. "_" .. tick()
 local SERVER_START_TIME = tick()
 
--- 🕐 타이밍 설정
+-- Timing constants (seconds)
 local WEATHER_CYCLE_TIME = 600
 local WEATHER_DURATION = 300
 local COOLDOWN_TIME = WEATHER_CYCLE_TIME - WEATHER_DURATION
 
--- 🎆 폭죽 효과 변수 (클라이언트 신호용)
 local fireworkConnection = nil
 
--- 날씨 타입 정의 (🎆 Firework 추가)
+-- Weather type definitions
 WeatherSystem.WeatherTypes = {
 	Clear = { name = "Clear", chance = 0, effects = { sizeMultiplier = 1.0, valueMultiplier = 1.0, namePrefix = "" } },
 	Rain = { name = "Rain", chance = 40, effects = { sizeMultiplier = 1.2, valueMultiplier = 1.0, namePrefix = "" } },
@@ -24,7 +24,7 @@ WeatherSystem.WeatherTypes = {
 	Firework = { name = "Firework", chance = 20, effects = { sizeMultiplier = 1.0, valueMultiplier = 1.5, namePrefix = "Festival " } }
 }
 
--- 🔒 날씨 상태
+-- Server-authoritative weather state
 local SecureWeatherState = {
 	currentWeather = "Clear",
 	lastWeatherStart = 0,
@@ -34,19 +34,17 @@ local SecureWeatherState = {
 	cycleCount = 0
 }
 
--- 🎆 폭죽 효과 함수 (클라이언트에 신호만 전송)
+-- Signal all clients to play a firework burst
 local function createFireworkEffect()
-	-- 🔧 서버에서는 클라이언트에 신호만 전송
 	local fireworkEvent = ReplicatedStorage:FindFirstChild("FireworkEffectEvent")
 	if fireworkEvent then
-		-- 모든 클라이언트에 폭죽 신호 전송
 		fireworkEvent:FireAllClients()
 	else
-		warn("❌ FireworkEffectEvent를 찾을 수 없습니다!")
+		warn("FireworkEffectEvent not found")
 	end
 end
 
--- 🎆 폭죽 효과 시작/중지 함수
+-- Start/stop the periodic firework signal loop
 local function startFireworkEffects()
 	if fireworkConnection then
 		task.cancel(fireworkConnection)
@@ -55,7 +53,7 @@ local function startFireworkEffects()
 	fireworkConnection = task.spawn(function()
 		while SecureWeatherState.currentWeather == "Firework" and SecureWeatherState.isWeatherActive do
 			createFireworkEffect()
-			wait(3)  -- 2초마다 실행
+			task.wait(3)
 		end
 	end)
 end
@@ -67,7 +65,7 @@ local function stopFireworkEffects()
 	end
 end
 
--- 🧊 SnowPart 처리 함수
+-- Add/remove the SnowPart in workspace based on current weather
 local function updateSnowPartState(weatherName)
 	local existing = workspace:FindFirstChild("SnowPart")
 	if weatherName == "Snow" then
@@ -87,10 +85,9 @@ local function updateSnowPartState(weatherName)
 end
 
 local function validateServerTime()
-	local now = tick()
-	local uptime = now - SERVER_START_TIME
+	local uptime = tick() - SERVER_START_TIME
 	if uptime < 0 or uptime > 86400 * 7 then
-		warn("🔒 서버 시간 이상")
+		warn("Suspicious server time detected")
 		return false
 	end
 	return true
@@ -115,16 +112,11 @@ local function validateWeatherState()
 	return SecureWeatherState.isWeatherActive
 end
 
--- 🌙 밤 시간인지 확인하는 함수
+-- Returns true between 18:00 and 06:00 game time (firework weather window)
 local function isNightTime()
-	local lighting = game:GetService("Lighting")
-	local timeOfDay = lighting.TimeOfDay
-
-	-- TimeOfDay를 시간(숫자)으로 변환
+	local timeOfDay = Lighting.TimeOfDay
 	local hours, minutes, seconds = timeOfDay:match("(%d+):(%d+):(%d+)")
-	local totalHours = tonumber(hours) + tonumber(minutes)/60 + tonumber(seconds)/3600
-
-	-- 밤 시간: 18:00 ~ 06:00 (오후 6시 ~ 오전 6시)
+	local totalHours = tonumber(hours) + tonumber(minutes) / 60 + tonumber(seconds) / 3600
 	return totalHours >= 18 or totalHours < 6
 end
 
@@ -132,21 +124,16 @@ local function selectSecureRandomWeather()
 	local seed = (tick() * 1000) + SecureWeatherState.cycleCount + string.len(WEATHER_SECRET_KEY)
 	local rng = Random.new(seed)
 
+	-- Firework only at night; skip it during the day
 	local options = {}
 	local total = 0
 	for _, weather in pairs(WeatherSystem.WeatherTypes) do
-		if weather.chance > 0 then
-			-- 🌙 폭죽은 밤에만 가능
-			if weather.name == "Firework" and not isNightTime() then
-				-- 폭죽을 제외하고 계속
-			else
-				table.insert(options, weather)
-				total = total + weather.chance
-			end
+		if weather.chance > 0 and not (weather.name == "Firework" and not isNightTime()) then
+			table.insert(options, weather)
+			total = total + weather.chance
 		end
 	end
 
-	-- 옵션이 없으면 기본 비 날씨
 	if #options == 0 then
 		return "Rain"
 	end
@@ -166,9 +153,9 @@ end
 function WeatherSystem.UpdateWeatherCycle()
 	if not validateServerTime() then return end
 	local now = tick()
-	validateWeatherState()  -- 현재 상태 확인
+	validateWeatherState()
 
-	-- 🌙 밤이고 현재 날씨가 없으면 즉시 폭죽 시작
+	-- At night with no active weather: immediately start Firework
 	if isNightTime() and not SecureWeatherState.isWeatherActive then
 		local newWeather = "Firework"
 		SecureWeatherState.currentWeather = newWeather
@@ -178,7 +165,6 @@ function WeatherSystem.UpdateWeatherCycle()
 		SecureWeatherState.cycleCount += 1
 		SecureWeatherState.nextWeatherTime = now + WEATHER_DURATION + COOLDOWN_TIME
 
-		-- 🎆 폭죽 효과 시작
 		startFireworkEffects()
 
 		if WeatherSystem.WeatherChanged then
@@ -187,7 +173,7 @@ function WeatherSystem.UpdateWeatherCycle()
 		return
 	end
 
-	-- 🌅 낮이고 폭죽 날씨면 즉시 종료
+	-- During the day: end any active Firework weather immediately
 	if not isNightTime() and SecureWeatherState.currentWeather == "Firework" and SecureWeatherState.isWeatherActive then
 		stopFireworkEffects()
 		SecureWeatherState.isWeatherActive = false
@@ -199,7 +185,7 @@ function WeatherSystem.UpdateWeatherCycle()
 		return
 	end
 
-	-- 기존 날씨 사이클 로직 (낮 시간용)
+	-- Daytime weather cycle
 	if not isNightTime() and now >= SecureWeatherState.nextWeatherTime and not SecureWeatherState.isWeatherActive then
 		local newWeather = selectSecureRandomWeather()
 		SecureWeatherState.currentWeather = newWeather
@@ -209,7 +195,6 @@ function WeatherSystem.UpdateWeatherCycle()
 		SecureWeatherState.cycleCount += 1
 		SecureWeatherState.nextWeatherTime = now + WEATHER_DURATION + COOLDOWN_TIME
 
-		-- 🎆 폭죽 날씨면 효과 시작 (하지만 낮에는 폭죽이 선택되지 않음)
 		if newWeather == "Firework" then
 			startFireworkEffects()
 		end
@@ -296,7 +281,6 @@ function WeatherSystem.SetWeather(name, duration)
 end
 
 function WeatherSystem.Initialize()
-
 	if not WeatherSystem.WeatherChanged then
 		WeatherSystem.WeatherChanged = Instance.new("BindableEvent")
 	end
@@ -305,31 +289,24 @@ function WeatherSystem.Initialize()
 	weatherChangedEvent.Name = "WeatherChangedEvent"
 	weatherChangedEvent.Parent = ReplicatedStorage
 
-	-- 🆕 폭죽 효과 이벤트 생성
 	local fireworkEffectEvent = Instance.new("RemoteEvent")
 	fireworkEffectEvent.Name = "FireworkEffectEvent"
 	fireworkEffectEvent.Parent = ReplicatedStorage
 
 	WeatherSystem.WeatherChanged.Event:Connect(function(newWeather)
-
-		-- SnowPart 처리
 		updateSnowPartState(newWeather)
 
-		-- 🎆 폭죽 효과 처리
-		if newWeather == "Firework" then
-			-- 폭죽 효과는 SetWeather나 UpdateWeatherCycle에서 이미 시작됨
-		else
+		if newWeather ~= "Firework" then
 			stopFireworkEffects()
 		end
 
-		-- 클라이언트에 알림
-		for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+		for _, player in pairs(Players:GetPlayers()) do
 			weatherChangedEvent:FireClient(player, newWeather)
 		end
 	end)
 
-	game:GetService("Players").PlayerAdded:Connect(function(player)
-		wait(2)
+	Players.PlayerAdded:Connect(function(player)
+		task.wait(2)
 		local info = WeatherSystem.GetSecureWeatherInfo()
 		updateSnowPartState(info.currentWeather)
 		weatherChangedEvent:FireClient(player, info.currentWeather)
@@ -337,26 +314,17 @@ function WeatherSystem.Initialize()
 
 	SecureWeatherState.nextWeatherTime = SERVER_START_TIME + WEATHER_CYCLE_TIME
 
-	spawn(function()
+	-- Poll weather cycle every 5 seconds for fast day/night detection
+	task.spawn(function()
 		while true do
-			wait(5)  -- 🔧 30초 → 5초로 변경 (더 빠른 밤/낮 감지)
+			task.wait(5)
 			WeatherSystem.UpdateWeatherCycle()
-		end
-	end)
-
-	spawn(function()
-		while true do
-			wait(60)
-			local info = WeatherSystem.GetSecureWeatherInfo()
-			if info.isActive then
-			else
-			end
 		end
 	end)
 end
 
 function WeatherSystem.GetInternalState()
-	warn("🔒 내부 상태 접근 차단")
+	warn("Internal state access blocked")
 	return nil
 end
 

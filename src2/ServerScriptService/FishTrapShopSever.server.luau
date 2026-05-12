@@ -2,21 +2,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--- Robux Fish Trap 게임패스 ID
 local ROBUX_FISHTRAP_GAMEPASS_ID = 1423175879
 
--- 게임패스 구매 완료 처리를 위한 테이블
+-- Tracks players who initiated a gamepass purchase mid-session
 local pendingGamepassPurchases = {}
 
--- Fish Trap 데이터 (Robux Fish Trap 추가)
+-- Coin prices (RobuxFishTrap is free with gamepass)
 local FISH_TRAP_DATA = {
-	["BasicFishTrap"] = 30000,
+	["BasicFishTrap"]    = 30000,
 	["AdvancedFishTrap"] = 200000,
-	["MasterFishTrap"] = 600000,
-	["RobuxFishTrap"] = 0 -- 게임패스로만 구매 가능
+	["MasterFishTrap"]   = 600000,
+	["RobuxFishTrap"]    = 0,
 }
 
--- BindableEvent 찾기/생성
 local buyFishTrapBindable = ReplicatedStorage:FindFirstChild("BuyFishTrapBindable")
 if not buyFishTrapBindable then
 	buyFishTrapBindable = Instance.new("BindableEvent")
@@ -24,10 +22,8 @@ if not buyFishTrapBindable then
 	buyFishTrapBindable.Parent = ReplicatedStorage
 end
 
--- 노티스 RemoteEvent 찾기 (없으면 생성)
 local showNoticeEvent = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
 
--- 게임패스 소유 확인 함수
 local function hasGamepass(player, gamepassId)
 	local success, result = pcall(function()
 		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, gamepassId)
@@ -35,9 +31,8 @@ local function hasGamepass(player, gamepassId)
 	return success and result
 end
 
--- Fish Trap 장착 함수
+-- Remove all equipped fish traps then give the selected one
 local function equipFishTrap(plr, fishTrapName)
-	-- 기존 Fish Trap 제거
 	for _, container in ipairs({ plr:FindFirstChild("Backpack"), plr:FindFirstChild("StarterGear"), plr.Character }) do
 		if container then
 			for _, tool in ipairs(container:GetChildren()) do
@@ -48,155 +43,128 @@ local function equipFishTrap(plr, fishTrapName)
 		end
 	end
 
-	-- 새 Fish Trap 장착
 	local trapModel = ServerStorage:FindFirstChild(fishTrapName)
-	if trapModel then
-		local clonedTrap = trapModel:Clone()
-		clonedTrap.Parent = plr:FindFirstChild("Backpack") or plr
-
-		-- CurrentFishTrap 값 업데이트
-		local leaderstats = plr:FindFirstChild("leaderstats")
-		if leaderstats then
-			local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
-			if currentFishTrap then
-				local currentFishTrapValue = currentFishTrap:FindFirstChild("Value")
-				if currentFishTrapValue then
-					currentFishTrapValue.Value = fishTrapName
-				end
-			end
-		end
-
-		return true
-	else
-		warn("ServerStorage에 Fish Trap 없음:", fishTrapName)
+	if not trapModel then
+		warn("Fish Trap model not found in ServerStorage:", fishTrapName)
 		return false
 	end
-end
 
--- Robux Fish Trap 게임패스 구매 처리
-MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
-	if gamePassId == ROBUX_FISHTRAP_GAMEPASS_ID and wasPurchased then
-		-- 구매 대기 목록에 있는지 확인
-		if pendingGamepassPurchases[player.UserId] then
-			pendingGamepassPurchases[player.UserId] = nil
+	local clonedTrap = trapModel:Clone()
+	clonedTrap.Parent = plr:FindFirstChild("Backpack") or plr
 
-			-- 즉시 Robux Fish Trap 지급
-			local leaderstats = player:FindFirstChild("leaderstats")
-			if leaderstats then
-				local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
-				if fishTrapsFolder then
-					local robuxFishTrap = fishTrapsFolder:FindFirstChild("RobuxFishTrap")
-					if robuxFishTrap then
-						robuxFishTrap.Value = true
-						if equipFishTrap(player, "RobuxFishTrap") then
-							showNoticeEvent:FireClient(player, "Robux Fish Trap purchased and equipped!")
-						else
-							showNoticeEvent:FireClient(player, "Robux Fish Trap purchased but failed to equip!")
-						end
-					end
-				end
+	-- Update CurrentFishTrap value
+	local leaderstats = plr:FindFirstChild("leaderstats")
+	if leaderstats then
+		local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
+		if currentFishTrap then
+			local valueObj = currentFishTrap:FindFirstChild("Value")
+			if valueObj then
+				valueObj.Value = fishTrapName
 			end
 		end
+	end
+
+	return true
+end
+
+-- Grant RobuxFishTrap immediately after successful gamepass purchase
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+	if gamePassId ~= ROBUX_FISHTRAP_GAMEPASS_ID or not wasPurchased then return end
+	if not pendingGamepassPurchases[player.UserId] then return end
+
+	pendingGamepassPurchases[player.UserId] = nil
+
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then return end
+
+	local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
+	if not fishTrapsFolder then return end
+
+	local robuxFishTrap = fishTrapsFolder:FindFirstChild("RobuxFishTrap")
+	if robuxFishTrap then
+		robuxFishTrap.Value = true
+		local msg = equipFishTrap(player, "RobuxFishTrap")
+			and "Robux Fish Trap purchased and equipped!"
+			or  "Robux Fish Trap purchased but failed to equip!"
+		showNoticeEvent:FireClient(player, msg)
 	end
 end)
 
 buyFishTrapBindable.Event:Connect(function(plr, fishTrapName)
-	-- Fish Trap 가격 확인
 	local fishTrapPrice = FISH_TRAP_DATA[fishTrapName]
 	if not fishTrapPrice then
-		warn("알 수 없는 Fish Trap:", fishTrapName)
+		warn("Unknown Fish Trap:", fishTrapName)
 		showNoticeEvent:FireClient(plr, "Unknown Fish Trap!")
 		return
 	end
 
 	local leaderstats = plr:FindFirstChild("leaderstats")
 	if not leaderstats then
-		warn("leaderstats 없음:", plr.Name)
+		warn("No leaderstats:", plr.Name)
 		return
 	end
 
-	local coins = leaderstats:FindFirstChild("Coins")
-	local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
+	local coins          = leaderstats:FindFirstChild("Coins")
 	local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
 
-	if not (coins and currentFishTrap and fishTrapsFolder) then
-		warn("필수 leaderstats 요소 없음:", plr.Name)
+	if not (coins and fishTrapsFolder) then
+		warn("Missing required leaderstats elements:", plr.Name)
 		return
 	end
 
 	local fishTrapBool = fishTrapsFolder:FindFirstChild(fishTrapName)
 	if not fishTrapBool then
-		warn("Fish Trap Bool 값 없음:", plr.Name, fishTrapName)
+		warn("FishTrap BoolValue not found:", plr.Name, fishTrapName)
 		return
 	end
 
-	-- Robux Fish Trap 특별 처리
+	-- RobuxFishTrap: requires gamepass
 	if fishTrapName == "RobuxFishTrap" then
-		-- 이미 소유한 경우 → 장착
 		if fishTrapBool.Value then
-			if equipFishTrap(plr, fishTrapName) then
-				showNoticeEvent:FireClient(plr, "Robux Fish Trap equipped!")
-			else
-				showNoticeEvent:FireClient(plr, "Failed to equip Robux Fish Trap!")
-			end
+			local msg = equipFishTrap(plr, fishTrapName) and "Robux Fish Trap equipped!" or "Failed to equip Robux Fish Trap!"
+			showNoticeEvent:FireClient(plr, msg)
 			return
 		end
 
-		-- 게임패스 확인
 		if not hasGamepass(plr, ROBUX_FISHTRAP_GAMEPASS_ID) then
-			-- 게임패스 구매 대기 목록에 추가
 			pendingGamepassPurchases[plr.UserId] = true
-
 			showNoticeEvent:FireClient(plr, "Purchasing Robux Fish Trap gamepass...")
-
-			-- 게임패스 구매창 표시
 			pcall(function()
 				MarketplaceService:PromptGamePassPurchase(plr, ROBUX_FISHTRAP_GAMEPASS_ID)
 			end)
 			return
 		end
 
-		-- 게임패스 소유자에게 무료 지급
+		-- Gamepass already owned: grant for free
 		fishTrapBool.Value = true
-		if equipFishTrap(plr, fishTrapName) then
-			showNoticeEvent:FireClient(plr, "Robux Fish Trap obtained for free with gamepass!")
-		else
-			showNoticeEvent:FireClient(plr, "Robux Fish Trap obtained but failed to equip!")
-		end
+		local msg = equipFishTrap(plr, fishTrapName)
+			and "Robux Fish Trap obtained for free with gamepass!"
+			or  "Robux Fish Trap obtained but failed to equip!"
+		showNoticeEvent:FireClient(plr, msg)
 		return
 	end
 
-	-- 이미 소유한 경우 → 장착
+	-- Already owned: just equip
 	if fishTrapBool.Value then
-		if equipFishTrap(plr, fishTrapName) then
-			showNoticeEvent:FireClient(plr, "Fish Trap equipped!")
-		else
-			showNoticeEvent:FireClient(plr, "Failed to equip Fish Trap!")
-		end
+		local msg = equipFishTrap(plr, fishTrapName) and "Fish Trap equipped!" or "Failed to equip Fish Trap!"
+		showNoticeEvent:FireClient(plr, msg)
 		return
 	end
 
-	-- 코인 부족한 경우
+	-- Insufficient coins
 	if coins.Value < fishTrapPrice then
-		local message = string.format("Not enough coins! Need %s coins", fishTrapPrice)
-		showNoticeEvent:FireClient(plr, message)
+		showNoticeEvent:FireClient(plr, string.format("Not enough coins! Need %d coins", fishTrapPrice))
 		return
 	end
 
-	-- 구매 처리
+	-- Purchase
 	coins.Value = coins.Value - fishTrapPrice
 	fishTrapBool.Value = true
 
-	-- Fish Trap 장착
-	if equipFishTrap(plr, fishTrapName) then
-		showNoticeEvent:FireClient(plr, "Fish Trap purchased successfully!")
-	else
-		-- 구매는 했지만 장착 실패한 경우
-		showNoticeEvent:FireClient(plr, "Fish Trap purchased but failed to equip!")
-	end
+	local msg = equipFishTrap(plr, fishTrapName) and "Fish Trap purchased successfully!" or "Fish Trap purchased but failed to equip!"
+	showNoticeEvent:FireClient(plr, msg)
 end)
 
--- 플레이어 나갈 때 대기 목록에서 제거
 game.Players.PlayerRemoving:Connect(function(player)
 	pendingGamepassPurchases[player.UserId] = nil
 end)

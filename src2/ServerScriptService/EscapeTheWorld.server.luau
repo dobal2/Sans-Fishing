@@ -1,8 +1,7 @@
-local spawnLocation = workspace:WaitForChild("SpawnLocation")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local BadgeService = game:GetService("BadgeService")
-local badgeEvent = game:GetService("ReplicatedStorage"):WaitForChild("EscapeTheWorld")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local badgeEvent = ReplicatedStorage:WaitForChild("EscapeTheWorld")
 
 local FALL_RECOVERY_BADGE_ID = 3105116633857431
 

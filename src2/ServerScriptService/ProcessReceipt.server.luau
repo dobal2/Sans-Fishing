@@ -1,8 +1,7 @@
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
+local DataStoreService = game:GetService("DataStoreService")
 local DataManager = require(game:GetService("ServerScriptService"):WaitForChild("leaderstats"):WaitForChild("DataManager"))
-
-local Players = game:GetService("Players")
 
 local donationValues = {
 	[3364008117] = 2,
@@ -40,12 +39,10 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 			-- Update via UpdateData (includes leaderboard update)
 			DataManager:UpdateData(player, "Donations", newDonationAmount)
 
-			-- Force leaderboard update (extra guarantee)
+			-- Force leaderboard update
 			local userId = tostring(player.UserId)
 			pcall(function()
-				local DataStoreService = game:GetService("DataStoreService")
-				local DonationLeaderboard = DataStoreService:GetOrderedDataStore("DonationLeaderboard")
-				DonationLeaderboard:SetAsync(userId, newDonationAmount)
+				DataStoreService:GetOrderedDataStore("DonationLeaderboard"):SetAsync(userId, newDonationAmount)
 			end)
 		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted

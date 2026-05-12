@@ -1,8 +1,5 @@
+local Players = game:GetService("Players")
 local datamanager = require(script.DataManager)
-local DataService = game:GetService("DataStoreService")
-local MyData = DataService:GetDataStore("playerdata")
-local ServerStorage = game:GetService("ServerStorage")
-local players = game.Players
 
 -- Daily quest related functions
 local function getCurrentDateString()
@@ -44,18 +41,14 @@ end
 local playerSessionStartTime = {}
 local playerBasePlaytime = {}  -- Playtime saved at session start
 
-players.PlayerAdded:Connect(function(plr)
-	wait(2)
+Players.PlayerAdded:Connect(function(plr)
+	task.wait(2)
 
 	repeat task.wait()
 		local dataReady = plr:FindFirstChild("DataReady")
 	until dataReady and dataReady.Value == true
 
-	-- Create quest folder
 	local leaderstats = plr:FindFirstChild("leaderstats")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = plr
-
 	local Quests = Instance.new("Folder")
 	Quests.Name = "Quests"
 
@@ -242,15 +235,7 @@ players.PlayerAdded:Connect(function(plr)
 		playerBasePlaytime[plr.UserId] = 0
 	end
 
-	-- Print final quest status (for reference)
-	for _, quest in pairs(ActiveQuests:GetChildren()) do
-		if quest:IsA("Folder") then
-			local questType = quest:FindFirstChild("QuestType")
-			local isReceived = quest:FindFirstChild("IsReceived")
-		end
-	end
-
-	-- Playtime update function (revised)
+	-- Playtime update function
 	local function updatePlaytimeQuest()
 		if not playerSessionStartTime[plr.UserId] or not playerBasePlaytime[plr.UserId] then return end
 
@@ -305,9 +290,9 @@ players.PlayerAdded:Connect(function(plr)
 	end
 
 	-- Check playtime every second
-	spawn(function()
+	task.spawn(function()
 		while plr.Parent and playerSessionStartTime[plr.UserId] do
-			wait(1)
+			task.wait(1)
 			updatePlaytimeQuest()
 		end
 	end)
@@ -323,7 +308,7 @@ players.PlayerAdded:Connect(function(plr)
 		local activeQuests = quests:FindFirstChild("ActiveQuests")
 		if not activeQuests then return end
 
-		-- Check all active quests (excluding playtime quests)
+		-- Increment progress for all active non-playtime quests matching fishName
 		for _, quest in pairs(activeQuests:GetChildren()) do
 			if quest:IsA("Folder") then
 				local targetFish = quest:FindFirstChild("TargetFish")
@@ -333,15 +318,11 @@ players.PlayerAdded:Connect(function(plr)
 				local questName = quest:FindFirstChild("QuestName")
 				local questType = quest:FindFirstChild("QuestType")
 
-				-- Only process non-playtime quests
 				if questType and questType.Value ~= "daily_playtime" and
 					targetFish and currentProgress and requiredProgress and isReceived and questName then
 
 					if isReceived.Value and targetFish.Value == fishName and currentProgress.Value < requiredProgress.Value then
 						currentProgress.Value = currentProgress.Value + 1
-
-						if currentProgress.Value >= requiredProgress.Value then
-						end
 					end
 				end
 			end
@@ -373,7 +354,7 @@ players.PlayerAdded:Connect(function(plr)
 	end
 end)
 
-players.PlayerRemoving:Connect(function(plr)
+Players.PlayerRemoving:Connect(function(plr)
 	-- Save playtime to database
 	if playerSessionStartTime[plr.UserId] and playerBasePlaytime[plr.UserId] then
 		local leaderstats = plr:FindFirstChild("leaderstats")

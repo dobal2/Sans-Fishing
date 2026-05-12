@@ -2,13 +2,14 @@
 local FishData = {}
 local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local serverStorage = game:GetService("ServerStorage")
 local LuckGamePassId = 1289569606
 
-local serverStorage = game:GetService("ServerStorage")
 local fishFolder = serverStorage:WaitForChild("Fishes")
 
 -- Load WeatherSystem module
-local WeatherSystem = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
+local WeatherSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
 
 local ICE_SETTINGS = {
 	material = Enum.Material.Plastic,
@@ -277,7 +278,6 @@ local function applyFestivalEffect(fishModel, fishInfo)
 	end
 
 	-- Find Festival particle in ReplicatedStorage
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local festivalParticle = ReplicatedStorage:FindFirstChild("Particle") and
 		ReplicatedStorage.Particle:FindFirstChild("Festival")
 
@@ -397,8 +397,8 @@ function FishData.CreateFishModel(fishInfo, position)
 	local weatherInfo = WeatherSystem.GetCurrentWeatherInfo()
 	if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
 		if fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") then
-			spawn(function()
-				wait(0.1) -- Brief wait for model to fully load
+			task.spawn(function()
+				task.wait(0.1)
 				applyIceEffect(fishModel, fishInfo)
 			end)
 		end
@@ -406,8 +406,8 @@ function FishData.CreateFishModel(fishInfo, position)
 
 	if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Firework" then
 		if fishInfo.fishName and string.find(fishInfo.fishName, "Festival") then
-			spawn(function()
-				wait(0.1) -- Brief wait for model to fully load
+			task.spawn(function()
+				task.wait(0.1)
 				applyFestivalEffect(fishModel, fishInfo)
 			end)
 		end
@@ -669,7 +669,6 @@ function FishData.RemoveIceEffect(fishModel)
 end
 
 function FishData.RemoveAllIceEffects()
-	local workspace = game:GetService("Workspace")
 	local removedCount = 0
 
 	-- Find all fish models with ice effects
@@ -794,7 +793,6 @@ end
 
 -- Force ice effect on all fish (test only)
 function FishData.ForceIceEffectOnAll()
-	local workspace = game:GetService("Workspace")
 	local appliedCount = 0
 
 	local function searchAndApplyIce(parent)
@@ -818,12 +816,12 @@ function FishData.ForceIceEffectOnAll()
 end
 
 -- Auto-initialize system
-spawn(function()
+task.spawn(function()
 	-- Initialize weather system
 	WeatherSystem.Initialize()
 
 	-- Apply ice effects to existing fish on server restart
-	wait(5) -- Wait for all systems to load
+	task.wait(5) -- Wait for all systems to load
 
 	local weatherInfo = WeatherSystem.GetCurrentWeatherInfo()
 	if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
@@ -850,7 +848,6 @@ end)
 
 -- Stats and status functions
 function FishData.GetIceEffectStats()
-	local workspace = game:GetService("Workspace")
 	local stats = {
 		totalFishWithIce = 0,
 		totalFishModels = 0,
@@ -891,7 +888,6 @@ function FishData.RemoveFestivalEffect(fishModel)
 end
 
 function FishData.RemoveAllFestivalEffects()
-	local workspace = game:GetService("Workspace")
 	local removedCount = 0
 
 	-- Find all fish models with festival effects

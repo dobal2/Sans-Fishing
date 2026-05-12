@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 
 -- DataStore setup
 local DailyRewardStore = DataStoreService:GetDataStore("DailyRewards")
@@ -105,7 +105,7 @@ local function giveReward(player, reward)
 
 	elseif reward.type == "Bubble" then
 		-- Add tool to backpack
-		local tool = game:GetService("ServerStorage"):WaitForChild("Bubbles"):FindFirstChild(reward.toolName)
+		local tool = ServerStorage:WaitForChild("Bubbles"):FindFirstChild(reward.toolName)
 		if tool then
 			local clonedTool = tool:Clone()
 			clonedTool.Parent = player.Backpack

@@ -1,5 +1,5 @@
-local RS = game:GetService("ReplicatedStorage")
-local plr = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local Playerposition = {
 	[1] = CFrame.new(50000, 0, -50000),
@@ -12,13 +12,13 @@ local Playerposition = {
 local function position(player, Positionindex)
 	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if hrp then
-		local RootPart = RS.UnlimitedVoid.RootPart:Clone()
+		local RootPart = ReplicatedStorage.UnlimitedVoid.RootPart:Clone()
 		RootPart.Parent = workspace.Visuals
 		RootPart.CFrame = hrp.CFrame * Playerposition[Positionindex]
 	end
 end
 
-for i, player in ipairs(plr:GetPlayers()) do
+for i, player in ipairs(Players:GetPlayers()) do
 	if player.Character then
 		position(player, i)
 	end

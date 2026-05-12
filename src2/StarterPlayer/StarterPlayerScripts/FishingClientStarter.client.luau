@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local FClient = require(game.ReplicatedStorage.Modules.FishingClientModule)
 local player = Players.LocalPlayer
 
-repeat wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
 
 -- Wait for data to be ready
 local dataReady

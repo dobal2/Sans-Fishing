@@ -93,6 +93,9 @@
       },
       "DeleteFishTrap": {
         "$path": "src2/ServerScriptService/DeleteFishTrap.server.luau"
+      },
+      "Webhook": {
+        "$path": "src2/ServerScriptService/Webhook.server.luau"
       }
     },
 

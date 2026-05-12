@@ -1,9 +1,8 @@
-local datamanager = require(script.DataManager)
-local DataService = game:GetService("DataStoreService")
-local MyData = DataService:GetDataStore("playerdata")
+local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
-local players = game.Players
 local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local datamanager = require(script.DataManager)
 
 -- Robux rod gamepass ID
 local ROBUX_ROD_GAMEPASS_ID = 1410895892
@@ -59,8 +58,8 @@ local function hasGamepass(player, gamepassId)
 	return success and result
 end
 
-players.PlayerAdded:Connect(function(plr)
-	wait(2)
+Players.PlayerAdded:Connect(function(plr)
+	task.wait(2)
 
 	-- Create base structure
 	local leaderstats = Instance.new("Folder")
@@ -186,14 +185,6 @@ players.PlayerAdded:Connect(function(plr)
 		Data = datamanager:GetData(plr)
 	until Data
 
-	-- Debug original data backup
-	if Data.Rods then
-		for rodName, hasRod in pairs(Data.Rods) do
-			if hasRod then
-			end
-		end
-	end
-
 	-- Apply data
 	if Data then
 		Coins.Value = Data.Coins or 0
@@ -212,21 +203,14 @@ players.PlayerAdded:Connect(function(plr)
 		for rodName, hasRod in pairs(Data.Rods or {}) do
 			local rodBool = Rods:FindFirstChild(rodName)
 			if rodBool then
-				-- RobuxRod checked by gamepass only
+				-- RobuxRod is validated by gamepass only
 				if rodName == "RobuxRod" then
 					rodBool.Value = hasGamepass(plr, ROBUX_ROD_GAMEPASS_ID)
-					if rodBool.Value then
-					end
 				else
 					rodBool.Value = hasRod
-					if hasRod then
-					end
 				end
-			else
-				-- Warn if unknown rod found in data
-				if hasRod then
-					warn("Unknown rod:", rodName, "->", plr.Name)
-				end
+			elseif hasRod then
+				warn("Unknown rod:", rodName, "->", plr.Name)
 			end
 		end
 
@@ -235,13 +219,8 @@ players.PlayerAdded:Connect(function(plr)
 			local fishBool = Fish:FindFirstChild(fishName)
 			if fishBool then
 				fishBool.Value = hasCaught or false
-				if hasCaught then
-				end
-			else
-				-- Warn if unknown fish found in data
-				if hasCaught then
-					warn("Unknown fish:", fishName, "->", plr.Name)
-				end
+			elseif hasCaught then
+				warn("Unknown fish:", fishName, "->", plr.Name)
 			end
 		end
 
@@ -250,12 +229,8 @@ players.PlayerAdded:Connect(function(plr)
 			local boatBool = Boats:FindFirstChild(boatName)
 			if boatBool then
 				boatBool.Value = hasBoat
-				if hasBoat then
-				end
-			else
-				if hasBoat then
-					warn("Unknown boat:", boatName, "->", plr.Name)
-				end
+			elseif hasBoat then
+				warn("Unknown boat:", boatName, "->", plr.Name)
 			end
 		end
 
@@ -270,20 +245,14 @@ players.PlayerAdded:Connect(function(plr)
 		for fishTrapName, hasFishTrap in pairs(Data.FishTraps or {}) do
 			local fishTrapBool = FishTraps:FindFirstChild(fishTrapName)
 			if fishTrapBool then
-				-- RobuxFishTrap checked by gamepass only
+				-- RobuxFishTrap is validated by gamepass only
 				if fishTrapName == "RobuxFishTrap" then
 					fishTrapBool.Value = hasGamepass(plr, ROBUX_FISHTRAP_GAMEPASS_ID)
-					if fishTrapBool.Value then
-					end
 				else
 					fishTrapBool.Value = hasFishTrap
-					if hasFishTrap then
-					end
 				end
-			else
-				if hasFishTrap then
-					warn("Unknown Fish Trap:", fishTrapName, "->", plr.Name)
-				end
+			elseif hasFishTrap then
+				warn("Unknown Fish Trap:", fishTrapName, "->", plr.Name)
 			end
 		end
 	end
@@ -526,8 +495,6 @@ players.PlayerAdded:Connect(function(plr)
 	dataReady.Value = true
 	dataReady.Parent = plr
 
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 	task.spawn(function()
 		task.wait(1) -- Extra safety wait
 
@@ -539,39 +506,27 @@ players.PlayerAdded:Connect(function(plr)
 			leaderboardNotificationEvent.Parent = ReplicatedStorage
 		end
 
-		-- Check coin leaderboard
-		local topCoinPlayers = datamanager:GetTopCoinPlayers(10)
-		for i, data in ipairs(topCoinPlayers) do
-			if data.UserId == plr.UserId then
-				local message = string.format("Coin leaderboard top %d player %s has joined the game!", i, plr.Name)
-				leaderboardNotificationEvent:FireAllClients(message, "#FFD700") -- Gold
-				break
-			end
-		end
+		-- Notify all clients if joining player appears in any leaderboard top 10
+		local leaderboardChecks = {
+			{ getter = "GetTopCoinPlayers",     label = "Coin",     color = "#FFD700" },
+			{ getter = "GetTopDonationPlayers", label = "Donation", color = "#00FF00" },
+			{ getter = "GetTopPlaytimePlayers", label = "Time",     color = "#00BFFF" },
+		}
 
-		-- Check donation leaderboard
-		local topDonationPlayers = datamanager:GetTopDonationPlayers(10)
-		for i, data in ipairs(topDonationPlayers) do
-			if data.UserId == plr.UserId then
-				local message = string.format("Donation leaderboard top %d player %s has joined the game!", i, plr.Name)
-				leaderboardNotificationEvent:FireAllClients(message, "#00FF00") -- Green
-				break
-			end
-		end
-
-		-- Check playtime leaderboard
-		local topPlaytimePlayers = datamanager:GetTopPlaytimePlayers(10)
-		for i, data in ipairs(topPlaytimePlayers) do
-			if data.UserId == plr.UserId then
-				local message = string.format("Time leaderboard top %d player %s has joined the game!", i, plr.Name)
-				leaderboardNotificationEvent:FireAllClients(message, "#00BFFF") -- Sky blue
-				break
+		for _, check in ipairs(leaderboardChecks) do
+			local topPlayers = datamanager[check.getter](datamanager, 10)
+			for i, entry in ipairs(topPlayers) do
+				if entry.UserId == plr.UserId then
+					local message = string.format("%s leaderboard top %d player %s has joined the game!", check.label, i, plr.Name)
+					leaderboardNotificationEvent:FireAllClients(message, check.color)
+					break
+				end
 			end
 		end
 	end)
 
 
-	-- Rod give function (add above spawn function)
+	-- Give the player's equipped rod (retries until confirmed in inventory)
 	local function giveRodToPlayer()
 
 
@@ -653,69 +608,34 @@ players.PlayerAdded:Connect(function(plr)
 	end
 
 
-	spawn(function()
-		-- Wait until ItemReady is created
-		repeat
-			task.wait(0.1)
-		until plr:FindFirstChild("ItemReady") and plr.ItemReady.Value == true
-
-
-		-- Wait extra 3 seconds as safety measure
+	-- After ItemSave finishes, verify rod and trap are present and re-give if missing
+	task.spawn(function()
+		repeat task.wait(0.1) until plr:FindFirstChild("ItemReady") and plr.ItemReady.Value == true
 		task.wait(3)
 
-		-- Re-check if rod is actually in inventory
-		local hasRodInBackpack = false
-		local hasRodInCharacter = false
 		local currentRodName = CurrentRod.Value
-
-		-- Check Backpack
-		if plr:FindFirstChild("Backpack") then
-			hasRodInBackpack = plr.Backpack:FindFirstChild(currentRodName) ~= nil
-		end
-
-		-- Check Character (equipped tool)
-		if plr.Character then
-			hasRodInCharacter = plr.Character:FindFirstChild(currentRodName) ~= nil
-		end
+		local hasRodInBackpack = plr:FindFirstChild("Backpack") and plr.Backpack:FindFirstChild(currentRodName) ~= nil
+		local hasRodInCharacter = plr.Character and plr.Character:FindFirstChild(currentRodName) ~= nil
 
 		if not hasRodInBackpack and not hasRodInCharacter then
-			warn("No rod even after ItemReady! Attempting re-give (" .. plr.Name .. ")")
-
-			-- Attempt re-give
-			local secondGiveSuccess = giveRodToPlayer()
-
-			if secondGiveSuccess then
-			else
+			warn("No rod after ItemReady - re-giving (" .. plr.Name .. ")")
+			local ok = giveRodToPlayer()
+			if not ok then
 				warn("Re-give also failed: " .. plr.Name)
 			end
-		else
 		end
 
 		local currentTrapName = CurrentFishTrapValue.Value
-
-		if currentTrapName == "" then
-		else
-			local hasTrapInBackpack = false
-			local hasTrapInCharacter = false
-
-			if plr:FindFirstChild("Backpack") then
-				hasTrapInBackpack = plr.Backpack:FindFirstChild(currentTrapName) ~= nil
-			end
-
-			if plr.Character then
-				hasTrapInCharacter = plr.Character:FindFirstChild(currentTrapName) ~= nil
-			end
+		if currentTrapName ~= "" then
+			local hasTrapInBackpack = plr:FindFirstChild("Backpack") and plr.Backpack:FindFirstChild(currentTrapName) ~= nil
+			local hasTrapInCharacter = plr.Character and plr.Character:FindFirstChild(currentTrapName) ~= nil
 
 			if not hasTrapInBackpack and not hasTrapInCharacter then
-				warn("No Fish Trap even after ItemReady! Attempting re-give (" .. plr.Name .. ")")
-
-				local trapGiveSuccess = giveFishTrapToPlayer()
-
-				if trapGiveSuccess then
-				else
+				warn("No Fish Trap after ItemReady - re-giving (" .. plr.Name .. ")")
+				local ok = giveFishTrapToPlayer()
+				if not ok then
 					warn("Fish Trap re-give also failed: " .. plr.Name)
 				end
-			else
 			end
 		end
 	end)
@@ -723,6 +643,6 @@ end)
 
 
 
-players.PlayerRemoving:Connect(function(plr)
+Players.PlayerRemoving:Connect(function(plr)
 	datamanager:SafeSavePlayer(plr)
 end)

@@ -5,5 +5,5 @@ repeat
 	success = pcall(function()
 		StarterGui:SetCore("ResetButtonCallback", false)
 	end)
-	wait() -- Brief wait to avoid tight loop
+	task.wait() -- Brief wait to avoid tight loop
 until success

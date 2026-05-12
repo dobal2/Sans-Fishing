@@ -133,7 +133,6 @@ end
 
 -- Remove all ice effects (on weather change)
 function FishIceEffect.RemoveAllIceEffects()
-	local workspace = game:GetService("Workspace")
 	local removedCount = 0
 
 	-- Find all fish models with ice effects
@@ -229,7 +228,6 @@ end
 
 -- Force ice effect on all fish in workspace (test only)
 function FishIceEffect.ForceIceEffectOnAll()
-	local workspace = game:GetService("Workspace")
 	local appliedCount = 0
 
 	local function searchAndApplyIce(parent)
@@ -255,7 +253,6 @@ end
 
 -- Ice effect statistics
 function FishIceEffect.GetIceEffectStats()
-	local workspace = game:GetService("Workspace")
 	local stats = {
 		totalFishWithIce = 0,
 		totalFishModels = 0,
