@@ -428,14 +428,14 @@ function FishData.GetRandomFish(rodName, player)
 
 	-- Base probabilities (exactly 100%)
 	local baseChances = {
-		["Common"] = 51.15,
+		["Common"] = 50.0,
 		["Uncommon"] = 25.0,
 		["Rare"] = 13.0,
-		["Epic"] = 6.0,
+		["Epic"] = 6.5,
 		["Legendary"] = 3.0,
-		["Mystic"] = 1.5,
-		["Fantasy"] = 0.3,
-		["Unknown"] = 0.05
+		["Mystic"] = 1.8,
+		["Fantasy"] = 0.5,
+		["Unknown"] = 0.1
 	}
 
 	-- Check gamepasses
@@ -484,100 +484,57 @@ function FishData.GetRandomFish(rodName, player)
 		}
 	end
 
-	-- Updated rod bonus system (probability redistribution)
-	local function applyRodBonus(chances, bonuses)
-		if not bonuses then return chances end
+	-- Rod-based max weight bonus (adds to maxW cap, up to 200kg)
+	local ROD_MAX_WEIGHT_BONUS = {
+		FishingRod  = 0,
+		SliverRod   = 10,
+		GoldRod     = 20,
+		CrystalRod  = 30,
+		MagneticRod = 40,
+		BoneRod     = 55,
+		CloverRod   = 70,
+		RainbowRod  = 85,
+		UnknownRod  = 100,
+		RobuxRod    = 100,
+		ElectricRod = 110,
+		RealisticRod= 130,
+		ArcaneRod   = 150,
+		VoidRod     = 200,
+	}
+	local weightBonus = ROD_MAX_WEIGHT_BONUS[rodName] or 0
 
-		-- Step 1: Calculate total bonus
-		local totalBonus = 0
-		for rarity, bonus in pairs(bonuses) do
-			totalBonus = totalBonus + bonus
-		end
+	-- Per-rod luck bonus: multiplies Uncommon+ chances by (1 + luckBonus).
+	-- VoidRod = 2.50 means 3.5× multiplier on all rare+ rarities.
+	-- Common absorbs the reduction naturally after normalization.
+	local ROD_LUCK_BONUS = {
+		FishingRod   = 0,
+		SliverRod    = 0.15,
+		GoldRod      = 0.30,
+		CrystalRod   = 0.50,
+		MagneticRod  = 0.75,
+		BoneRod      = 1.00,
+		CloverRod    = 1.30,
+		RainbowRod   = 1.20,
+		UnknownRod   = 1.70,
+		RobuxRod     = 2.00,
+		ElectricRod  = 3.00,
+		RealisticRod = 3.80,
+		ArcaneRod    = 4.50,
+		VoidRod      = 6.00,
+	}
+	local luckBonus = ROD_LUCK_BONUS[rodName] or 0
 
-		if totalBonus <= 0 then return chances end
-
-		-- Step 2: Reduce from lower rarities (starting from Common)
-		local toReduce = totalBonus
-		local reductionOrder = {"Common", "Uncommon", "Rare", "Epic"}
-
-		for _, rarity in ipairs(reductionOrder) do
-			if toReduce <= 0 then break end
-
-			local available = chances[rarity] or 0
-			local reduction = math.min(available * 0.8, toReduce) -- Max 80% reduction
-
-			chances[rarity] = available - reduction
-			toReduce = toReduce - reduction
-		end
-
-		-- Step 3: Apply bonuses
-		for rarity, bonus in pairs(bonuses) do
-			local oldValue = chances[rarity] or 0
-			chances[rarity] = oldValue + bonus
-		end
-
-		return chances
-	end
-
-	-- Rod bonus definitions
-	local rodBonuses = nil
-	if rodName == "GoldRod" then
-		rodBonuses = {["Rare"] = 4.0}
-
-	elseif rodName == "CrystalRod" then
-		rodBonuses = {["Epic"] = 3.0}
-
-	elseif rodName == "MagneticRod" then
-		rodBonuses = {["Mystic"] = 0.3, ["Legendary"] = 1.0, ["Epic"] = 2.0}
-
-	elseif rodName == "BoneRod" then
-		rodBonuses = {["Mystic"] = 0.7, ["Legendary"] = 3.0}
-
-	elseif rodName == "CloverRod" then
-		rodBonuses = {["Fantasy"] = 0.2, ["Mystic"] = 1.0, ["Legendary"] = 2.0}
-
-	elseif rodName == "RainbowRod" then
-		rodBonuses = {["Fantasy"] = 0.4, ["Mystic"] = 2.5, ["Legendary"] = 3.0}
-
-	elseif rodName == "UnknownRod" then
-		rodBonuses = {["Unknown"] = 0.1, ["Fantasy"] = 0.5, ["Mystic"] = 2.0}
-
-	elseif rodName == "RobuxRod" then
-		rodBonuses = {["Unknown"] = 0.2, ["Fantasy"] = 0.7, ["Mystic"] = 3.0}
-
-	elseif rodName == "ElectricRod" then
-		rodBonuses = {["Unknown"] = 0.25, ["Fantasy"] = 0.8, ["Mystic"] = 4.0}
-
-	elseif rodName == "RealisticRod" then
-		rodBonuses = {["Unknown"] = 0.5, ["Fantasy"] = 1.3, ["Mystic"] = 5.0}
-
-	elseif rodName == "ArcaneRod" then
-		rodBonuses = {["Unknown"] = 0.8, ["Fantasy"] = 1.6, ["Mystic"] = 5.5}
-
-	elseif rodName == "VoidRod" then
-		rodBonuses = {["Unknown"] = 1.5, ["Fantasy"] = 4.0, ["Mystic"] = 6.0, ["Legendary"] = 7.0}
-	elseif rodName == "FriendRod" then
-		rodBonuses = {
-			["Rare"] = 4.0,
-			["Epic"] = 4.0,
-			["Legendary"] = 5.0,
-			["Mystic"] = 2,
-			["Fantasy"] = 1.2,
-			["Unknown"] = 0.4
-		}
-
-	elseif rodName == "DevRod" then
-		rodBonuses = {["Unknown"] = 100}
-	end
-
-	-- Apply bonuses (probability redistribution)
 	local finalChances = {}
 	for rarity, chance in pairs(baseChances) do
 		finalChances[rarity] = chance
 	end
 
-	if rodBonuses then
-		finalChances = applyRodBonus(finalChances, rodBonuses)
+	if luckBonus > 0 then
+		local multiplier = 1 + luckBonus
+		local rareRarities = { "Uncommon", "Rare", "Epic", "Legendary", "Mystic", "Fantasy", "Unknown" }
+		for _, r in ipairs(rareRarities) do
+			finalChances[r] = finalChances[r] * multiplier
+		end
 	end
 
 	-- Validate and normalize final probabilities
@@ -619,7 +576,7 @@ function FishData.GetRandomFish(rodName, player)
 			local selectedFish = selectRandomFishFromRarity(entry.rarity)
 
 			local minW = selectedFish.minWeight or 1
-			local maxW = selectedFish.maxWeight or minW
+			local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
 			local weight = getFixedProbabilityWeight(minW, maxW)
 			weight = math.floor(weight * 10 + 0.5) / 10
 

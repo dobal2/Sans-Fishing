@@ -1,499 +1,422 @@
--- 🛍️ 개선된 상점 UI 스크립트
-local indexButton = script.Parent:WaitForChild("Frame"):WaitForChild("IndexButton")
-local indexFrame = script.Parent:WaitForChild("IndexFrame")
-local indexShadowFrame = script.Parent:WaitForChild("ShadowFrame")
-local clickSound = script:WaitForChild("click")
-local lighting = game:GetService("Lighting")
-local blur = lighting:WaitForChild("ShopBlur")
-local TweenService = game:GetService("TweenService")
-local xButton = indexFrame:WaitForChild("XButton")
-local camera = workspace.CurrentCamera
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local scrollFrame = indexFrame:WaitForChild("ScrollingFrame")
-local indexUnit = script:WaitForChild("IndexUnit")
 local Players = game:GetService("Players")
-
--- 🐟 물고기 관련 설정
-local player = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local indexGui    = script.Parent
+local indexToggle = indexGui:WaitForChild("IndexToggle")
+
+local newIndexFrame = nil
+for _, c in ipairs(indexGui:GetChildren()) do
+	if c.Name == "Index" and c:IsA("Frame") then newIndexFrame = c; break end
+end
+
+local closeFrame   = newIndexFrame:WaitForChild("Close")
+local xButton      = closeFrame:FindFirstChildOfClass("ImageButton") or closeFrame:FindFirstChildOfClass("TextButton")
+local main         = newIndexFrame:WaitForChild("Main")
+local scrollFrame  = main:WaitForChild("ScrollingFrame")
+local uiScale      = newIndexFrame:WaitForChild("UIScale")
+local clickSound   = script:WaitForChild("click")
+local blur         = lighting:WaitForChild("ShopBlur")
 local fishesFolder = ReplicatedStorage:WaitForChild("Fishes")
 
--- 🐟 물고기 데이터 (직접 정의)
-local FishRarities = {
-	{
-		name = "Common",
-		chance = 44.4,
-		fishes = {
-			{ fishName = "Small Carp", value = 80, minWeight = 0.8, maxWeight = 100.0 },
-			{ fishName = "Gold Fish", value = 100, minWeight = 0.8, maxWeight = 100.0 },
-			{ fishName = "Stone Fish", value = 400, minWeight = 0.8, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Uncommon",
-		chance = 25,
-		fishes = {
-			{ fishName = "Crab", value = 160, minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Crystal Bass", value = 160, minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Dust Fish", value = 680, minWeight = 1.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Rare",
-		chance = 17,
-		fishes = {
-			{ fishName = "Bass", value = 400, minWeight = 2.0, maxWeight = 100.0 },
-			{ fishName = "Snow Fish", value = 400, minWeight = 2.0, maxWeight = 100.0 },
-			{ fishName = "Diri", value = 680, minWeight = 1.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Epic",
-		chance = 7,
-		fishes = {
-			{ fishName = "Dragon Head Fish", value = 700, minWeight = 3.5, maxWeight = 100.0 },
-			{ fishName = "Reggigash", value = 680, minWeight = 1.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Legendary",
-		chance = 4,
-		fishes = {
-			{ fishName = "Golden Trout", value = 1800, minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Armor Fish", value = 2500, minWeight = 3.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Mystic",
-		chance = 2,
-		fishes = {
-			{ fishName = "Shark", value = 4500, minWeight = 5.0, maxWeight = 100.0 },
-			{ fishName = "Ray", value = 4200, minWeight = 5.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Fantasy",
-		chance = 0.5,
-		fishes = {
-			{ fishName = "Undyine", value = 9000, minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Sans", value = 11111, minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Electric Fish", value = 13333, minWeight = 3.0, maxWeight = 100.0 }
-		}
-	},
-	{
-		name = "Unknown",
-		chance = 0.1,
-		fishes = {
-			{ fishName = "Unknown", value = 50000, minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Nyan Cat", value = 56000, minWeight = 1.0, maxWeight = 100.0 }
-		}
-	}
-}
+local mainGui       = player:WaitForChild("PlayerGui"):WaitForChild("Main")
+local notifBadge    = mainGui.Left.Index:WaitForChild("Notification")
+local notifLabel    = notifBadge:WaitForChild("TextLabel")
 
--- 🎨 등급별 테두리 색깔 (요청한 색상으로 변경)
-local rarityColors = {
-	Common = Color3.fromRGB(255, 255, 255),      -- 하양
-	Uncommon = Color3.fromRGB(12, 255, 32),        -- 초록
-	Rare = Color3.fromRGB(5, 188, 255),            -- 파랑
-	Epic = Color3.fromRGB(162, 12, 255),          -- 보라
-	Legendary = Color3.fromRGB(255, 0, 221),    -- 핑크
-	Mystic = Color3.fromRGB(255, 217, 2),        -- 노랑
-	Fantasy = Color3.fromRGB(64, 224, 208),      -- 민트
-	Unknown = Color3.fromRGB(0, 0, 0)            -- 검정
-}
+local discoverRemote = ReplicatedStorage:WaitForChild("FishDiscoverReward")
 
--- 🔧 설정 - FOV 고정
-local originalFOV = 70  -- 🎯 항상 70으로 고정
-local expandedFOV = 60
+local slotTemplate = scrollFrame:WaitForChild("IndexSlot")
+slotTemplate.Visible = false
+
 local canClick = true
+local OPEN_TWEEN  = TweenInfo.new(0.35, Enum.EasingStyle.Back,  Enum.EasingDirection.Out)
+local CLOSE_TWEEN = TweenInfo.new(0.2,  Enum.EasingStyle.Quad,  Enum.EasingDirection.In)
 
--- 🔍 인덱스 열림 상태 확인 함수
-local function isIndexOpen()
-	return indexFrame.Visible
+local FishRarities = {
+	{ name="Common",    chance=44.4, fishes={ {fishName="Small Carp",value=80},{fishName="Gold Fish",value=100},{fishName="Stone Fish",value=400} } },
+	{ name="Uncommon",  chance=25,   fishes={ {fishName="Crab",value=160},{fishName="Crystal Bass",value=160},{fishName="Dust Fish",value=680} } },
+	{ name="Rare",      chance=17,   fishes={ {fishName="Bass",value=400},{fishName="Snow Fish",value=400},{fishName="Diri",value=680} } },
+	{ name="Epic",      chance=7,    fishes={ {fishName="Dragon Head Fish",value=700},{fishName="Reggigash",value=680} } },
+	{ name="Legendary", chance=4,    fishes={ {fishName="Golden Trout",value=1800},{fishName="Armor Fish",value=2500} } },
+	{ name="Mystic",    chance=2,    fishes={ {fishName="Shark",value=4500},{fishName="Ray",value=4200} } },
+	{ name="Fantasy",   chance=0.5,  fishes={ {fishName="Undyine",value=9000},{fishName="Sans",value=11111},{fishName="Electric Fish",value=13333} } },
+	{ name="Unknown",   chance=0.1,  fishes={ {fishName="Unknown",value=50000},{fishName="Nyan Cat",value=56000} } },
+}
+
+local DISCOVER_REWARDS = { Common=50,Uncommon=150,Rare=400,Epic=1000,Legendary=3000,Mystic=8000,Fantasy=25000,Unknown=100000 }
+
+local rarityColors = {
+	Common=Color3.fromRGB(255,255,255), Uncommon=Color3.fromRGB(12,255,32),
+	Rare=Color3.fromRGB(5,188,255),     Epic=Color3.fromRGB(162,12,255),
+	Legendary=Color3.fromRGB(255,0,221),Mystic=Color3.fromRGB(255,217,2),
+	Fantasy=Color3.fromRGB(64,224,208), Unknown=Color3.fromRGB(0,0,0),
+}
+
+-- fishName -> rarity name lookup
+local fishRarityMap = {}
+local fishRewardMap = {}
+for _, rd in ipairs(FishRarities) do
+	for _, fd in ipairs(rd.fishes) do
+		fishRarityMap[fd.fishName] = rd.name
+		fishRewardMap[fd.fishName] = DISCOVER_REWARDS[rd.name] or 0
+	end
 end
 
--- 🎥 FOV 애니메이션 함수 개선
-local function tweenFOV(targetFOV, duration)
-	local tweenInfo = TweenInfo.new(
-		duration or 0.5,
-		Enum.EasingStyle.Quad,
-		Enum.EasingDirection.Out
-	)
-	local tween = TweenService:Create(camera, tweenInfo, {
-		FieldOfView = targetFOV
-	})
-	tween:Play()
-	return tween
+-- Unclaimed discovered fish: fishName -> true
+local unclaimed = {}
+
+local function isIndexOpen() return newIndexFrame.Visible end
+
+local function updateNotifBadge()
+	local count = 0
+	for _ in pairs(unclaimed) do count += 1 end
+	if count > 0 then
+		notifLabel.Text = tostring(count)
+		notifBadge.Visible = true
+	else
+		notifBadge.Visible = false
+	end
 end
 
--- 🎨 호버 효과 함수들 (카메라 줌만, 아무 투명도 변경 없음)
-local function createHoverEffect(fishUnit, isDiscovered, viewportFrame)
-	if not viewportFrame or not viewportFrame.CurrentCamera or not isDiscovered then return end
-
-	local vpCamera = viewportFrame.CurrentCamera
-	local originalCFrame = vpCamera.CFrame
-
-	-- 🔧 확대 효과: 살짝만 가까이
-	local originalPosition = originalCFrame.Position
-	local targetPosition = Vector3.new(0, 0, 0)
-	local direction = (targetPosition - originalPosition).Unit
-	local zoomedPosition = originalPosition + direction * 1.0 -- 1.0 스터드만 가까이
-	local zoomedCFrame = CFrame.lookAt(zoomedPosition, targetPosition)
-
-	local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-	fishUnit.MouseEnter:Connect(function()
-		-- 🔍 카메라 줌인만
-		local zoomTween = TweenService:Create(vpCamera, tweenInfo, {CFrame = zoomedCFrame})
-		zoomTween:Play()
-	end)
-
-	fishUnit.MouseLeave:Connect(function()
-		-- 🔍 카메라 줌아웃
-		local zoomTween = TweenService:Create(vpCamera, tweenInfo, {CFrame = originalCFrame})
-		zoomTween:Play()
-	end)
+local function tweenFOV(fov)
+	TweenService:Create(camera, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {FieldOfView = fov}):Play()
 end
 
--- 🎯 모델 크기 표준화 및 위치 설정 함수 (회전 없음)
-local function setupModelInViewport(handle, targetSize, fishName)
+local function setVpSilhouette(vp, enabled)
+	if not vp then return end
+	if enabled then
+		vp.Ambient    = Color3.new(0, 0, 0)
+		vp.LightColor = Color3.new(0, 0, 0)
+	else
+		vp.Ambient    = Color3.fromRGB(180, 180, 180)
+		vp.LightColor = Color3.fromRGB(230, 230, 230)
+	end
+end
+
+local VP_FOV   = 60
+local VP_PITCH = -20
+local VP_YAW   = 45
+local VP_ZOOM  = 1.2
+
+local VP_OVERRIDES = {
+	["Unknown"]       = { pitch = -20, yaw = 45, zoom = 3.5 },
+	["Electric Fish"] = { pitch = -10, yaw = 45, zoom = 0.9 },
+	["Nyan Cat"]      = { pitch = -10, yaw = 30, zoom = 0.9 },
+}
+
+local function setupModelInViewport(vp, fishModel)
+	for _, c in ipairs(vp:GetChildren()) do
+		if not c:IsA("Camera") then c:Destroy() end
+	end
+
+	local handle = fishModel and fishModel:FindFirstChild("Handle")
 	if not handle or not handle:IsA("BasePart") then return end
 
-	-- 1. Handle을 원점(0,0,0)으로 이동 (회전은 원본 유지)
-	local originalRotation = handle.CFrame.Rotation
-	handle.CFrame = CFrame.new(0, 0, 0) * originalRotation
+	vp.Ambient    = Color3.fromRGB(180, 180, 180)
+	vp.LightColor = Color3.fromRGB(230, 230, 230)
 
-	-- 2. Handle 크기 확인
-	local currentSize = handle.Size
-	local maxDimension = math.max(currentSize.X, currentSize.Y, currentSize.Z)
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Parent = vp
 
-	-- 3. 스케일 계산 (목표 크기에 맞춤)
-	local scale = targetSize / maxDimension
+	local clone = handle:Clone()
+	clone.CFrame = CFrame.new(0, 0, 0)
+	clone.Anchored = true
+	clone.Parent = worldModel
 
-	-- 4. Handle 크기 조정
-	handle.Size = handle.Size * scale
+	local fishName = fishModel and fishModel.Name or ""
+	local ov = VP_OVERRIDES[fishName] or {}
+	local pitch = ov.pitch or VP_PITCH
+	local yaw   = ov.yaw   or VP_YAW
+	local zoom  = ov.zoom  or VP_ZOOM
 
-	-- 5. SpecialMesh가 있다면 스케일 조정
-	local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-	if mesh then
-		mesh.Scale = mesh.Scale * scale
+	local size = clone.Size
+	local radius = math.max(size.X, size.Y, size.Z) / 2
+	local dist = (radius / math.tan(math.rad(VP_FOV / 2))) * zoom
+
+	local vpCam = vp:FindFirstChildOfClass("Camera")
+	if not vpCam then
+		vpCam = Instance.new("Camera")
+		vpCam.Parent = vp
 	end
-
-	print("🎯 Handle 설정 완료:", fishName, "스케일:", scale, "회전 보존")
+	vp.CurrentCamera = vpCam
+	vpCam.FieldOfView = VP_FOV
+	vpCam.CFrame = CFrame.Angles(math.rad(pitch), math.rad(yaw), 0) * CFrame.new(0, 0, dist)
+	vpCam.Focus = CFrame.new(0, 0, 0)
 end
 
--- ❓ 발견되지 않은 물고기용 물음표 생성 함수
-local function createQuestionMark(viewportFrame)
-	-- 기존 물음표 제거
-	local existingQuestion = viewportFrame:FindFirstChild("QuestionMark")
-	if existingQuestion then
-		existingQuestion:Destroy()
+local function createHoverEffect(slot, viewportFrame)
+	if not viewportFrame or not viewportFrame.CurrentCamera then return end
+	local vpCamera = viewportFrame.CurrentCamera
+	local origCF   = vpCamera.CFrame
+	local zoomedCF = CFrame.Angles(math.rad(VP_PITCH), math.rad(VP_YAW), 0)
+		* CFrame.new(0, 0, (origCF.Position - Vector3.new(0,0,0)).Magnitude * 0.75)
+	local ti        = TweenInfo.new(0.2,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local HOVER_IN  = TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local HOVER_OUT = TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local us  = slot:FindFirstChild("UIScale")
+	local btn = slot:FindFirstChildOfClass("TextButton")
+	if btn then
+		btn.MouseEnter:Connect(function()
+			TweenService:Create(vpCamera, ti, {CFrame = zoomedCF}):Play()
+			if us then TweenService:Create(us, HOVER_IN, {Scale = 1.08}):Play() end
+		end)
+		btn.MouseLeave:Connect(function()
+			TweenService:Create(vpCamera, ti, {CFrame = origCF}):Play()
+			if us then TweenService:Create(us, HOVER_OUT, {Scale = 1}):Play() end
+		end)
 	end
-
-	-- 물음표 텍스트라벨 생성
-	local questionMark = Instance.new("TextLabel")
-	questionMark.Name = "QuestionMark"
-	questionMark.Size = UDim2.new(1, 0, 1, 0)
-	questionMark.Position = UDim2.new(0, 0, 0, 0)
-	questionMark.BackgroundTransparency = 1
-	questionMark.Text = "?"
-	questionMark.TextColor3 = Color3.new(0.5, 0.5, 0.5) -- 회색
-	questionMark.TextScaled = true
-	questionMark.Font = Enum.Font.SourceSansBold
-	questionMark.Parent = viewportFrame
-
-	print("❓ 물음표 생성 완료")
 end
 
--- 🐟 물고기 도감 UI 생성 함수 (등급별 정렬)
+-- Pulsing glow tween for unclaimed slots
+local PULSE_IN  = TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local function startClaimPulse(slot)
+	local us = slot:FindFirstChild("UIStroke")
+	if us then
+		TweenService:Create(us, PULSE_IN, {Transparency = 0.2}):Play()
+	end
+	local shine = slot:FindFirstChild("Shine")
+	if shine then
+		shine.Visible = true
+		TweenService:Create(shine, PULSE_IN, {ImageTransparency = 0.3}):Play()
+	end
+end
+
+local function stopClaimPulse(slot)
+	for _, tw in ipairs(TweenService:GetTweenInfoTable and {} or {}) do end
+	local us = slot:FindFirstChild("UIStroke")
+	if us then
+		TweenService:Create(us, TweenInfo.new(0.2), {Transparency = 0}):Play()
+	end
+end
+
+local function claimReward(fishName, slot, rarityColor)
+	if not unclaimed[fishName] then return end
+	unclaimed[fishName] = nil
+	updateNotifBadge()
+	discoverRemote:FireServer(fishName, fishRewardMap[fishName] or 0)
+
+	stopClaimPulse(slot)
+
+	-- Remove claim overlay
+	local overlay = slot:FindFirstChild("ClaimOverlay")
+	if overlay then
+		TweenService:Create(overlay, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
+		local lbl = overlay:FindFirstChildOfClass("TextLabel")
+		if lbl then
+			TweenService:Create(lbl, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {TextTransparency = 1}):Play()
+		end
+		task.delay(0.2, function() if overlay.Parent then overlay:Destroy() end end)
+	end
+
+	-- Flash white then settle to rarity color
+	local us = slot:FindFirstChild("UIStroke")
+	if us then
+		us.Color = Color3.new(1, 1, 1)
+		us.Thickness = 5
+		task.delay(0.15, function()
+			TweenService:Create(us, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+				Color = rarityColor,
+				Thickness = 3,
+			}):Play()
+		end)
+	end
+
+	-- Scale pop
+	local usc = slot:FindFirstChild("UIScale")
+	if usc then
+		usc.Scale = 1.15
+		TweenService:Create(usc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+	end
+end
+
+local function addClaimOverlay(slot, fishName, rarityColor)
+	local existing = slot:FindFirstChild("ClaimOverlay")
+	if existing then existing:Destroy() end
+
+	local overlay = Instance.new("Frame")
+	overlay.Name = "ClaimOverlay"
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.Position = UDim2.fromScale(0, 0)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 0.35
+	overlay.BorderSizePixel = 0
+	overlay.ZIndex = 10
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.08, 0)
+	corner.Parent = overlay
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.fromScale(1, 0.35)
+	lbl.Position = UDim2.fromScale(0, 0.35)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = "Claim!"
+	lbl.TextColor3 = Color3.new(1, 1, 1)
+	lbl.TextScaled = true
+	lbl.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
+	lbl.ZIndex = 11
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.new(0, 0, 0)
+	stroke.Thickness = 2
+	stroke.Parent = lbl
+
+	lbl.Parent = overlay
+	overlay.Parent = slot
+end
+
 local function createFishIndexUI()
-	-- 기존 UI 정리
 	for _, child in pairs(scrollFrame:GetChildren()) do
-		if child:IsA("GuiObject") and not child:IsA("UIGridLayout") and not child:IsA("UIListLayout") then
+		if child:IsA("Frame") and child.Name == "IndexSlot" and child ~= slotTemplate then
 			child:Destroy()
 		end
 	end
 
-	-- 플레이어 Fish 폴더 확인
 	local leaderstats = player:WaitForChild("leaderstats")
-	local fishFolder = leaderstats:WaitForChild("Fish")
-
-	-- 🔍 Fishes 폴더 내용 확인 (Bass와 Golden Trout 특별 확인)
-	print("🐟 === Fishes 폴더 내용 확인 ===")
-	for _, model in pairs(fishesFolder:GetChildren()) do
-		print("- 모델:", model.Name)
-		if model.Name == "Bass" or model.Name == "Golden Trout" then
-			print("  특별 확인:", model.Name, "클래스:", model.ClassName)
-		end
-	end
-	print("================================")
-
-	-- 🎯 등급별로 물고기 정렬해서 생성
+	local fishFolder  = leaderstats:WaitForChild("Fish")
 	local layoutOrder = 1
 
-	for rarityIndex, rarityData in ipairs(FishRarities) do
-		print("🎣 등급 처리:", rarityData.name, "물고기 수:", #rarityData.fishes)
-
-		for fishIndex, fishData in ipairs(rarityData.fishes) do
+	for _, rarityData in ipairs(FishRarities) do
+		for _, fishData in ipairs(rarityData.fishes) do
 			local fishName = fishData.fishName
-			print("🎣 처리 중인 물고기:", fishName, "등급:", rarityData.name)
+			local slot = slotTemplate:Clone()
+			slot.Name = "IndexSlot"
+			slot.LayoutOrder = layoutOrder
+			slot.Visible = true
 
-			local fishUnit = indexUnit:Clone()
-			fishUnit.Name = fishName
-			fishUnit.LayoutOrder = layoutOrder -- 등급 순서대로 정렬
-			fishUnit.Parent = scrollFrame
-
-			-- 🎨 등급별 테두리 색깔 적용 (UIStroke만 추가, 다른 색상/투명도 변경 없음)
 			local rarityColor = rarityColors[rarityData.name] or Color3.fromRGB(255, 255, 255)
-
-			-- 물고기 발견 여부 확인
 			local fishBool = fishFolder:FindFirstChild(fishName)
 			local isDiscovered = fishBool and fishBool.Value or false
+			local isClaiming = unclaimed[fishName] == true
 
-			print("🔍 물고기 확인:", fishName, "Fish폴더 존재:", fishBool and "있음" or "없음", "발견됨:", isDiscovered)
-
-			-- 🎨 UIStroke만 추가 (기존 UI 색상/투명도는 건드리지 않음)
-			local existingStroke = fishUnit:FindFirstChild("UIStroke")
-			if existingStroke then existingStroke:Destroy() end
-
-			local uiStroke = Instance.new("UIStroke")
-			uiStroke.Color = rarityColor
-			uiStroke.Thickness = 2
-
-			if isDiscovered then
-				-- 발견된 물고기: 선명한 테두리
-				uiStroke.Transparency = 0
-			else
-				-- 발견되지 않은 물고기: 흐릿한 테두리
-				uiStroke.Transparency = 0.7
+			local uiStroke = slot:FindFirstChildOfClass("UIStroke")
+			if uiStroke then
+				uiStroke.Color = rarityColor
+				uiStroke.Transparency = isDiscovered and 0 or 0.6
 			end
 
-			uiStroke.Parent = fishUnit
+			local titleLbl = slot:FindFirstChild("Title")
+			if titleLbl then
+				titleLbl.Text = isDiscovered and fishName or "???"
+				titleLbl.TextColor3 = isDiscovered and Color3.new(1, 1, 1) or Color3.new(0.5, 0.5, 0.5)
+				titleLbl.TextTransparency = isDiscovered and 0 or 0.3
+			end
 
-			-- ViewportFrame 찾기
-			local viewportFrame = fishUnit:FindFirstChild("ViewportFrame")
-			if viewportFrame then
-				-- 기존 Handle 제거
-				local existingHandle = viewportFrame:FindFirstChild("Handle")
-				if existingHandle then
-					existingHandle:Destroy()
-				end
+			local rarityLbl = slot:FindFirstChild("Rarity")
+			if rarityLbl then
+				rarityLbl.Text = isDiscovered and rarityData.name or "???"
+				rarityLbl.TextColor3 = isDiscovered and rarityColor or Color3.new(0.4, 0.4, 0.4)
+			end
 
-				-- 물고기가 발견되었다면 실제 모델 표시
+			local vp = slot:FindFirstChild("ViewportFrame")
+			if vp then
+				local fishModel = fishesFolder:FindFirstChild(fishName)
+				setupModelInViewport(vp, fishModel)
+				setVpSilhouette(vp, not isDiscovered)
 				if isDiscovered then
-					local fishModel = fishesFolder:FindFirstChild(fishName)
-					print("🔍 물고기 모델 찾기:", fishName, "모델 존재:", fishModel and "있음" or "없음")
-
-					-- Bass와 Golden Trout 특별 확인
-					if fishName == "Bass" or fishName == "Golden Trout" then
-						print("🐟 === " .. fishName .. " 특별 디버그 ===")
-						print("모델 경로:", fishesFolder)
-						for _, child in pairs(fishesFolder:GetChildren()) do
-							if string.find(child.Name:lower(), string.lower(fishName)) or
-								child.Name == fishName or
-								(fishName == "Bass" and string.find(child.Name:lower(), "bass")) or
-								(fishName == "Golden Trout" and (string.find(child.Name:lower(), "golden") or string.find(child.Name:lower(), "trout"))) then
-								print("매칭된 모델:", child.Name)
-							end
-						end
-						print("============================")
-					end
-
-					if fishModel then
-						local handle = fishModel:FindFirstChild("Handle")
-						print("🔍 Handle 찾기:", fishName, "Handle 존재:", handle and "있음" or "없음")
-						if handle then
-							local clonedHandle = handle:Clone()
-							clonedHandle.Parent = viewportFrame
-
-							-- 🎯 모델 설정 (크기, 위치, 회전) - 확대된 크기가 기본
-							setupModelInViewport(clonedHandle, 4, fishName) -- 기본 크기를 4로 증가
-
-							-- 🎨 원본 재질 복원 (직접 처리)
-							if clonedHandle.Material == Enum.Material.Neon then
-								clonedHandle.Material = Enum.Material.Plastic
-							end
-							if clonedHandle.Transparency > 0 then
-								clonedHandle.Transparency = 0
-							end
-
-							-- ViewportFrame 카메라 설정
-							local vpCamera = Instance.new("Camera")
-							vpCamera.Parent = viewportFrame
-							viewportFrame.CurrentCamera = vpCamera
-
-							-- 🔧 개선된 카메라 위치: 더 자연스러운 각도
-							local distance = 6 -- 거리
-							local height = 3 -- 높이
-							local angle = math.rad(45) -- 45도 각도로 회전
-
-							-- 카메라 위치 계산 (대각선에서 바라보기)
-							local cameraPosition = Vector3.new(
-								distance * math.cos(angle),
-								height,
-								distance * math.sin(angle)
-							)
-							local targetPosition = Vector3.new(0, 0, 0)
-
-							-- 카메라가 중앙을 바라보도록 설정
-							vpCamera.CFrame = CFrame.lookAt(cameraPosition, targetPosition)
-
-							-- 🎨 호버 효과 추가 (카메라 줌)
-							createHoverEffect(fishUnit, isDiscovered, viewportFrame)
-						end
-					end
-				else
-					-- ❓ 발견되지 않은 물고기는 물음표로 표시 (모델 없음)
-					createQuestionMark(viewportFrame)
+					createHoverEffect(slot, vp)
 				end
 			end
 
-			-- 🐟 IndexUnit의 Name 텍스트라벨 사용 (발견 상태에 따라 다르게)
-			local nameLabel = fishUnit:FindFirstChild("Name")
-			if nameLabel then
-				if isDiscovered then
-					nameLabel.Text = fishName
-					nameLabel.TextColor3 = Color3.new(1, 1, 1) -- 발견된 물고기: 하양색
-					nameLabel.TextTransparency = 0
-				else
-					nameLabel.Text = "???"
-					nameLabel.TextColor3 = Color3.new(0.5, 0.5, 0.5) -- 미발견 물고기: 회색
-					nameLabel.TextTransparency = 0.3
+			local shine = slot:FindFirstChild("Shine")
+			if shine then shine.Visible = isDiscovered and not isClaiming end
+
+			-- Unclaimed reward: dark overlay + Claim! text, click to claim
+			if isClaiming then
+				addClaimOverlay(slot, fishName, rarityColor)
+				startClaimPulse(slot)
+				local btn = slot:FindFirstChildOfClass("TextButton")
+				if btn then
+					btn.MouseButton1Click:Connect(function()
+						claimReward(fishName, slot, rarityColor)
+					end)
 				end
 			end
 
-			layoutOrder = layoutOrder + 1
+			slot.Parent = scrollFrame
+			layoutOrder += 1
 		end
 	end
-
-	print("🐟 물고기 도감 UI 업데이트 완료! (등급별 정렬)")
 end
 
--- 🛍️ 인덱스 열기/닫기 통합 함수
+local function openIndex()
+	newIndexFrame.Visible = true
+	uiScale.Scale = 0
+	TweenService:Create(uiScale, OPEN_TWEEN, {Scale = 1}):Play()
+	blur.Enabled = true
+	tweenFOV(60)
+	createFishIndexUI()
+end
+
+local function closeIndex()
+	TweenService:Create(uiScale, CLOSE_TWEEN, {Scale = 0}):Play()
+	task.delay(0.2, function() newIndexFrame.Visible = false end)
+	blur.Enabled = false
+	tweenFOV(70)
+end
+
 local function toggleIndex()
 	if not canClick then return end
 	canClick = false
 	clickSound:Play()
-
-	-- 현재 상태 확인 후 토글
-	local currentlyOpen = isIndexOpen()
-	local newState = not currentlyOpen
-
-	indexFrame.Visible = newState
-	indexShadowFrame.Visible = newState
-
-	local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-	local boatShop = playerGui:FindFirstChild("BoatShop")
-	local robuxShop = playerGui:FindFirstChild("RobuxShop")
-
-	if newState then
-		-- 🔓 인덱스 열림
-		blur.Enabled = true
-		tweenFOV(expandedFOV, 0.5)
-		print("📷 인덱스 열림 - FOV:", expandedFOV)
-
-		-- 🚫 다른 상점들 숨기기
-		if boatShop then
-			local boatShadowFrame = boatShop:FindFirstChild("ShadowFrame")
-			local boatShopFrame = boatShop:FindFirstChild("BoatFrame")
-			if boatShadowFrame then boatShadowFrame.Visible = false end
-			if boatShopFrame then boatShopFrame.Visible = false end
-		end
-
-		if robuxShop then
-			local robuxShadowFrame = robuxShop:FindFirstChild("ShadowFrame")
-			local robuxShopFrame = robuxShop:FindFirstChild("ShopFrame")
-			if robuxShadowFrame then robuxShadowFrame.Visible = false end
-			if robuxShopFrame then robuxShopFrame.Visible = false end
-		end
-
-		-- 🐟 물고기 도감 UI 생성/업데이트
-		createFishIndexUI()
-	else
-		-- 🔒 인덱스 닫힘
-		blur.Enabled = false
-		tweenFOV(originalFOV, 0.5)
-		print("📷 인덱스 닫힘 - FOV 70으로 복구")
-	end
-
-	-- 🔧 task.wait 사용 (더 안전)
+	if isIndexOpen() then closeIndex() else openIndex() end
 	task.wait(0.5)
 	canClick = true
 end
 
--- 🔍 인덱스 상태에 맞게 UI 동기화 함수
-local function syncIndexState()
-	if isIndexOpen() then
-		-- 인덱스가 열려있으면 관련 효과 활성화 (FOV는 건드리지 않음)
-		--blur.Enabled = true
-		indexShadowFrame.Visible = true
-		-- 도감 UI 업데이트
-		createFishIndexUI()
-		--print("🔄 인덱스 동기화 - 열림 상태로 설정 (FOV 제외)")
-	else
-		-- 인덱스가 닫혀있으면 관련 효과 비활성화 (FOV는 건드리지 않음)
-		--blur.Enabled = false
-		indexShadowFrame.Visible = false
-		--print("🔄 인덱스 동기화 - 닫힘 상태로 설정 (FOV 제외)")
+indexToggle.Event:Connect(function(action)
+	if action == "toggle" then
+		toggleIndex()
+	elseif action == "close" then
+		if isIndexOpen() then closeIndex() end
 	end
-end
+end)
 
--- 🔘 버튼 이벤트 연결
-indexButton.MouseButton1Click:Connect(toggleIndex)
 xButton.MouseButton1Click:Connect(function()
-	if isIndexOpen() then
-		toggleIndex()
-	end
+	if isIndexOpen() then closeIndex() end
+end)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.Escape and isIndexOpen() then closeIndex() end
 end)
 
--- ⌨️ ESC 키로 인덱스 닫기
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Escape and isIndexOpen() then
-		toggleIndex()
-	end
-end)
-
--- 👁️ indexFrame.Visible 변화 감지 (다른 스크립트에서 변경시 대응)
-indexFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-	print("🔍 인덱스 Visible 변화 감지:", indexFrame.Visible)
-	syncIndexState()
-end)
-
--- 🔄 물고기 데이터 변경 감지 (실시간 업데이트)
-local function setupFishDataListener()
+local function setupDiscoveryWatchers()
 	local leaderstats = player:WaitForChild("leaderstats")
-	local fishFolder = leaderstats:WaitForChild("Fish")
+	local fishFolder  = leaderstats:WaitForChild("Fish")
 
-	-- FishRarities에서 모든 물고기 이름 가져와서 감지
 	for _, rarityData in ipairs(FishRarities) do
 		for _, fishData in ipairs(rarityData.fishes) do
 			local fishName = fishData.fishName
-			-- Fish 폴더에 해당 물고기가 있는지 확인 후 감지 설정
 			local fishBool = fishFolder:FindFirstChild(fishName)
 			if fishBool then
-				fishBool.Changed:Connect(function()
-					if isIndexOpen() then
-						createFishIndexUI() -- 도감이 열려있으면 즉시 업데이트
-						print("🔄 물고기 도감 업데이트:", fishName)
-					end
-				end)
-			else
-				warn("⚠️ Fish 폴더에서 찾을 수 없음:", fishName)
+				if not fishBool.Value then
+					-- Not yet discovered: watch for first discovery
+					fishBool.Changed:Connect(function(newVal)
+						if newVal then
+							-- Mark as unclaimed, show badge
+							unclaimed[fishName] = true
+							updateNotifBadge()
+							-- Refresh index UI if open so pulse shows immediately
+							if isIndexOpen() then createFishIndexUI() end
+						end
+					end)
+				end
+				-- If already discovered and never claimed, treat as claimable
+				-- (handles rejoin case — but we don't persist claim state client-side,
+				--  so on rejoin already-discovered fish won't pulse again, which is correct)
 			end
 		end
 	end
 end
 
--- 🔧 초기 상태 설정
-indexFrame.Visible = false
-indexShadowFrame.Visible = false
-blur.Enabled = false
-print("✅ 인덱스 UI 초기화 완료 - FOV 고정값 70 사용")
+newIndexFrame.Visible = false
+uiScale.Scale = 0
+notifBadge.Visible = false
 
--- 데이터 리스너 설정
-player.CharacterAdded:Connect(setupFishDataListener)
-if player.Character then
-	setupFishDataListener()
-end
+player.CharacterAdded:Connect(setupDiscoveryWatchers)
+if player.Character then task.spawn(setupDiscoveryWatchers) end

@@ -3,10 +3,17 @@ local spawnBoatRemote = game:GetService("ReplicatedStorage"):WaitForChild("Spawn
 local BoatData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("BoatDataModule"))
 
 -- Boat spawn area setup
-local BOAT_SPAWN_AREA = {
-	CFrame.new(workspace:WaitForChild("BoatSpawnPoses"):WaitForChild("BoatSpawnPos1").Position),
-	CFrame.new(workspace:WaitForChild("BoatSpawnPoses"):WaitForChild("BoatSpawnPos2").Position)
-}
+local boatSpawnPoses = workspace:WaitForChild("BoatSpawnPoses")
+local BOAT_SPAWN_AREA = {}
+for i = 1, 10 do
+	local part = boatSpawnPoses:FindFirstChild("BoatSpawnPos" .. i)
+	if part then
+		BOAT_SPAWN_AREA[i] = CFrame.new(part.Position)
+	end
+end
+if #BOAT_SPAWN_AREA == 0 then
+	warn("BoatSpawner: No BoatSpawnPos parts found in BoatSpawnPoses")
+end
 
 local BOAT_MODEL_FOLDER = game:GetService("ReplicatedStorage"):WaitForChild("Boats")
 local occupiedSpots = {} -- Track occupied spawn positions (per player)

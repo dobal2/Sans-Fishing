@@ -3,45 +3,23 @@ local lighting = game:GetService("Lighting")
 local Camera = workspace:WaitForChild("Camera")
 local Water = workspace:WaitForChild("ErrorRoomlightPart")
 
--- Lighting effects
-local atmosphere = nil  -- Created only when inside water
 local bloom = lighting:WaitForChild("ErrorRoomBloom")
 local blur = lighting:WaitForChild("ErrorRoomBlur")
+-- ColorCorrectionEffect lives directly in Lighting (named ErrorRoomColor)
+local colorCorrection = lighting:WaitForChild("ErrorRoomColor")
 
--- ColorCorrection inside script
-local colorcollection = script:WaitForChild("ErrorRoomBloomAtmosphere")
-
--- Track current state
 local isUnderWater = false
 
--- ColorCorrection to be copied into Lighting
-local lightingColorCollection = nil
-
--- Enable underwater effects
 local function enableUnderwaterEffects()
-	-- Clone if atmosphere doesn't exist
-	if not atmosphere then
-		atmosphere = colorcollection:Clone()
-		atmosphere.Name = "ErrorRoomBloomAtmosphere"
-		atmosphere.Parent = lighting
-	end
-
-	-- Enable effects (Atmosphere auto-applies when present)
 	bloom.Enabled = true
 	blur.Enabled = true
+	colorCorrection.Enabled = true
 end
 
--- Disable underwater effects
 local function disableUnderwaterEffects()
-	-- Destroy atmosphere instead of disabling
-	if atmosphere then
-		atmosphere:Destroy()
-		atmosphere = nil
-	end
-
-	-- Disable other effects
 	bloom.Enabled = false
 	blur.Enabled = false
+	colorCorrection.Enabled = false
 end
 
 RunService.Stepped:Connect(function()

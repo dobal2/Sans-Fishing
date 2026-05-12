@@ -6,14 +6,11 @@ local textLabel = script.Parent
 local currentTween = nil
 local currentTask = nil
 
--- 트윈 생성 함수
 local function createTween(object, targetProps, duration)
 	return TweenService:Create(object, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), targetProps)
 end
 
--- 메시지 출력 함수 (기존 표시 중단 후 새 메시지 즉시 출력)
 local function showMessage(message)
-	-- 진행 중이면 중단
 	if currentTween then
 		currentTween:Cancel()
 		currentTween = nil

@@ -20,7 +20,7 @@ local function loadGamePassInfo(passId)
 		image.Image = "rbxassetid://" .. gamePassInfo.IconImageAssetId
 		return gamePassInfo
 	else
-		warn("❌ 게임패스 정보 로드 실패:", gamePassInfo)
+		warn("Failed to load gamepass info:", gamePassInfo)
 		--nameLabel.Text = "게임패스 로드 실패"
 		image.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 		return nil
@@ -57,7 +57,7 @@ button.MouseButton1Click:Connect(function()
 	end)
 
 	if success and hasPass then
-		print("이미 게임패스를 소유하고 있습니다.")
+		print("Already owns gamepass.")
 		return
 	end
 
@@ -66,7 +66,7 @@ end)
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(userId, assetId, wasPurchased)
 	if userId == player.UserId and assetId == gamePassId and wasPurchased then
-		print("🎉 게임패스 구매 완료!")
+		print("Gamepass purchased")
 		ownedFrame.Visible = true
 		button.Visible = false
 	end

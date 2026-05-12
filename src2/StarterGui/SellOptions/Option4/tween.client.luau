@@ -2,7 +2,6 @@ local TweenService = game:GetService("TweenService")
 game.ReplicatedStorage.SellGuiEvent.OnClientEvent:Connect(function()
 	local button = script.Parent
 
-	-- 원래 크기 저장
 	local originalSize = button.Size
 
 	-- Play sound

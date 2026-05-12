@@ -81,6 +81,51 @@ function FishingClient.init(tool)
 	self.inputBeganConnection = nil
 	self.inputEndedConnection = nil
 
+	-- Auto fishing click bridge
+	local autoClickEvent = Instance.new("BindableEvent")
+	autoClickEvent.Name = "AutoClickEvent"
+	autoClickEvent.Parent = tool
+	autoClickEvent.Event:Connect(function()
+		if self.newGUI then
+			self:_processFishingInput()
+		end
+	end)
+	self.autoClickEvent = autoClickEvent
+
+	-- Auto fishing cast bridge
+	local autoCastEvent = Instance.new("BindableEvent")
+	autoCastEvent.Name = "AutoCastEvent"
+	autoCastEvent.Parent = tool
+	autoCastEvent.Event:Connect(function()
+		if not self.newGUI and not self.locked and not self.baitThrown then
+			local character = self.player.Character
+			if not character then return end
+			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+			if not humanoidRootPart then return end
+			local hum = character:FindFirstChildOfClass("Humanoid")
+			if not hum or hum.Health <= 0 then return end
+
+			local lookDirection = humanoidRootPart.CFrame.LookVector
+			local currentPosition = humanoidRootPart.Position
+			local targetPosition = currentPosition + (lookDirection * 50)
+			targetPosition = Vector3.new(targetPosition.X, currentPosition.Y, targetPosition.Z)
+
+			self.locked = true
+			self.baitThrown = true
+			self.baitThrowTime = tick()
+			self:_stopHoldingAnimation()
+			self:_playFishingAnimation()
+			tutorialEvent:Fire("baitThrow_success")
+
+			task.delay(0.3, function()
+				if self.baitThrown and not self.newGUI then
+					self.castEvent:FireServer(targetPosition)
+				end
+			end)
+		end
+	end)
+	self.autoCastEvent = autoCastEvent
+
 	self:_bind()
 	return self
 end
@@ -800,11 +845,19 @@ function FishingClient:_bind()
 				local targetPosition = currentPosition + (lookDirection * castDistance)
 				targetPosition = Vector3.new(targetPosition.X, currentPosition.Y, targetPosition.Z)
 
-				self.castEvent:FireServer(targetPosition)
+				-- Raft style: play animation immediately on client, then fire server after delay
 				self.locked = true
 				self.baitThrown = true
 				self.baitThrowTime = tick()
+				self:_stopHoldingAnimation()
+				self:_playFishingAnimation()
 				tutorialEvent:Fire("baitThrow_success")
+
+				task.delay(0.3, function()
+					if self.baitThrown and not self.newGUI then
+						self.castEvent:FireServer(targetPosition)
+					end
+				end)
 			end
 		end
 	end)
@@ -837,8 +890,7 @@ function FishingClient:_bind()
 		end
 
 		if data == "play_fishing_animation" then
-			self:_stopHoldingAnimation()
-			self:_playFishingAnimation()
+			-- Already played client-side on cast; skip to avoid double-play
 			return
 		end
 

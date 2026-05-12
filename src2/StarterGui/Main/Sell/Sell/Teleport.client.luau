@@ -7,14 +7,12 @@ local fishPoint = workspace:WaitForChild("SellPoint")
 button.MouseButton1Down:Connect(function()
 	if not enable then return end
 
-	-- ✅ 어트리뷰트로 낚시 중 여부 확인
 	if player:GetAttribute("IsFishing") then
 		local noticeEvent = ReplicatedStorage:WaitForChild("NoticeEventForClient")
 		noticeEvent:Fire("You can't teleport while fishing")
 		return
 	end
 
-	-- 🪑 플레이어가 앉아있는지 확인
 	local character = player.Character
 	if character then
 		local humanoid = character:FindFirstChild("Humanoid")
@@ -25,7 +23,6 @@ button.MouseButton1Down:Connect(function()
 		end
 	end
 
-	-- ✅ 텔레포트 실행
 	enable = false
 	character = character or player.CharacterAdded:Wait()
 	local hrp = character:FindFirstChild("HumanoidRootPart")

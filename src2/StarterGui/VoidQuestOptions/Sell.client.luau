@@ -1,15 +1,12 @@
--- VoidQuestGuiOpener.lua (LocalScript in StarterPlayerScripts)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- 보이드 퀘스트 이벤트들로 변경
 local voidQuestEvents = ReplicatedStorage:WaitForChild("VoidQuestEvents")
 local voidQuestGuiEvent = voidQuestEvents:WaitForChild("VoidQuestGuiEvent")
 
 voidQuestGuiEvent.OnClientEvent:Connect(function()
-	-- 보이드 퀘스트 전용 GUI 사용 (기존 QuestOptions 복사해서 VoidQuestOptions로 이름 변경)
 	local gui = player:WaitForChild("PlayerGui"):WaitForChild("VoidQuestOptions")
 	gui.Enabled = true
 

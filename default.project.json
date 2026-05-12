@@ -96,6 +96,12 @@
       },
       "Webhook": {
         "$path": "src2/ServerScriptService/Webhook.server.luau"
+      },
+      "ProfileService": {
+        "$path": "src2/ServerScriptService/ProfileService.luau"
+      },
+      "FishDiscoverReward": {
+        "$path": "src2/ServerScriptService/FishDiscoverReward.server.luau"
       }
     },
 
@@ -142,6 +148,9 @@
         },
         "FishTrapBeam": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/FishTrapBeam.client.luau"
+        },
+        "BoatBuoyancy": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/BoatBuoyancy.client.luau"
         }
       },
       "StarterCharacterScripts": {
@@ -168,5 +177,6 @@
         "$path": "src2/ReplicatedStorage/DistanceFade.luau"
       }
     }
+
   }
 }

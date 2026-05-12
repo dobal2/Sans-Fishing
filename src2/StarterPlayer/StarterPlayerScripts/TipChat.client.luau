@@ -32,10 +32,12 @@ local function sendTipToChat()
 end
 
 -- Handle leaderboard notification events
-local leaderboardNotificationEvent = ReplicatedStorage:WaitForChild("LeaderboardNotificationEvent")
-leaderboardNotificationEvent.OnClientEvent:Connect(function(message, color)
-	sendMessageToChat(message, color)
-end)
+local leaderboardNotificationEvent = ReplicatedStorage:WaitForChild("LeaderboardNotificationEvent", 30)
+if leaderboardNotificationEvent then
+	leaderboardNotificationEvent.OnClientEvent:Connect(function(message, color)
+		sendMessageToChat(message, color)
+	end)
+end
 
 -- Send tip every 3 minutes
 task.spawn(function()

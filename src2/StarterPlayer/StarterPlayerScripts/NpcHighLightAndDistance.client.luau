@@ -4,7 +4,7 @@ local gambler = workspace:WaitForChild("Gambler")
 local updateShop = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller")
 local robuxShop = workspace:WaitForChild("Pap")
 local boatDealer1 = workspace:WaitForChild("BoatDealer1")
-local boatDealer2 = workspace:WaitForChild("BoatDealer2")
+local boatDealer2 = workspace:FindFirstChild("BoatDealer2")
 local voidQuestGiver = workspace:WaitForChild("Void Quest Giver") -- Void Quest Giver
 
 local TweenService = game:GetService("TweenService")
@@ -25,8 +25,10 @@ robuxHighlight.Parent = robuxShop
 local boatDealer1Highlight = boatDealer1:FindFirstChild("Highlight") or Instance.new("Highlight")
 boatDealer1Highlight.Parent = boatDealer1
 
-local boatDealer2Highlight = boatDealer2:FindFirstChild("Highlight") or Instance.new("Highlight")
-boatDealer2Highlight.Parent = boatDealer2
+local boatDealer2Highlight = boatDealer2 and (boatDealer2:FindFirstChild("Highlight") or Instance.new("Highlight"))
+if boatDealer2Highlight and boatDealer2 then
+	boatDealer2Highlight.Parent = boatDealer2
+end
 
 -- Add Void Quest Giver Highlight
 local voidQuestHighlight = voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight")
@@ -107,8 +109,10 @@ robuxHighlight.Enabled = true
 robuxHighlight.OutlineTransparency = 1
 boatDealer1Highlight.Enabled = true
 boatDealer1Highlight.OutlineTransparency = 1
-boatDealer2Highlight.Enabled = true
-boatDealer2Highlight.OutlineTransparency = 1
+if boatDealer2Highlight then
+	boatDealer2Highlight.Enabled = true
+	boatDealer2Highlight.OutlineTransparency = 1
+end
 voidQuestHighlight.Enabled = true  -- Void Quest Giver init
 voidQuestHighlight.OutlineTransparency = 1
 
@@ -193,14 +197,16 @@ while true do
 	wasNearby.boatDealer1 = shouldShowBoatDealer1Highlight
 
 	-- Boat Dealer 2
-	local boatDealer2Nearby = isPlayerNearby(boatDealer2)
-	local canInteractBoatDealer2 = canInteractWithNPC(boatDealer2)
-	local shouldShowBoatDealer2Highlight = boatDealer2Nearby and canInteractBoatDealer2
+	if boatDealer2 and boatDealer2Highlight then
+		local boatDealer2Nearby = isPlayerNearby(boatDealer2)
+		local canInteractBoatDealer2 = canInteractWithNPC(boatDealer2)
+		local shouldShowBoatDealer2Highlight = boatDealer2Nearby and canInteractBoatDealer2
 
-	if shouldShowBoatDealer2Highlight ~= wasNearby.boatDealer2 then
-		animateHighlight(boatDealer2Highlight, shouldShowBoatDealer2Highlight and 0 or 1)
+		if shouldShowBoatDealer2Highlight ~= wasNearby.boatDealer2 then
+			animateHighlight(boatDealer2Highlight, shouldShowBoatDealer2Highlight and 0 or 1)
+		end
+		wasNearby.boatDealer2 = shouldShowBoatDealer2Highlight
 	end
-	wasNearby.boatDealer2 = shouldShowBoatDealer2Highlight
 
 	-- Void Quest Giver
 	local voidQuestNearby = isPlayerNearby(voidQuestGiver, VOID_QUEST_RANGE)
