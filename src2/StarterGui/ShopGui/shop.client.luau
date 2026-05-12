@@ -7,40 +7,104 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local RodData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("RodDataModule"))
 local voidRodModel = workspace:WaitForChild("VoidRodModel")
 local voidProximity = voidRodModel:WaitForChild("ProximityPrompt")
--- 로벅스 로드 게임패스 ID
 local ROBUX_ROD_GAMEPASS_ID = 1410895892
 
--- UI
 local gui = script.Parent
-local frame1 = gui:WaitForChild("Frame1")
-local frame2 = gui:WaitForChild("Frame2")
 local buyframe = gui:WaitForChild("buyframe")
-local nameText = frame2:WaitForChild("Name")
+local nameText = buyframe:WaitForChild("Name")
 local coinText = buyframe:WaitForChild("Cointext")
-local noticeText = buyframe:WaitForChild("notice")
-local descText = buyframe:WaitForChild("Desc")
+local showNoticeEvent = game:GetService("ReplicatedStorage"):WaitForChild("NoticeEventForClient")
+local luckText = buyframe:WaitForChild("Luck")
+local powerText = buyframe:WaitForChild("Power")
+local weightText = buyframe:WaitForChild("Weight")
 
--- 원래 텍스트 색상 저장
 local originalTextColor = coinText.TextColor3
 
--- Custom Inventory hotBar 참조
 local customInventory = player.PlayerGui:WaitForChild("Custom Inventory")
 local hotBar = customInventory:WaitForChild("hotBar")
 
--- Main GUI 버튼들 참조
 local mainGui = player.PlayerGui:WaitForChild("Main")
 local fishingButton = mainGui:WaitForChild("Fishing")
 local sellButton = mainGui:WaitForChild("Sell")
 local upgradeButton = mainGui:WaitForChild("Upgrade")
 local freeRewardButton = mainGui:WaitForChild("Free Reward")
 
--- Buttons
-local buyButton = buyframe:WaitForChild("buybutton")
-local leftButton = buyframe:WaitForChild("leftarrow")
-local rightButton = buyframe:WaitForChild("rightarrow")
-local exitButton = buyframe:WaitForChild("Exitbutton")
+local buyBtnFrame = buyframe:WaitForChild("buybutton")
+local buyButton    = buyBtnFrame:WaitForChild("TextButton")
+local buyBtnLabel  = buyBtnFrame:FindFirstChild("TextLabel")
+local buyBtnGlow   = buyBtnFrame:FindFirstChild("Glow")
+local leftButton   = buyframe:WaitForChild("leftarrow")
+local rightButton  = buyframe:WaitForChild("rightarrow")
+local exitBtnFrame = buyframe:WaitForChild("Exitbutton")
+local exitButton   = exitBtnFrame:WaitForChild("TextButton")
 
--- 리모트
+-- Hover tween for buy button
+local HOVER_IN  = TweenInfo.new(0.12, Enum.EasingStyle.Back,  Enum.EasingDirection.Out)
+local HOVER_OUT = TweenInfo.new(0.10, Enum.EasingStyle.Quad,  Enum.EasingDirection.Out)
+local buyBtnScale = buyBtnFrame:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+if not buyBtnScale.Parent then buyBtnScale.Parent = buyBtnFrame end
+local buyBtnGradient = buyButton:FindFirstChildOfClass("UIGradient")
+
+local GREEN_GRADIENT = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 255, 100)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 50)),
+})
+local RED_GRADIENT = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 0, 0)),
+})
+
+local GREEN_COLOR = Color3.fromRGB(0, 200, 50)
+local RED_COLOR   = Color3.fromRGB(200, 0, 0)
+
+local buyBtnStroke = buyButton:FindFirstChildOfClass("UIStroke")
+	or buyBtnFrame:FindFirstChildOfClass("UIStroke")
+
+local function setBuyButtonState(isGreen)
+	if buyBtnGradient then
+		buyBtnGradient.Color = isGreen and GREEN_GRADIENT or RED_GRADIENT
+	end
+	if buyBtnStroke then
+		buyBtnStroke.Color = isGreen and GREEN_COLOR or RED_COLOR
+	end
+	buyButton.BackgroundColor3 = isGreen and GREEN_COLOR or RED_COLOR
+	if buyBtnGlow then
+		ts:Create(buyBtnGlow, TweenInfo.new(0.2), {ImageColor3 = isGreen and GREEN_COLOR or RED_COLOR}):Play()
+	end
+end
+
+local nameGradient = nameText:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+if not nameGradient.Parent then nameGradient.Parent = nameText end
+nameGradient.Rotation = 90
+
+local ROD_NAME_GRADIENTS = {
+	SliverRod    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 220, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 160, 220)) }),
+	GoldRod      = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 80)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 140, 20))  }),
+	CrystalRod   = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 240, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 180, 255))  }),
+	MagneticRod  = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 0, 200))    }),
+	BoneRod      = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(230, 220, 200)), ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 140, 110)) }),
+	CloverRod    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 255, 120)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 180, 60))   }),
+	RainbowRod   = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),   ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 220, 0)), ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 0, 255)) }),
+	UnknownRod   = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 60, 60)),    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))    }),
+	RobuxRod     = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 100)),   ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 180, 60))    }),
+	ElectricRod  = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 200, 255))  }),
+	RealisticRod = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 120, 60))   }),
+	ArcaneRod    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 0, 200))   }),
+	VoidRod      = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 80, 255)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 0, 120))    }),
+}
+buyButton.MouseEnter:Connect(function()
+	ts:Create(buyBtnScale, HOVER_IN, {Scale = 1.1}):Play()
+end)
+buyButton.MouseLeave:Connect(function()
+	ts:Create(buyBtnScale, HOVER_OUT, {Scale = 1}):Play()
+end)
+buyButton.MouseButton1Down:Connect(function()
+	ts:Create(buyBtnScale, HOVER_OUT, {Scale = 0.93}):Play()
+end)
+buyButton.MouseButton1Up:Connect(function()
+	ts:Create(buyBtnScale, HOVER_IN, {Scale = 1.1}):Play()
+end)
+
 local openShopRemote = game.ReplicatedStorage:WaitForChild("OpenShop")
 local buyRemote = game.ReplicatedStorage:WaitForChild("BuyFishingRod")
 local proximy = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller"):WaitForChild("ProximityPrompt")
@@ -48,7 +112,6 @@ local buySound = game:GetService("ReplicatedStorage"):WaitForChild("Sounds"):Wai
 local errorSound = game:GetService("ReplicatedStorage"):WaitForChild("Sounds"):WaitForChild("error")
 local equipSound = game:GetService("ReplicatedStorage"):WaitForChild("Sounds"):WaitForChild("Equip")
 
--- 보이드 로드 이벤트들
 local voidRodEvents = game.ReplicatedStorage:WaitForChild("VoidRodEvents")
 local openVoidShopEvent = voidRodEvents:WaitForChild("OpenVoidShop")
 local voidShopNoticeEvent = voidRodEvents:WaitForChild("VoidShopNotice")
@@ -56,12 +119,10 @@ local voidShopNoticeEvent = voidRodEvents:WaitForChild("VoidShopNotice")
 local GroupService = game:GetService("GroupService")
 local GROUP_ID = 9744474
 
--- 그룹 멤버 체크 및 UI 숨기기
 local function checkGroupMembership()
 	local success, isInGroup = pcall(function()
 		return player:IsInGroup(GROUP_ID)
 	end)
-
 	if success and isInGroup then
 		freeRewardButton.Visible = false
 		return true
@@ -69,32 +130,19 @@ local function checkGroupMembership()
 	return false
 end
 
--- 상태 변수 - 일반 상점용 (VoidRod 제외)
 local rodKeys = {
-	"SliverRod",
-	"GoldRod",
-	"CrystalRod",
-	"MagneticRod",
-	"BoneRod",
-	"CloverRod",
-	"RainbowRod",
-	"UnknownRod",
-	"RobuxRod",
-	"ElectricRod",
-	"RealisticRod",
-	"ArcaneRod"
+	"SliverRod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod",
+	"CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
+	"ElectricRod", "RealisticRod", "ArcaneRod"
 }
 
--- 보이드 상점용 (VoidRod만)
 local voidRodKeys = {"VoidRod"}
 
 local target = 1
 local canShop = true
 local inputEnabled = true
 local canBuy = true
-local isVoidShop = false  -- 현재 보이드 상점 모드인지 확인
-
-print("ShopScriptLoaded")
+local isVoidShop = false
 
 local function isPlayerFishing()
 	return player:GetAttribute("IsFishing") == true
@@ -121,13 +169,10 @@ end
 local function hasCompletedVoidQuest()
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return false end
-
 	local quests = leaderstats:FindFirstChild("Quests")
 	if not quests then return false end
-
 	local completedQuests = quests:FindFirstChild("CompletedQuests")
 	if not completedQuests then return false end
-
 	local voidQuest = completedQuests:FindFirstChild("void_unknown_challenge")
 	return voidQuest and voidQuest.Value == true
 end
@@ -144,133 +189,119 @@ local function formatNumber(number)
 	local str = tostring(number)
 	local formatted = ""
 	local length = #str
-
 	for i = 1, length do
 		formatted = formatted .. str:sub(i, i)
 		if (length - i) % 3 == 0 and i ~= length then
 			formatted = formatted .. ","
 		end
 	end
-
 	return formatted
 end
 
 local function updateView(skipTween)
 	skipTween = skipTween or false
-
-	-- 현재 모드에 따라 다른 배열 사용
 	local currentRodKeys = isVoidShop and voidRodKeys or rodKeys
 	local rodName = currentRodKeys[target]
 	local rodData = RodData.Rods[rodName]
 
 	nameText.Text = rodName
-	descText.Text = rodData.desc
+	if ROD_NAME_GRADIENTS[rodName] then
+		nameGradient.Color = ROD_NAME_GRADIENTS[rodName]
+	end
+	luckText.Text = "Luck: " .. (rodData.luck or "-")
+	powerText.Text = "Power: " .. (rodData.power or "-")
+	weightText.Text = "Weight: " .. (rodData.weight or "-")
 
-	-- 보이드 로드 특별 처리
 	if rodName == "VoidRod" then
 		if not hasCompletedVoidQuest() then
 			buyButton.AutoButtonColor = false
-			buyButton.Text = "Quest Required"
+			if buyBtnLabel then buyBtnLabel.Text = "Quest Required" end
 		elseif hasRod(rodName) then
 			buyButton.AutoButtonColor = false
-			buyButton.Text = "Owned"
+			if buyBtnLabel then buyBtnLabel.Text = "Owned" end
 		else
 			buyButton.AutoButtonColor = true
-			buyButton.Text = "Buy"
+			if buyBtnLabel then buyBtnLabel.Text = "Buy" end
 		end
 	elseif rodName == "RobuxRod" then
-		-- 로벅스 로드 처리
 		if hasGamepass(ROBUX_ROD_GAMEPASS_ID) then
 			buyButton.AutoButtonColor = false
-			buyButton.Text = "Owned"
+			if buyBtnLabel then buyBtnLabel.Text = "Owned" end
 		else
 			buyButton.AutoButtonColor = true
-			buyButton.Text = "Buy"
+			if buyBtnLabel then buyBtnLabel.Text = "Buy" end
 		end
 	else
-		-- 일반 로드 처리
 		if hasRod(rodName) then
 			buyButton.AutoButtonColor = false
-			buyButton.Text = "Owned"
+			if buyBtnLabel then buyBtnLabel.Text = "Owned" end
 		else
 			buyButton.AutoButtonColor = true
-			buyButton.Text = "Buy"
+			if buyBtnLabel then buyBtnLabel.Text = "Buy" end
 		end
 	end
 
 	if equippedRod(rodName) then
 		buyButton.AutoButtonColor = false
-		buyButton.Text = "Equipped"
+		if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 	end
 
-	-- 가격 표시
 	if rodName == "RobuxRod" then
 		coinText.Text = formatNumber(rodData.price) .. " Robux"
-		coinText.TextColor3 = Color3.fromRGB(0, 255, 0) -- 초록색
+		coinText.TextColor3 = Color3.fromRGB(0, 255, 0)
 	elseif rodName == "VoidRod" then
 		coinText.Text = formatNumber(rodData.price) .. " Coins"
-		coinText.TextColor3 = Color3.fromRGB(150, 100, 255) -- 보라색
+		coinText.TextColor3 = Color3.fromRGB(150, 100, 255)
 	else
 		coinText.Text = formatNumber(rodData.price) .. " Coins"
-		coinText.TextColor3 = originalTextColor -- 원래 색상
+		coinText.TextColor3 = originalTextColor
+	end
+
+	-- Buy 버튼 색상: owned/equipped이면 항상 초록, 아니면 코인 여부로 판단
+	local isOwned = equippedRod(rodName)
+		or (rodName == "RobuxRod" and hasGamepass(ROBUX_ROD_GAMEPASS_ID))
+		or (rodName ~= "RobuxRod" and hasRod(rodName))
+	if isOwned then
+		setBuyButtonState(true)
+	elseif rodName == "RobuxRod" then
+		setBuyButtonState(true)
+	else
+		local coins = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Coins")
+		local affordable = coins and coins.Value >= rodData.price
+		setBuyButtonState(affordable)
 	end
 
 	if not skipTween then
 		local modelPosition = rodData.position
-
-		-- 실제 모델을 찾아서 크기와 방향 고려
 		local shopModel = workspace:FindFirstChild("Upgrade Shop")
 		local rodModel = shopModel and shopModel:FindFirstChild(rodName)
-
-		-- VoidRod는 다른 위치에 있을 수 있음
 		if rodName == "VoidRod" then
 			rodModel = workspace:FindFirstChild("VoidRodModel")
 		end
-
 		local camPos, camCF
-
 		if rodModel then
-			-- 실제 모델이 있는 경우 - 모델의 크기와 방향 고려
 			local modelCFrame = rodModel:GetPrimaryPartCFrame() or rodModel:GetModelCFrame()
 			local modelSize = rodModel:GetExtentsSize()
-
-			-- 모델 크기에 따른 거리 조정
 			local distance = math.max(8, modelSize.Magnitude * 1.5)
 			local height = math.max(0, modelSize.Y * 0)
-
-			local frontDirection, rightDirection
-
-			-- VoidRod인 경우 Y축 180도 회전 적용
+			local rightDirection
 			if rodName == "VoidRod" then
-				local rotatedCFrame = modelCFrame * CFrame.Angles(0, math.rad(180), 0)
-				frontDirection = -rotatedCFrame.LookVector
-				rightDirection = rotatedCFrame.RightVector
+				rightDirection = (modelCFrame * CFrame.Angles(0, math.rad(180), 0)).RightVector
 			else
-				-- 일반 로드의 경우 원래 방향 사용
-				frontDirection = -modelCFrame.LookVector
 				rightDirection = modelCFrame.RightVector
 			end
-
-			-- 카메라를 모델의 오른쪽 측면에 배치
 			camPos = modelPosition + (rightDirection * distance) + Vector3.new(0, height, 0)
 			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, height * 0.5, 0))
-
 		else
-			-- 모델을 찾을 수 없는 경우 - 기본 방식
-			local rightOffset = Vector3.new(8, 0, 0)
-			local upOffset = Vector3.new(0, 3, 0)
-
-			camPos = modelPosition + rightOffset + upOffset
+			camPos = modelPosition + Vector3.new(8, 3, 0)
 			camCF = CFrame.lookAt(camPos, modelPosition)
 		end
-
 		ts:Create(cam, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { CFrame = camCF }):Play()
 	end
 end
 
 local function openShop(voidMode)
 	isVoidShop = voidMode or false
-
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		humanoid.WalkSpeed = 0
@@ -278,84 +309,53 @@ local function openShop(voidMode)
 	end
 	setCharacterTransparency(player.Character, 1)
 	proximy.Enabled = false
-
 	voidProximity.Enabled = false
-
-	-- hotBar 숨기기
 	hotBar.Visible = false
-
-	-- Main GUI 버튼들 숨기기
 	fishingButton.Visible = false
 	sellButton.Visible = false
 	upgradeButton.Visible = false
 	freeRewardButton.Visible = false
 	checkGroupMembership()
-
 	canShop = false
 	target = 1
 	cam.CameraType = Enum.CameraType.Scriptable
-
 	updateView()
-	frame1.Visible = true
-	frame2.Visible = true
 	buyframe.Visible = true
 end
 
 local function closeShop()
-	frame1.Visible = false
-	frame2.Visible = false
 	buyframe.Visible = false
 	setCharacterTransparency(player.Character, 0)
 	cam.CameraType = Enum.CameraType.Custom
-	isVoidShop = false  -- 모드 리셋
-
-	-- hotBar 다시 보이기
+	isVoidShop = false
 	hotBar.Visible = true
-
-	-- Main GUI 버튼들 다시 보이기
 	fishingButton.Visible = true
 	sellButton.Visible = true
 	upgradeButton.Visible = true
 	freeRewardButton.Visible = true
 	checkGroupMembership()
-
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		if isPlayerFishing() then
-			-- 낚시 중이므로 속도는 그대로 유지
-		else
-			humanoid.WalkSpeed = 16
-			humanoid.JumpHeight = 7.2
-		end
+	if humanoid and not isPlayerFishing() then
+		humanoid.WalkSpeed = 16
+		humanoid.JumpHeight = 7.2
 	end
-
 	task.wait(0.5)
 	proximy.Enabled = true
 	voidProximity.Enabled = true
 	canShop = true
 end
 
--- 일반 상점 오픈
 openShopRemote.OnClientEvent:Connect(function()
-	if canShop then
-		openShop(false) -- 일반 모드
-	end
+	if canShop then openShop(false) end
 end)
 
--- 보이드 상점 오픈
 openVoidShopEvent.OnClientEvent:Connect(function()
-	if canShop then
-		openShop(true) -- 보이드 모드
-	end
+	if canShop then openShop(true) end
 end)
 
--- 보이드 상점 알림
 voidShopNoticeEvent.OnClientEvent:Connect(function(title, message)
-	noticeText.Text = message
-	noticeText.Visible = true
 	errorSound:Play()
-	task.wait(2)
-	noticeText.Visible = false
+	showNoticeEvent:Fire(message)
 end)
 
 rightButton.MouseButton1Click:Connect(function()
@@ -390,37 +390,28 @@ buyButton.MouseButton1Click:Connect(function()
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local currentRod = leaderstats and leaderstats:FindFirstChild("CurrentRod")
 
-	-- 보이드 로드 특별 처리
 	if rodName == "VoidRod" then
 		if not hasCompletedVoidQuest() then
 			errorSound:Play()
-			noticeText.Text = "Complete the Void Quest first!"
-			noticeText.Visible = true
-			task.wait(2)
-			noticeText.Visible = false
+			showNoticeEvent:Fire("Complete the Void Quest first!")
 			canBuy = true
 			return
 		end
 	end
 
-	-- 로벅스 로드 처리
 	if rodName == "RobuxRod" then
 		if hasGamepass(ROBUX_ROD_GAMEPASS_ID) then
 			if currentRod and currentRod.Value ~= rodName then
-				buyButton.Text = "Equipped"
+				if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 				buyRemote:FireServer(rodName)
-				noticeText.Text = rodName .. " equipped."
 				equipSound:Play()
+				showNoticeEvent:Fire(rodName .. " equipped.")
 			else
-				buyButton.Text = "Equipped"
-				noticeText.Text = "Already equipped."
+				if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 				errorSound:Play()
+				showNoticeEvent:Fire("Already equipped.")
 			end
-			noticeText.Visible = true
-			task.wait(1)
-			noticeText.Visible = false
 		else
-			print("게임패스 구매 프롬프트 표시")
 			pcall(function()
 				MarketplaceService:PromptGamePassPurchase(player, ROBUX_ROD_GAMEPASS_ID)
 			end)
@@ -429,21 +420,17 @@ buyButton.MouseButton1Click:Connect(function()
 		return
 	end
 
-	-- 일반 로드 처리
 	if hasRod(rodName) then
 		if currentRod and currentRod.Value ~= rodName then
-			buyButton.Text = "Equipped"
+			if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 			buyRemote:FireServer(rodName)
-			noticeText.Text = rodName .. " equipped."
 			equipSound:Play()
+			showNoticeEvent:Fire(rodName .. " equipped.")
 		else
-			buyButton.Text = "Equipped"
-			noticeText.Text = "Already equipped."
+			if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 			errorSound:Play()
+			showNoticeEvent:Fire("Already equipped.")
 		end
-		noticeText.Visible = true
-		task.wait(1)
-		noticeText.Visible = false
 		canBuy = true
 		return
 	end
@@ -452,13 +439,10 @@ buyButton.MouseButton1Click:Connect(function()
 	if coins and coins.Value >= rodData.price then
 		buySound:Play()
 		buyRemote:FireServer(rodName)
-		buyButton.Text = "Equipped"
+		if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 	else
 		errorSound:Play()
-		noticeText.Text = "Not enough coins."
-		noticeText.Visible = true
-		task.wait(1)
-		noticeText.Visible = false
+		showNoticeEvent:Fire("Not enough coins!")
 	end
 
 	task.wait(0.5)
@@ -470,22 +454,12 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 		if wasPurchased then
 			local currentRodKeys = isVoidShop and voidRodKeys or rodKeys
 			local currentRodName = currentRodKeys[target]
-			if currentRodName == "RobuxRod" then-- 보이드 상점을 여는 스크립트
-				local voidRodEvents = game:GetService("ReplicatedStorage"):WaitForChild("VoidRodEvents")
-				local openVoidShopEvent = voidRodEvents:WaitForChild("OpenVoidShop")
-				local proximity = script.Parent
-				proximity.Triggered:Connect(function(player)
-					openVoidShopEvent:FireClient(player)
-				end)
+			if currentRodName == "RobuxRod" then
 				task.wait(1)
 				buyRemote:FireServer("RobuxRod")
 				updateView(true)
-
-				noticeText.Text = "RobuxRod equipped."
-				noticeText.Visible = true
 				equipSound:Play()
-				task.wait(1)
-				noticeText.Visible = false
+				showNoticeEvent:Fire("RobuxRod equipped.")
 			end
 		end
 	end

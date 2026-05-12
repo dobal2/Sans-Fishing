@@ -151,8 +151,6 @@ function FishingServer:_bindEvents()
 		humanoid.JumpHeight = 0
 		humanoid.Jump = false
 
-		self.remote:FireClient(player, "play_fishing_animation")
-
 		local newCastSound = CastSound:Clone()
 		newCastSound.Parent = self.tool.Handle or self.tool
 		newCastSound.RollOffMode = Enum.RollOffMode.Linear
@@ -161,11 +159,8 @@ function FishingServer:_bindEvents()
 		newCastSound.Volume = 1
 		newCastSound:Play()
 
-
-		local animationDelay = 0.35
+		-- Client already plays fishing animation (Raft style: client-first)
 		task.spawn(function()
-			task.wait(animationDelay)
-
 			if not self.cancelled and self.player == player then
 				self:_createBait()
 				self:_setupRope()
@@ -286,46 +281,22 @@ function FishingServer:_getValidatedToolConfig(player)
 end
 
 
+local WATER_SURFACE_Y = -3.693  -- top face of workspace.Map.Water
+local BAIT_REST_Y = -3.5        -- bait rests just at water surface
+
 function FishingServer:_createBait()
 	self.baitPart = Instance.new("Part")
-	self.baitPart.Massless = true
 	self.baitPart.Name = "Bait"
 	self.baitPart.Size = Vector3.new(0.4, 0.4, 0.4)
-	self.baitPart.Shape = Enum.PartType.Block
+	self.baitPart.Shape = Enum.PartType.Ball
 	self.baitPart.Anchored = false
-	self.baitPart.CanCollide = true
+	self.baitPart.CanCollide = false
 	self.baitPart.BrickColor = BrickColor.new("Bright orange")
-	self.baitPart.Material = Enum.Material.Plastic
-	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(5, 0.8, 0.2, 1, 1)
+	self.baitPart.Material = Enum.Material.SmoothPlastic
+	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
 	self.baitPart.Massless = true
 	self.baitPart.Parent = workspace
-
-	local touched = false
-	self.baitPart.Touched:Connect(function(hit)
-		if touched then return end
-		if hit.Name ~= "Water" and hit.CanCollide and hit.Anchored then
-			touched = true
-			if self.baitPart and self.baitPart.Parent then
-				pcall(function()
-					self.baitPart.AssemblyLinearVelocity = Vector3.zero
-					self.baitPart.AssemblyAngularVelocity = Vector3.zero
-				end)
-
-				local success, err = pcall(function()
-					local bodyPosition = Instance.new("BodyPosition")
-					bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
-					bodyPosition.Position = self.baitPart.Position
-					bodyPosition.D = 1000
-					bodyPosition.P = 10000
-					bodyPosition.Parent = self.baitPart
-				end)
-
-				if not success then
-					warn("BodyPosition creation failed:", err)
-				end
-			end
-		end
-	end)
+	-- baitLandConn is set in _checkMaterial which starts the Heartbeat loop
 end
 
 
@@ -577,117 +548,65 @@ function FishingServer:_checkInventoryLimit(player)
 end
 
 function FishingServer:_setupRope()
-	local baitAttachment = Instance.new("Attachment", self.baitPart)
-
-	-- Special rope position for RealisticRod
-	local handleAttachment
-
-
-	if self.tool.Name == "RealisticRod" or self.tool.Name == "VoidRod" then
-		-- Special handling for RealisticRod
-
-		-- Find Pier part
-		local pierPart = self.tool.Handle:FindFirstChild("Pier")
-
-		if pierPart then
-
-			-- Delete existing Att0 (may be at wrong position)
-			local existingAtt = pierPart:FindFirstChild("Att0")
-			if existingAtt then
-				existingAtt:Destroy()
-			end
-
-			-- Create new Attachment on Pier part
-			handleAttachment = Instance.new("Attachment")
-			handleAttachment.Name = "Att0"
-			handleAttachment.Parent = pierPart  -- Attach to Pier part
-
-			-- Set to top of Pier part
-			handleAttachment.Position = Vector3.new(0, pierPart.Size.Y/2, 0)  -- Top of Pier
-
-
-		else
-			-- Fallback to Handle if no Pier part
-			warn("Pier part not found. Using Handle")
-			for _, child in pairs(self.tool.Handle:GetChildren()) do
-				if child:IsA("BasePart") then
-				end
-			end
-
-			-- Create on Handle using original method
-			local existingAtt = self.tool.Handle:FindFirstChild("Att0")
-			if existingAtt then
-				existingAtt:Destroy()
-			end
-
-			handleAttachment = Instance.new("Attachment")
-			handleAttachment.Name = "Att0"
-			handleAttachment.Parent = self.tool.Handle
-			handleAttachment.Position = Vector3.new(0, self.tool.Handle.Size.Y/2 + 0.5, 0)
-
+	-- Tip attachment on the rod handle.
+	-- Preference order: pre-existing "RodTip", then rod-specific known attachments, then fallback.
+	local handle = self.tool.Handle
+	local tipAtt = handle:FindFirstChild("RodTip")
+	if not tipAtt then
+		local rodName = self.tool.Name
+		if rodName == "RealisticRod" or rodName == "VoidRod" or rodName == "Error Rod" then
+			-- Vertical rod handle (Size ~0.19 x 1.14 x 0.19). "up" attachment is at the rod tip (~Y=4.64).
+			tipAtt = handle:FindFirstChild("up")
 		end
-	elseif self.tool.Name == "MagneticRod" then
-
-		local pierPart = self.tool.Handle:FindFirstChild("Part")
-		if pierPart then
-
-			-- Find existing attachment inside Part
-			local existingAttachment = nil
-			for _, child in pairs(pierPart:GetChildren()) do
-				if child:IsA("Attachment") then
-					existingAttachment = child
-					break
-				end
-			end
-
-			if existingAttachment then
-				handleAttachment = existingAttachment
-			else
-				warn("No attachment found in Part, creating new one")
-				handleAttachment = Instance.new("Attachment")
-				handleAttachment.Name = "Att0"
-				handleAttachment.Parent = pierPart
-				handleAttachment.Position = Vector3.new(0, pierPart.Size.Y/2, 0)
-			end
-		else
-			warn("Part not found")
-			handleAttachment = Instance.new("Attachment")
-			handleAttachment.Name = "Att0"
-			handleAttachment.Parent = self.tool.Handle
-			handleAttachment.Position = Vector3.new(0, self.tool.Handle.Size.Y/2, 0)
+		if not tipAtt then
+			-- Standard horizontal rods: Handle.Size = 4 x 0.5 x 0.5.
+			-- "Att0" sits at the rod tip end (-2, 0, -0.25 in local space).
+			tipAtt = handle:FindFirstChild("Att0")
 		end
-
-	else
-		-- Other rods: use original method
-		handleAttachment = self.tool.Handle:FindFirstChild("Att0") or Instance.new("Attachment", self.tool.Handle)
-		if not handleAttachment.Name then handleAttachment.Name = "Att0" end
+		if not tipAtt then
+			-- MagneticRod: Handle.Size = 2 x 0.5 x 0.5, has "Attachment" at (-1, 0, 0).
+			tipAtt = handle:FindFirstChildOfClass("Attachment")
+		end
+		if not tipAtt then
+			-- Last resort: create one at the tip end of the handle.
+			-- Horizontal rods lie along X; tip is at -X end (handle.Size.X / 2).
+			tipAtt = Instance.new("Attachment")
+			tipAtt.Name = "RodTip"
+			tipAtt.Position = Vector3.new(-handle.Size.X / 2, 0, 0)
+			tipAtt.Parent = handle
+		end
 	end
 
-	self.rope = Instance.new("RopeConstraint")
-	self.rope.Attachment0 = handleAttachment
-	self.rope.Attachment1 = baitAttachment
-	self.rope.Visible = true
-	self.rope.Thickness = 0.05
-	self.rope.Length = 50
-	self.rope.Color = BrickColor.new("White")
+	-- End attachment on the bait
+	local baitAtt = Instance.new("Attachment")
+	baitAtt.Name = "LineEnd"
+	baitAtt.Parent = self.baitPart
 
-	-- Completely remove physics rebound
-	self.rope.Restitution = 0
+	-- Beam fishing line (no physics weight, always visible, follows both ends)
+	local beam = Instance.new("Beam")
+	beam.Name = "FishingLine"
+	beam.Attachment0 = tipAtt
+	beam.Attachment1 = baitAtt
+	beam.Width0 = 0.05
+	beam.Width1 = 0.05
+	beam.Color = ColorSequence.new(Color3.fromRGB(240, 240, 230))
+	beam.LightInfluence = 0
+	beam.Transparency = NumberSequence.new(0)
+	beam.FaceCamera = true
+	beam.Segments = 6
+	beam.CurveSize0 = 0
+	beam.CurveSize1 = 0
+	beam.Parent = self.baitPart
 
-	-- Rope physics optimization
-	self.rope.WinchEnabled = false
-	self.rope.WinchSpeed = 0
-	self.rope.WinchResponsiveness = 0
+	self.rope = beam  -- stored in self.rope so _cleanup destroys it
 
-	self.rope.Parent = self.tool.Handle
-
-	-- Save original physical properties of tool handle
 	if self.tool.Handle then
 		self.originalPhysicalProperties = self.tool.Handle.CustomPhysicalProperties
 	end
 end
 
 function FishingServer:_cleanup()
+	if self.baitLandConn then self.baitLandConn:Disconnect(); self.baitLandConn = nil end
 	if self.baitPart then self.baitPart:Destroy() end
 	if self.rope then self.rope:Destroy() end
 
@@ -716,26 +635,21 @@ function FishingServer:_cleanup()
 	self.originalPhysicalProperties = nil
 end
 
+local CAST_PITCH_DEG = 55
+local CAST_SPEED = 80
+
 function FishingServer:_moveBaitTo(targetPos)
 	local origin = self.tool.Handle.Position + Vector3.new(0, 3, 0)
 
-	-- Use direction vector only, fixed distance (70 + 230 up)
-	local direction = (targetPos - origin).Unit
-	local velocity = direction * 70 + Vector3.new(0, 230, 0)
+	-- Project direction onto XZ plane, then apply fixed upward pitch
+	local flat = targetPos - origin
+	flat = Vector3.new(flat.X, 0, flat.Z)
+	local flatDir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(0, 0, -1)
+	local pitch = math.rad(CAST_PITCH_DEG)
+	local castDir = (flatDir * math.cos(pitch) + Vector3.new(0, math.sin(pitch), 0)).Unit
 
 	self.baitPart.Position = origin
-	self.baitPart.AssemblyLinearVelocity = velocity
-
-	local bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(0, 3000, 0)
-	bodyVelocity.Velocity = Vector3.new(0, -60, 0)
-	bodyVelocity.Parent = self.baitPart
-
-	task.delay(0.3, function()
-		if bodyVelocity and bodyVelocity.Parent then
-			bodyVelocity:Destroy()
-		end
-	end)
+	self.baitPart.AssemblyLinearVelocity = castDir * CAST_SPEED
 end
 
 local function getScaleRatio(weight, minWeight, maxWeight, maxScale)
@@ -797,36 +711,41 @@ function FishingServer:_updateQuestProgress(player, fishName)
 end
 
 function FishingServer:_checkMaterial()
-	local touched = false
-	self.baitPart.Touched:Connect(function(hit)
-		if touched then return end
+	-- Heartbeat-based water landing: detects when bait crosses WATER_SURFACE_Y,
+	-- smoothly settles it at BAIT_REST_Y using BodyPosition, then starts the minigame.
+	-- Replaces the old Touched-based approach which failed because CanCollide=false
+	-- prevents Touched from firing reliably, and Anchored=true stopped physics entirely.
+	local landed = false
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local bait = self.baitPart
+		if not bait or not bait.Parent then conn:Disconnect(); return end
+		if landed then return end
+		if not self.activated then conn:Disconnect(); return end
+
+		if bait.Position.Y > WATER_SURFACE_Y then return end
+
+		-- Bait has reached water surface
+		landed = true
+		conn:Disconnect()
+
 		if not self.player then return end
+		self.activated = false
+		self.gameStartTime = tick()
+		self.hasUsedRetry = false
 
-		local isWater = (
-			hit.Name == "Water"
-				or hit.Material == Enum.Material.Water
-				or hit:IsA("Terrain")
-		)
+		-- Anchor bait at water surface with high damping to prevent oscillation
+		bait.AssemblyLinearVelocity = Vector3.zero
+		bait.AssemblyAngularVelocity = Vector3.zero
+		local bodyPosition = Instance.new("BodyPosition")
+		bodyPosition.MaxForce = Vector3.new(1e4, 1e4, 1e4)
+		bodyPosition.Position = Vector3.new(bait.Position.X, BAIT_REST_Y, bait.Position.Z)
+		bodyPosition.D = 2500
+		bodyPosition.P = 8000
+		bodyPosition.Parent = bait
 
-		if isWater then
-			touched = true
-
-			if not self.activated then return end
-			self.activated = false
-
-			self.gameStartTime = tick()
-
-			self.hasUsedRetry = false
-
-			self.baitPart.AssemblyAngularVelocity = Vector3.zero
-			local bodyPosition = Instance.new("BodyPosition")
-			bodyPosition.MaxForce = Vector3.new(1000,50, 1000)
-			bodyPosition.Position = self.baitPart.Position
-			bodyPosition.D = 1000
-			bodyPosition.P = 5000
-			bodyPosition.Parent = self.baitPart
-
-
+		-- Start minigame after random wait (fish biting delay)
+		task.spawn(function()
 			local sessionId = HttpService:GenerateGUID(false)
 			self.sessionId = sessionId
 			self.successCount = 0
@@ -834,10 +753,7 @@ function FishingServer:_checkMaterial()
 			task.wait(math.random(2, 3))
 
 			if self.cancelled then return end
-			if self.sessionId ~= sessionId then
-				return
-			end
-
+			if self.sessionId ~= sessionId then return end
 			if not self.tool or not self.tool:IsDescendantOf(game) then return end
 			if not self.player or not self.player:IsDescendantOf(game.Players) then return end
 
@@ -855,27 +771,23 @@ function FishingServer:_checkMaterial()
 			fishInfo.rarity = fishInfo.name
 			self.fishInfo = fishInfo
 
-			-- Create fish model
 			local toolModel = fishInfo.model
 			local handle = toolModel:FindFirstChild("Handle")
 
 			if handle then
 				local fakeHandle = handle:Clone()
-
 				local ratio = getScaleRatio(fishInfo.weight, fishInfo.minWeight, fishInfo.maxWeight, 5)
-
 				if self.player and self.player:GetAttribute("SizeBubbleBuff") == true then
-					ratio = ratio * 1.35  -- +35% size
+					ratio = ratio * 1.35
 				end
 
 				self.remote:FireClient(self.player, "keep_waiting_animation")
 				fakeHandle.Size = fakeHandle.Size * ratio
 
-
 				local highLight = Instance.new("Highlight")
 				highLight.FillTransparency = 1
 				highLight.OutlineTransparency = 0
-				highLight.OutlineColor = Color3.new(1,1,1)
+				highLight.OutlineColor = Color3.new(1, 1, 1)
 				highLight.Parent = fakeHandle
 
 				fakeHandle.Anchored = false
@@ -884,51 +796,36 @@ function FishingServer:_checkMaterial()
 				fakeHandle.Name = "FlyingFish"
 				fakeHandle.CFrame = self.baitPart.CFrame
 				fakeHandle.Parent = workspace
-
 				fakeHandle.AssemblyLinearVelocity = Vector3.new(0, -10, 0)
 
 				local weatherInfo = FishData.GetWeatherInfo()
 				if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
 					if fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") then
 						local function createHookedFishIceBlock(targetPart, fishWeight)
-							-- Unified size multiplier calculation
 							local sizeMultiplier = 1.05
 							if fishWeight then
-								-- Unified weight effect: 1% increase per kg
-								local weightMultiplier = 1.0 + (fishWeight - 1) * 0.01
-								weightMultiplier = math.max(0.9, math.min(1.5, weightMultiplier))
+								local weightMultiplier = math.max(0.9, math.min(1.5, 1.0 + (fishWeight - 1) * 0.01))
 								sizeMultiplier = sizeMultiplier * weightMultiplier
 							end
-
 							local iceBlock = Instance.new("Part")
 							iceBlock.Name = "IceBlock"
 							iceBlock.Anchored = false
 							iceBlock.CanCollide = false
 							iceBlock.Massless = true
 							iceBlock.Size = targetPart.Size * sizeMultiplier
-
-							-- Set position and rotation
 							iceBlock.Position = targetPart.Position
 							iceBlock.Rotation = targetPart.Rotation
-
-							-- Material and appearance
 							iceBlock.Material = Enum.Material.Plastic
 							iceBlock.Transparency = 0.3
 							iceBlock.Color = Color3.fromRGB(200, 240, 255)
 							iceBlock.Shape = Enum.PartType.Block
-
-							-- Parent ice block to fish handle
 							iceBlock.Parent = targetPart
-
-							-- Fix with WeldConstraint
 							local weld = Instance.new("WeldConstraint")
-							weld.Part0 = targetPart  -- fakeHandle (parent)
-							weld.Part1 = iceBlock    -- ice block (child)
+							weld.Part0 = targetPart
+							weld.Part1 = iceBlock
 							weld.Parent = iceBlock
-
 							return iceBlock
 						end
-
 						createHookedFishIceBlock(fakeHandle, fishInfo.weight)
 					end
 				end
@@ -939,36 +836,30 @@ function FishingServer:_checkMaterial()
 				weld.Parent = fakeHandle
 
 				self:_showFishCaughtNotice()
-
 				self.hookedFishHandle = fakeHandle
 			end
 
-			-- Get DifficultyMod from Config
 			local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 			local toolConfig = Config[self.tool.Name]
-			local difficultyMod = 1  -- Default
-
+			local difficultyMod = 1
 			if toolConfig and toolConfig.DifficultyMod then
 				difficultyMod = toolConfig.DifficultyMod
-			else
-				-- Fallback: find on tool directly
-				if self.tool:FindFirstChild("DifficultyMod") then
-					difficultyMod = self.tool.DifficultyMod.Value
-				elseif self.tool:GetAttribute("DifficultyMod") then
-					difficultyMod = self.tool:GetAttribute("DifficultyMod")
-				end
+			elseif self.tool:FindFirstChild("DifficultyMod") then
+				difficultyMod = self.tool.DifficultyMod.Value
+			elseif self.tool:GetAttribute("DifficultyMod") then
+				difficultyMod = self.tool:GetAttribute("DifficultyMod")
 			end
-
 			self.currentDifficultyMod = difficultyMod
 
 			self.remote:FireClient(self.player, {
 				rarity = fishInfo.rarity,
 				sessionId = sessionId,
 				toolName = self.tool.Name,
-				difficultyMod = difficultyMod
+				difficultyMod = difficultyMod,
 			})
-		end
+		end)
 	end)
+	self.baitLandConn = conn
 end
 
 -- Webhook send function (commented out)
@@ -995,9 +886,14 @@ local function sendSansWebhook(playerName, fishWeight)
 end
 
 
--- Complete _resolveFishing function
 function FishingServer:_resolveFishing(player, result)
-	-- Clean up player state first
+	-- Grab and immediately nil fishInfo/sessionId so any concurrent re-entry
+	-- (from packet replay during BadgeService/WaitForChild yields) finds nothing.
+	local fishInfo = self.fishInfo
+	local sessionId = self.sessionId
+	self.fishInfo = nil
+	self.sessionId = nil
+
 	if player then
 		player:SetAttribute("IsFishing", false)
 	end
@@ -1221,7 +1117,6 @@ function FishingServer:_resolveFishing(player, result)
 
 	-- Handle result
 	if result == "success" then
-		local fishInfo = self.fishInfo
 		if fishInfo then
 			self.remote:FireClient(player, "success")
 
