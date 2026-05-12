@@ -1,0 +1,46 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local noticeEvent = ReplicatedStorage:WaitForChild("DiscoverNoticeEvent")
+local textLabel = script.Parent
+
+local currentTween = nil
+local currentTask = nil
+
+-- 트윈 생성 함수
+local function createTween(object, targetProps, duration)
+	return TweenService:Create(object, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), targetProps)
+end
+
+-- 메시지 출력 함수 (기존 표시 중단 후 새 메시지 즉시 출력)
+local function showMessage(message)
+	-- 진행 중이면 중단
+	if currentTween then
+		currentTween:Cancel()
+		currentTween = nil
+	end
+
+	if currentTask then
+		task.cancel(currentTask)
+		currentTask = nil
+	end
+
+	textLabel.Text = message
+	textLabel.Visible = true
+	textLabel.TextTransparency = 1
+	textLabel.TextStrokeTransparency = 1
+
+	createTween(textLabel, {TextTransparency = 0, TextStrokeTransparency = 0}, 0.2):Play()
+
+	currentTask = task.spawn(function()
+		task.wait(1.5)
+
+		currentTween = createTween(textLabel, {TextTransparency = 1, TextStrokeTransparency = 1}, 0.3)
+		currentTween:Play()
+		currentTween.Completed:Wait()
+
+		textLabel.Visible = false
+		currentTask = nil
+	end)
+end
+
+noticeEvent.OnClientEvent:Connect(showMessage)

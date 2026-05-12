@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "PowerShell(winget install *)",
+      "PowerShell(aftman add *)",
+      "PowerShell(rojo *)",
+      "Skill(update-config)"
+    ]
+  }
+}

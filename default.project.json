@@ -1,0 +1,169 @@
+{
+  "name": "Sans Fishing",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+      "leaderstats": {
+        "$path": "src2/ServerScriptService/leaderstats"
+      },
+      "ItemSave": {
+        "$path": "src2/ServerScriptService/ItemSave"
+      },
+      "FishTrapManager": {
+        "$path": "src2/ServerScriptService/FishTrapManager"
+      },
+      "QuestSaver": {
+        "$path": "src2/ServerScriptService/QuestSaver"
+      },
+      "PlayerCollisionDisable": {
+        "$path": "src2/ServerScriptService/PlayerCollisionDisable.server.luau"
+      },
+      "Shop": {
+        "$path": "src2/ServerScriptService/Shop.server.luau"
+      },
+      "FishingServerStarter": {
+        "$path": "src2/ServerScriptService/FishingServerStarter.server.luau"
+      },
+      "Commands": {
+        "$path": "src2/ServerScriptService/Commands.server.luau"
+      },
+      "GiveFish": {
+        "$path": "src2/ServerScriptService/GiveFish.server.luau"
+      },
+      "Ban": {
+        "$path": "src2/ServerScriptService/Ban.server.luau"
+      },
+      "WelcomeBadge": {
+        "$path": "src2/ServerScriptService/WelcomeBadge.server.luau"
+      },
+      "EscapeTheWorld": {
+        "$path": "src2/ServerScriptService/EscapeTheWorld.server.luau"
+      },
+      "teleport": {
+        "$path": "src2/ServerScriptService/teleport.server.luau"
+      },
+      "FishTrapShopSever": {
+        "$path": "src2/ServerScriptService/FishTrapShopSever.server.luau"
+      },
+      "LeaderBoard": {
+        "$path": "src2/ServerScriptService/LeaderBoard.server.luau"
+      },
+      "Lock": {
+        "$path": "src2/ServerScriptService/Lock.server.luau"
+      },
+      "TutorialServerReciver": {
+        "$path": "src2/ServerScriptService/TutorialServerReciver.server.luau"
+      },
+      "GetFriendCount": {
+        "$path": "src2/ServerScriptService/GetFriendCount.server.luau"
+      },
+      "WeatherController": {
+        "$path": "src2/ServerScriptService/WeatherController.server.luau"
+      },
+      "plrCodes": {
+        "$path": "src2/ServerScriptService/plrCodes.server.luau"
+      },
+      "FishTrapStole": {
+        "$path": "src2/ServerScriptService/FishTrapStole.server.luau"
+      },
+      "DonationLeaderBoard": {
+        "$path": "src2/ServerScriptService/DonationLeaderBoard.server.luau"
+      },
+      "ProcessReceipt": {
+        "$path": "src2/ServerScriptService/ProcessReceipt.server.luau"
+      },
+      "server": {
+        "$path": "src2/ServerScriptService/server.server.luau"
+      },
+      "BoatShopSever": {
+        "$path": "src2/ServerScriptService/BoatShopSever.server.luau"
+      },
+      "BoatSpawner": {
+        "$path": "src2/ServerScriptService/BoatSpawner.server.luau"
+      },
+      "PlayTimeLeaderBoard": {
+        "$path": "src2/ServerScriptService/PlayTimeLeaderBoard.server.luau"
+      },
+      "BubbleShopSever": {
+        "$path": "src2/ServerScriptService/BubbleShopSever.server.luau"
+      },
+      "DailyRewardServer": {
+        "$path": "src2/ServerScriptService/DailyRewardServer.server.luau"
+      },
+      "DeleteFishTrap": {
+        "$path": "src2/ServerScriptService/DeleteFishTrap.server.luau"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "NpcHighLightAndDistance": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/NpcHighLightAndDistance.client.luau"
+        },
+        "FishingClientStarter": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/FishingClientStarter.client.luau"
+        },
+        "HideMyFishGive": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/HideMyFishGive.client.luau"
+        },
+        "DontReset": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/DontReset.client.luau"
+        },
+        "DoNotFall": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/DoNotFall.client.luau"
+        },
+        "UnderWater": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/UnderWater.client.luau"
+        },
+        "ClientWeatherHandler": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/ClientWeatherHandler.client.luau"
+        },
+        "WindController": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/WindController"
+        },
+        "DistanceFade": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/DistanceFade.client.luau"
+        },
+        "TipChat": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/TipChat.client.luau"
+        },
+        "SnowIslandLightEffect": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SnowIslandLightEffect.client.luau"
+        },
+        "ErrorRoom": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/ErrorRoom.client.luau"
+        },
+        "FishTrapClientProximityManager": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/FishTrapClientProximityManager.client.luau"
+        },
+        "FishTrapBeam": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/FishTrapBeam.client.luau"
+        }
+      },
+      "StarterCharacterScripts": {
+        "HeadFollow": {
+          "$path": "src2/StarterPlayer/StarterCharacterScripts/HeadFollow.client.luau"
+        },
+        "PreLoadAnimatins": {
+          "$path": "src2/StarterPlayer/StarterCharacterScripts/PreLoadAnimatins.client.luau"
+        },
+        "PromptFavorite": {
+          "$path": "src2/StarterPlayer/StarterCharacterScripts/PromptFavorite.client.luau"
+        }
+      }
+    },
+
+    "ReplicatedStorage": {
+      "Modules": {
+        "$path": "src2/ReplicatedStorage/Modules"
+      },
+      "TopbarPlus": {
+        "$path": "src2/ReplicatedStorage/TopbarPlus"
+      },
+      "DistanceFade": {
+        "$path": "src2/ReplicatedStorage/DistanceFade.luau"
+      }
+    }
+  }
+}

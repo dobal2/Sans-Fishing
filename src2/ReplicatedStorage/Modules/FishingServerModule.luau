@@ -1,0 +1,1425 @@
+-- FishingServerModule (ModuleScript in ReplicatedStorage.Modules)
+local MarketplaceService = game:GetService("MarketplaceService")
+local BadgeService = game:GetService("BadgeService")
+local SANS_BADGE_ID = 2468526859123734
+
+
+-- Retry gamepass ID
+local RETRY_GAMEPASS_ID = 1290056221
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
+local CastSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Cast")
+local FishingSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Reel")
+local GetSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("GetSound")
+local FishGetEffect = ReplicatedStorage:WaitForChild("Particle"):WaitForChild("GetFishParticle")
+local TweenService = game:GetService("TweenService")
+local FishingServer = {}
+FishingServer.__index = FishingServer
+
+function FishingServer.init(tool)
+	local self = setmetatable({}, FishingServer)
+	self.tool = tool
+
+	self.castEvent = tool:WaitForChild("CastRod")
+	self.remote = tool:WaitForChild("RemoteEvent")
+	self.cancelled = false
+	self.baitPart = nil
+	self.rope = nil
+	self.activated = false
+	self.isReeling = false
+	self.character = nil
+	self.player = nil
+	self.hasUsedRetry = false
+
+	self:_bindEvents()
+
+	local Players = game:GetService("Players")
+	self.playerLeavingConnection = Players.PlayerRemoving:Connect(function(leavingPlayer)
+		if self.player == leavingPlayer then
+			if self.hookedFishHandle then
+				self.hookedFishHandle:Destroy()
+				self.hookedFishHandle = nil
+			end
+			self:_cleanup()
+		end
+	end)
+
+	return self
+end
+
+
+
+-- Auto-remove mutation prefix function
+local function getBaseFishName(fishName)
+	if not fishName then return nil end
+
+	-- Get all base fish names from FishData
+	local FishData = require(game.ReplicatedStorage.Modules:WaitForChild("FishDataModule"))
+	local allBaseFishNames = {}
+
+	-- Collect base fish names from all rarities
+	for _, rarity in ipairs(FishData.Rarities) do
+		for _, fish in ipairs(rarity.fishes) do
+			allBaseFishNames[fish.fishName] = true
+		end
+	end
+
+	-- Check if current name is already a base fish name
+	if allBaseFishNames[fishName] then
+		return fishName
+	end
+
+	-- Auto-match: check if end of name matches a base fish name
+	for baseName, _ in pairs(allBaseFishNames) do
+		-- "Frozen Bass" -> "Bass" match
+		if string.sub(fishName, -(#baseName)) == baseName then
+			-- Check for preceding space (exact match)
+			local prefixLength = #fishName - #baseName
+			if prefixLength > 0 and string.sub(fishName, prefixLength, prefixLength) == " " then
+				return baseName
+			end
+		end
+	end
+
+	-- Backup: extract last word(s) by space
+	local words = {}
+	for word in string.gmatch(fishName, "%S+") do
+		table.insert(words, word)
+	end
+
+	if #words > 1 then
+		local lastWord = words[#words]
+		local secondLastWord = words[#words - 1] or ""
+
+		-- Try last two words ("Golden Trout")
+		local lastTwoWords = secondLastWord .. " " .. lastWord
+		if allBaseFishNames[lastTwoWords] then
+			return lastTwoWords
+		end
+
+		-- Try last word only ("Bass")
+		if allBaseFishNames[lastWord] then
+			return lastWord
+		end
+	end
+
+	-- Return original if no match
+	return fishName
+end
+
+
+function FishingServer:_hasRetryGamepass(player)
+	local success, hasGamepass = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, RETRY_GAMEPASS_ID)
+	end)
+
+	if success then
+		return hasGamepass
+	else
+		warn("Failed to check gamepass:", player.Name)
+		return false
+	end
+end
+
+
+function FishingServer:_bindEvents()
+	self.castEvent.OnServerEvent:Connect(function(player, targetPos)
+		if self.activated or self.isReeling then return end
+
+		if not self:_checkInventoryLimit(player) then
+			warn("Security: Cannot start fishing, inventory full for", player.Name)
+			return
+		end
+
+		self.player = player
+		self.character = player.Character
+		if not self.character then return end
+		player:SetAttribute("IsFishing", true)
+
+		local humanoid = self.character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return end
+
+		-- Restrict player movement first
+		self.isReeling = true
+		self.activated = true
+		humanoid:SetAttribute("OriginalWalkSpeed", humanoid.WalkSpeed)
+		humanoid:SetAttribute("OriginalJumpHeight", humanoid.JumpHeight)
+		humanoid:SetAttribute("OriginalUseJumpPower", humanoid.UseJumpPower)
+		humanoid.WalkSpeed = 0
+		humanoid.UseJumpPower = false
+		humanoid.JumpHeight = 0
+		humanoid.Jump = false
+
+		self.remote:FireClient(player, "play_fishing_animation")
+
+		local newCastSound = CastSound:Clone()
+		newCastSound.Parent = self.tool.Handle or self.tool
+		newCastSound.RollOffMode = Enum.RollOffMode.Linear
+		newCastSound.EmitterSize = 5
+		newCastSound.MaxDistance = 100
+		newCastSound.Volume = 1
+		newCastSound:Play()
+
+
+		local animationDelay = 0.35
+		task.spawn(function()
+			task.wait(animationDelay)
+
+			if not self.cancelled and self.player == player then
+				self:_createBait()
+				self:_setupRope()
+				self:_moveBaitTo(targetPos)
+
+				-- Start waiting animation command (0.5s after cast)
+				task.spawn(function()
+					task.wait(0.5)
+					if not self.cancelled and self.player == player then
+						self.remote:FireClient(player, "play_waiting_animation")
+					end
+				end)
+
+				self:_checkMaterial()
+			end
+		end)
+	end)
+
+	self.remote.OnServerEvent:Connect(function(player, action, payload)
+		if action == "progress_success" then
+			-- Security validation
+			if not self.fishInfo or not self.sessionId then
+				warn("Security: No active fishing session for", player.Name)
+				self:_resolveFishing(player, "fail")
+				return
+			end
+
+			if not self.gameStartTime then
+				warn("Security: No game start time for", player.Name)
+				self:_resolveFishing(player, "fail")
+				return
+			end
+
+			local gameTime = tick() - self.gameStartTime
+			if gameTime < 0.5 then
+				warn("Security: Game completed too quickly:", gameTime, "seconds by", player.Name)
+				player:Kick("Suspicious fishing behavior detected")
+				return
+			end
+
+			if not self:_checkInventoryLimit(player) then
+				warn("Security: Inventory full at success time for", player.Name)
+				self:_resolveFishing(player, "fail")
+				return
+			end
+
+			self:_resolveFishing(player, "success")
+
+		elseif action == "check_retry" then
+			if not self.hasUsedRetry and self:_hasRetryGamepass(player) then
+				self.hasUsedRetry = true
+				self.remote:FireClient(player, "retry_granted")
+			else
+				self:_resolveFishing(player, "fail")
+			end
+
+		elseif action == "cancel" then
+			self:_resolveFishing(player, "cancel")
+
+		else
+			warn("Security: Unknown action:", action, "from", player.Name)
+		end
+	end)
+
+	self.tool.Unequipped:Connect(function()
+		self.cancelled = true
+		if self.player and self.player:IsA("Player") then
+			self.player:SetAttribute("IsFishing", false)
+			self.remote:FireClient(self.player, false)
+		end
+
+		if self.hookedFishHandle then
+			self.hookedFishHandle:Destroy()
+			self.hookedFishHandle = nil
+		end
+
+		self:_resetPlayer()
+		self:_cleanup()
+	end)
+end
+
+
+function FishingServer:_getValidatedToolConfig(player)
+	-- Load Config module
+	local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+
+	-- Verify player has a character
+	if not player.Character then
+		warn("Security: Player has no character")
+		return nil
+	end
+
+	-- Check that equipped tool matches self.tool
+	local equippedTool = nil
+	for _, obj in pairs(player.Character:GetChildren()) do
+		if obj:IsA("Tool") and obj == self.tool then
+			equippedTool = obj
+			break
+		end
+	end
+
+	if not equippedTool then
+		warn("Security: Tool not equipped by", player.Name)
+		return nil
+	end
+
+	-- Use server-stored original tool name (ignore client manipulation)
+	local originalToolName = self.originalToolName
+
+	-- Verify tool config exists
+	local toolConfig = Config[originalToolName]
+	if not toolConfig then
+		warn("Security: Invalid tool name:", originalToolName, "from", player.Name)
+		return nil
+	end
+
+	return toolConfig, originalToolName
+end
+
+
+function FishingServer:_createBait()
+	self.baitPart = Instance.new("Part")
+	self.baitPart.Massless = true
+	self.baitPart.Name = "Bait"
+	self.baitPart.Size = Vector3.new(0.4, 0.4, 0.4)
+	self.baitPart.Shape = Enum.PartType.Block
+	self.baitPart.Anchored = false
+	self.baitPart.CanCollide = true
+	self.baitPart.BrickColor = BrickColor.new("Bright orange")
+	self.baitPart.Material = Enum.Material.Plastic
+	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(5, 0.8, 0.2, 1, 1)
+	self.baitPart.Massless = true
+	self.baitPart.Parent = workspace
+
+	local touched = false
+	self.baitPart.Touched:Connect(function(hit)
+		if touched then return end
+		if hit.Name ~= "Water" and hit.CanCollide and hit.Anchored then
+			touched = true
+			if self.baitPart and self.baitPart.Parent then
+				pcall(function()
+					self.baitPart.AssemblyLinearVelocity = Vector3.zero
+					self.baitPart.AssemblyAngularVelocity = Vector3.zero
+				end)
+
+				local success, err = pcall(function()
+					local bodyPosition = Instance.new("BodyPosition")
+					bodyPosition.MaxForce = Vector3.new(4000, 4000, 4000)
+					bodyPosition.Position = self.baitPart.Position
+					bodyPosition.D = 1000
+					bodyPosition.P = 10000
+					bodyPosition.Parent = self.baitPart
+				end)
+
+				if not success then
+					warn("BodyPosition creation failed:", err)
+				end
+			end
+		end
+	end)
+end
+
+
+
+-- Fix _validateAttempt (resolves DifficultyMod error)
+
+function FishingServer:_validateAttempt(player, payload)
+	if not self.fishInfo or not payload or type(payload) ~= "table" then
+		return
+	end
+
+	-- Session mismatch check
+	if payload.SessionId ~= self.sessionId then
+		warn("Session mismatch blocked:", player.Name, "expected:", self.sessionId, "received:", payload.SessionId)
+		self:_resolveFishing(player, "fail")
+		return
+	end
+
+	-- Server spam prevention: 0.05s interval
+	local currentTime = tick()
+	if self.lastServerAttempt and (currentTime - self.lastServerAttempt) < 0.15 then
+		warn("Server spam blocked:", player.Name)
+		return -- Silently ignore
+	end
+	self.lastServerAttempt = currentTime
+
+	-- Server-side inventory check
+	if not self:_checkInventoryLimit(player) then
+		warn("Fishing blocked due to full inventory:", player.Name)
+		self:_resolveFishing(player, "fail")
+		return
+	end
+
+	-- Basic security validation
+	if not self:_validateBasicSecurity(player, "attempt") then
+		warn("Security validation failed:", player.Name)
+		self:_resolveFishing(player, "fail")
+		return
+	end
+
+	local sL = payload.SliderPos.Left
+	local sR = payload.SliderPos.Right
+	local hL = payload.HitZone.Left
+	local hR = payload.HitZone.Right
+
+	local success = sR >= hL and sL <= hR
+
+	if success then
+		self.successCount = (self.successCount or 0) + 1
+
+		-- Get DifficultyMod from Config
+		local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+		local toolConfig = Config[self.tool.Name]
+		local difficultyMod = 1  -- Default
+
+		if toolConfig and toolConfig.DifficultyMod then
+			difficultyMod = toolConfig.DifficultyMod
+		else
+			-- Fallback: find on tool directly
+			if self.tool:FindFirstChild("DifficultyMod") then
+				difficultyMod = self.tool.DifficultyMod.Value
+			elseif self.tool:GetAttribute("DifficultyMod") then
+				difficultyMod = self.tool:GetAttribute("DifficultyMod")
+			end
+		end
+
+		-- Save current difficulty for retry
+		self.currentDifficultyMod = difficultyMod
+
+		local difficulty = require(game.ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
+			.GetModifiedSetting(self.fishInfo.name, difficultyMod)
+
+		if self.successCount >= difficulty.attempts then
+			self:_resolveFishing(player, "success")
+		else
+			local newSessionId = game:GetService("HttpService"):GenerateGUID(false)
+			self.sessionId = newSessionId
+
+			-- Reset server timer for next attempt
+			self.lastServerAttempt = nil
+
+			self.remote:FireClient(player, {
+				rarity = self.fishInfo.name,
+				sessionId = newSessionId,
+				nextAttempt = true,
+				toolName = self.tool.Name,
+				difficultyMod = difficultyMod
+			})
+		end
+	else
+		if not self.hasUsedRetry and self:_hasRetryGamepass(player) then
+			self.hasUsedRetry = true
+
+
+			local newSessionId = game:GetService("HttpService"):GenerateGUID(false)
+			self.sessionId = newSessionId
+
+			-- Reset server timer for retry
+			self.lastServerAttempt = nil
+
+			-- Use original difficulty (saved value or recalculate)
+			local difficultyMod = self.currentDifficultyMod
+			if not difficultyMod then
+				local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+				local toolConfig = Config[self.tool.Name]
+				difficultyMod = 1
+
+				if toolConfig and toolConfig.DifficultyMod then
+					difficultyMod = toolConfig.DifficultyMod
+				else
+					if self.tool:FindFirstChild("DifficultyMod") then
+						difficultyMod = self.tool.DifficultyMod.Value
+					elseif self.tool:GetAttribute("DifficultyMod") then
+						difficultyMod = self.tool:GetAttribute("DifficultyMod")
+					end
+				end
+				self.currentDifficultyMod = difficultyMod
+			end
+
+
+			self.remote:FireClient(player, {
+				rarity = self.fishInfo.name,
+				sessionId = newSessionId,
+				nextAttempt = true,
+				toolName = self.tool.Name,
+				difficultyMod = difficultyMod,  -- Use original difficulty
+				isRetry = true
+			})
+
+			game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(
+				player,
+				"Gamepass Retry! One more chance!"
+			)
+
+			return
+		end
+		self:_resolveFishing(player, "fail")
+	end
+end
+
+function FishingServer:_validateBasicSecurity(player, action)
+	-- Check player has character
+	if not player.Character then
+		warn("Security: Player has no character:", player.Name)
+		return false
+	end
+
+	-- Flexible tool presence check
+	local hasTool = false
+	for _, obj in pairs(player.Character:GetChildren()) do
+		if obj:IsA("Tool") and obj.Name == self.tool.Name then
+			hasTool = true
+			break
+		end
+	end
+
+	-- Allow even without tool (not too strict)
+
+	-- Fishing state check (lenient)
+	-- Allow even if not in fishing state
+
+	-- Confirm correct player
+	if player ~= self.player then
+		warn("Security: Wrong player:", player.Name, "Expected:", self.player and self.player.Name)
+		return false
+	end
+
+	-- Spam prevention (lenient)
+	local now = tick()
+	self.lastAction = self.lastAction or 0
+	if now - self.lastAction < 0.01 then
+		warn("Security: Too fast action from", player.Name)
+		return false
+	end
+	self.lastAction = now
+
+	return true
+end
+
+
+local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
+
+-- Check inventory expansion gamepass
+function FishingServer:_hasInventoryExpansionGamepass(player)
+	local success, hasGamepass = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
+	end)
+
+	if success then
+		return hasGamepass
+	else
+		warn("Failed to check inventory expansion gamepass:", player.Name)
+		return false
+	end
+end
+
+function FishingServer:_getInventoryLimit(player)
+	local baseLimit = 100
+	local expandedLimit = 200  -- +100 slots
+
+	if self:_hasInventoryExpansionGamepass(player) then
+		return expandedLimit
+	else
+		return baseLimit
+	end
+end
+
+
+function FishingServer:_checkInventoryLimit(player)
+	local backpack = player:FindFirstChild("Backpack")
+	if not backpack then return true end
+
+	local totalItemCount = 0
+
+	-- Local IsRod function (excludes rods and fish traps)
+	local function IsRod(itemName)
+		if not itemName then return false end
+		itemName = itemName:lower()
+		return itemName:match("rod$") ~= nil or
+			itemName:match("trap") ~= nil
+	end
+
+	-- Count all tools (excluding rods and fish traps)
+	for _, item in pairs(backpack:GetChildren()) do
+		if item:IsA("Tool") then
+			if not IsRod(item.Name) then
+				totalItemCount = totalItemCount + 1
+			end
+		end
+	end
+
+	-- Check inventory limit
+	local inventoryLimit = self:_getInventoryLimit(player)
+
+	if totalItemCount >= inventoryLimit then
+		-- Notify client
+		local noticeEvent = game:GetService("ReplicatedStorage"):FindFirstChild("FishNoticeEvent")
+		if noticeEvent then
+			local hasExpansion = self:_hasInventoryExpansionGamepass(player)
+			local message = hasExpansion and
+				"Expanded inventory full! Go sell fish (Max 200)" or
+				"Inventory full! Go sell fish or buy expansion pass (Max 100)"
+			noticeEvent:FireClient(player, message)
+		end
+		return false
+	end
+
+	return true
+end
+
+function FishingServer:_setupRope()
+	local baitAttachment = Instance.new("Attachment", self.baitPart)
+
+	-- Special rope position for RealisticRod
+	local handleAttachment
+
+
+	if self.tool.Name == "RealisticRod" or self.tool.Name == "VoidRod" then
+		-- Special handling for RealisticRod
+
+		-- Find Pier part
+		local pierPart = self.tool.Handle:FindFirstChild("Pier")
+
+		if pierPart then
+
+			-- Delete existing Att0 (may be at wrong position)
+			local existingAtt = pierPart:FindFirstChild("Att0")
+			if existingAtt then
+				existingAtt:Destroy()
+			end
+
+			-- Create new Attachment on Pier part
+			handleAttachment = Instance.new("Attachment")
+			handleAttachment.Name = "Att0"
+			handleAttachment.Parent = pierPart  -- Attach to Pier part
+
+			-- Set to top of Pier part
+			handleAttachment.Position = Vector3.new(0, pierPart.Size.Y/2, 0)  -- Top of Pier
+
+
+		else
+			-- Fallback to Handle if no Pier part
+			warn("Pier part not found. Using Handle")
+			for _, child in pairs(self.tool.Handle:GetChildren()) do
+				if child:IsA("BasePart") then
+				end
+			end
+
+			-- Create on Handle using original method
+			local existingAtt = self.tool.Handle:FindFirstChild("Att0")
+			if existingAtt then
+				existingAtt:Destroy()
+			end
+
+			handleAttachment = Instance.new("Attachment")
+			handleAttachment.Name = "Att0"
+			handleAttachment.Parent = self.tool.Handle
+			handleAttachment.Position = Vector3.new(0, self.tool.Handle.Size.Y/2 + 0.5, 0)
+
+		end
+	elseif self.tool.Name == "MagneticRod" then
+
+		local pierPart = self.tool.Handle:FindFirstChild("Part")
+		if pierPart then
+
+			-- Find existing attachment inside Part
+			local existingAttachment = nil
+			for _, child in pairs(pierPart:GetChildren()) do
+				if child:IsA("Attachment") then
+					existingAttachment = child
+					break
+				end
+			end
+
+			if existingAttachment then
+				handleAttachment = existingAttachment
+			else
+				warn("No attachment found in Part, creating new one")
+				handleAttachment = Instance.new("Attachment")
+				handleAttachment.Name = "Att0"
+				handleAttachment.Parent = pierPart
+				handleAttachment.Position = Vector3.new(0, pierPart.Size.Y/2, 0)
+			end
+		else
+			warn("Part not found")
+			handleAttachment = Instance.new("Attachment")
+			handleAttachment.Name = "Att0"
+			handleAttachment.Parent = self.tool.Handle
+			handleAttachment.Position = Vector3.new(0, self.tool.Handle.Size.Y/2, 0)
+		end
+
+	else
+		-- Other rods: use original method
+		handleAttachment = self.tool.Handle:FindFirstChild("Att0") or Instance.new("Attachment", self.tool.Handle)
+		if not handleAttachment.Name then handleAttachment.Name = "Att0" end
+	end
+
+	self.rope = Instance.new("RopeConstraint")
+	self.rope.Attachment0 = handleAttachment
+	self.rope.Attachment1 = baitAttachment
+	self.rope.Visible = true
+	self.rope.Thickness = 0.05
+	self.rope.Length = 50
+	self.rope.Color = BrickColor.new("White")
+
+	-- Completely remove physics rebound
+	self.rope.Restitution = 0
+
+	-- Rope physics optimization
+	self.rope.WinchEnabled = false
+	self.rope.WinchSpeed = 0
+	self.rope.WinchResponsiveness = 0
+
+	self.rope.Parent = self.tool.Handle
+
+	-- Save original physical properties of tool handle
+	if self.tool.Handle then
+		self.originalPhysicalProperties = self.tool.Handle.CustomPhysicalProperties
+	end
+end
+
+function FishingServer:_cleanup()
+	if self.baitPart then self.baitPart:Destroy() end
+	if self.rope then self.rope:Destroy() end
+
+	-- Restore tool handle physical properties
+	if self.tool and self.tool.Handle then
+		self.tool.Handle.CustomPhysicalProperties = self.originalPhysicalProperties
+	end
+
+	-- Clean up sounds
+	if self.fishingSoundLoop then
+		self.fishingSoundLoop:Stop()
+		self.fishingSoundLoop:Destroy()
+		self.fishingSoundLoop = nil
+	end
+
+	-- Reset variables
+	self.baitPart = nil
+	self.rope = nil
+	self.activated = false
+	self.isReeling = false
+	self.player = nil
+	self.character = nil
+	self.cancelled = false
+	self.gameStartTime = nil
+	self.sessionId = nil
+	self.originalPhysicalProperties = nil
+end
+
+function FishingServer:_moveBaitTo(targetPos)
+	local origin = self.tool.Handle.Position + Vector3.new(0, 3, 0)
+
+	-- Use direction vector only, fixed distance (70 + 230 up)
+	local direction = (targetPos - origin).Unit
+	local velocity = direction * 70 + Vector3.new(0, 230, 0)
+
+	self.baitPart.Position = origin
+	self.baitPart.AssemblyLinearVelocity = velocity
+
+	local bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(0, 3000, 0)
+	bodyVelocity.Velocity = Vector3.new(0, -60, 0)
+	bodyVelocity.Parent = self.baitPart
+
+	task.delay(0.3, function()
+		if bodyVelocity and bodyVelocity.Parent then
+			bodyVelocity:Destroy()
+		end
+	end)
+end
+
+local function getScaleRatio(weight, minWeight, maxWeight, maxScale)
+	local clampedWeight = math.clamp(weight, minWeight, maxWeight)
+	local t = (clampedWeight - minWeight) / (maxWeight - minWeight)
+	return 1 + (maxScale - 1) * t
+end
+
+-- Update quest progress
+function FishingServer:_updateQuestProgress(player, fishName)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then return end
+
+	local quests = leaderstats:FindFirstChild("Quests")
+	if not quests then return end
+
+	local activeQuests = quests:FindFirstChild("ActiveQuests")
+	if not activeQuests then return end
+
+	-- Extract base fish name (remove mutation prefix)
+	local baseFishName = getBaseFishName(fishName)
+
+	-- Check all active quests
+	for _, quest in pairs(activeQuests:GetChildren()) do
+		if quest:IsA("Folder") then
+			local targetFish = quest:FindFirstChild("TargetFish")
+			local currentProgress = quest:FindFirstChild("CurrentProgress")
+			local requiredProgress = quest:FindFirstChild("RequiredProgress")
+			local isReceived = quest:FindFirstChild("IsReceived")
+			local questName = quest:FindFirstChild("QuestName")
+
+			if targetFish and currentProgress and requiredProgress and isReceived and questName then
+				-- Quest must be received and not yet complete
+				if isReceived.Value and currentProgress.Value < requiredProgress.Value then
+					local isMatch = false
+
+					-- 1. Exact name match
+					if targetFish.Value == fishName then
+						isMatch = true
+					-- 2. Base name match (mutation handling)
+					elseif targetFish.Value == baseFishName then
+						isMatch = true
+					-- 3. Target is base name, caught fish is mutation
+					elseif baseFishName and getBaseFishName(targetFish.Value) == baseFishName then
+						isMatch = true
+					end
+
+					if isMatch then
+						currentProgress.Value = currentProgress.Value + 1
+
+						-- Notify if quest is complete
+						if currentProgress.Value >= requiredProgress.Value then
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function FishingServer:_checkMaterial()
+	local touched = false
+	self.baitPart.Touched:Connect(function(hit)
+		if touched then return end
+		if not self.player then return end
+
+		local isWater = (
+			hit.Name == "Water"
+				or hit.Material == Enum.Material.Water
+				or hit:IsA("Terrain")
+		)
+
+		if isWater then
+			touched = true
+
+			if not self.activated then return end
+			self.activated = false
+
+			self.gameStartTime = tick()
+
+			self.hasUsedRetry = false
+
+			self.baitPart.AssemblyAngularVelocity = Vector3.zero
+			local bodyPosition = Instance.new("BodyPosition")
+			bodyPosition.MaxForce = Vector3.new(1000,50, 1000)
+			bodyPosition.Position = self.baitPart.Position
+			bodyPosition.D = 1000
+			bodyPosition.P = 5000
+			bodyPosition.Parent = self.baitPart
+
+
+			local sessionId = game:GetService("HttpService"):GenerateGUID(false)
+			self.sessionId = sessionId
+			self.successCount = 0
+
+			task.wait(math.random(2, 3))
+
+			if self.cancelled then return end
+			if self.sessionId ~= sessionId then
+				return
+			end
+
+			if not self.tool or not self.tool:IsDescendantOf(game) then return end
+			if not self.player or not self.player:IsDescendantOf(game.Players) then return end
+
+			self.fishingSoundLoop = FishingSound:Clone()
+			self.fishingSoundLoop.Name = "Fishing Reel Sound"
+			self.fishingSoundLoop.Parent = self.tool.Handle or self.tool
+			self.fishingSoundLoop.RollOffMode = Enum.RollOffMode.Linear
+			self.fishingSoundLoop.EmitterSize = 5
+			self.fishingSoundLoop.MaxDistance = 100
+			self.fishingSoundLoop.Volume = 1
+			self.fishingSoundLoop.Looped = true
+			self.fishingSoundLoop:Play()
+
+			local fishInfo = FishData.GetRandomFish(self.tool.Name, self.player)
+			fishInfo.rarity = fishInfo.name
+			self.fishInfo = fishInfo
+
+			-- Create fish model
+			local toolModel = fishInfo.model
+			local handle = toolModel:FindFirstChild("Handle")
+
+			if handle then
+				local fakeHandle = handle:Clone()
+
+				local ratio = getScaleRatio(fishInfo.weight, fishInfo.minWeight, fishInfo.maxWeight, 5)
+
+				if self.player and self.player:GetAttribute("SizeBubbleBuff") == true then
+					ratio = ratio * 1.35  -- +35% size
+				end
+
+				self.remote:FireClient(self.player, "keep_waiting_animation")
+				fakeHandle.Size = fakeHandle.Size * ratio
+
+
+				local highLight = Instance.new("Highlight")
+				highLight.FillTransparency = 1
+				highLight.OutlineTransparency = 0
+				highLight.OutlineColor = Color3.new(1,1,1)
+				highLight.Parent = fakeHandle
+
+				fakeHandle.Anchored = false
+				fakeHandle.CanCollide = false
+				fakeHandle.Massless = true
+				fakeHandle.Name = "FlyingFish"
+				fakeHandle.CFrame = self.baitPart.CFrame
+				fakeHandle.Parent = workspace
+
+				fakeHandle.AssemblyLinearVelocity = Vector3.new(0, -10, 0)
+
+				local weatherInfo = FishData.GetWeatherInfo()
+				if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
+					if fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") then
+						local function createHookedFishIceBlock(targetPart, fishWeight)
+							-- Unified size multiplier calculation
+							local sizeMultiplier = 1.05
+							if fishWeight then
+								-- Unified weight effect: 1% increase per kg
+								local weightMultiplier = 1.0 + (fishWeight - 1) * 0.01
+								weightMultiplier = math.max(0.9, math.min(1.5, weightMultiplier))
+								sizeMultiplier = sizeMultiplier * weightMultiplier
+							end
+
+							local iceBlock = Instance.new("Part")
+							iceBlock.Name = "IceBlock"
+							iceBlock.Anchored = false
+							iceBlock.CanCollide = false
+							iceBlock.Massless = true
+							iceBlock.Size = targetPart.Size * sizeMultiplier
+
+							-- Set position and rotation
+							iceBlock.Position = targetPart.Position
+							iceBlock.Rotation = targetPart.Rotation
+
+							-- Material and appearance
+							iceBlock.Material = Enum.Material.Plastic
+							iceBlock.Transparency = 0.3
+							iceBlock.Color = Color3.fromRGB(200, 240, 255)
+							iceBlock.Shape = Enum.PartType.Block
+
+							-- Parent ice block to fish handle
+							iceBlock.Parent = targetPart
+
+							-- Fix with WeldConstraint
+							local weld = Instance.new("WeldConstraint")
+							weld.Part0 = targetPart  -- fakeHandle (parent)
+							weld.Part1 = iceBlock    -- ice block (child)
+							weld.Parent = iceBlock
+
+							return iceBlock
+						end
+
+						createHookedFishIceBlock(fakeHandle, fishInfo.weight)
+					end
+				end
+
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = self.baitPart
+				weld.Part1 = fakeHandle
+				weld.Parent = fakeHandle
+
+				self:_showFishCaughtNotice()
+
+				self.hookedFishHandle = fakeHandle
+			end
+
+			-- Get DifficultyMod from Config
+			local Config = require(game.ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
+			local toolConfig = Config[self.tool.Name]
+			local difficultyMod = 1  -- Default
+
+			if toolConfig and toolConfig.DifficultyMod then
+				difficultyMod = toolConfig.DifficultyMod
+			else
+				-- Fallback: find on tool directly
+				if self.tool:FindFirstChild("DifficultyMod") then
+					difficultyMod = self.tool.DifficultyMod.Value
+				elseif self.tool:GetAttribute("DifficultyMod") then
+					difficultyMod = self.tool:GetAttribute("DifficultyMod")
+				end
+			end
+
+			self.currentDifficultyMod = difficultyMod
+
+			self.remote:FireClient(self.player, {
+				rarity = fishInfo.rarity,
+				sessionId = sessionId,
+				toolName = self.tool.Name,
+				difficultyMod = difficultyMod  -- Value from Config
+			})
+		end
+	end)
+end
+
+-- Webhook send function (commented out)
+local function sendSansWebhook(playerName, fishWeight)
+	--local data = {
+	--	["username"] = "Sans Fisher Alert",
+	--	["embeds"] = {{
+	--		["title"] = "SANS CAUGHT!",
+	--		["description"] = string.format("**%s** just caught **Sans**!\nWeight: **%.1fkg**\nThis is a Fantasy rarity fish!",
+	--			playerName, fishWeight),
+	--		["color"] = 16776960, -- Yellow
+	--		["thumbnail"] = {
+	--			["url"] = "https://i.imgur.com/YourSansImage.png"
+	--		},
+	--		["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+	--	}}
+	--}
+
+	--local jsonData = HttpService:JSONEncode(data)
+
+	--pcall(function()
+	--	HttpService:PostAsync(SANS_WEBHOOK_URL, jsonData, Enum.HttpContentType.ApplicationJson)
+	--end)
+end
+
+
+-- Complete _resolveFishing function
+function FishingServer:_resolveFishing(player, result)
+	-- Clean up player state first
+	if player then
+		player:SetAttribute("IsFishing", false)
+	end
+
+	self.remote:FireClient(player, "stop_all_animations")
+
+	-- Define scale functions
+	local function scaleHandleByRatio(handle, scaleRatio)
+		if not handle or not handle:IsA("BasePart") then
+			warn("Invalid handle")
+			return
+		end
+		if scaleRatio == 1 then return end
+
+		-- Adjust size while keeping position
+		local originalCFrame = handle.CFrame
+		local originalSize = handle.Size
+
+		handle.Size = originalSize * scaleRatio
+		handle.CFrame = originalCFrame
+
+		-- Set massless to stabilize center of mass
+		handle.Massless = true
+	end
+
+	-- Tween handle to player linearly
+	local function tweenHandleToPlayerLinear(handle, startPos, targetPos, duration)
+		if not handle then return end
+
+		-- Find ice block
+		local iceBlock = handle:FindFirstChild("IceBlock")
+
+		-- Remove WeldConstraints (not needed when Anchored)
+		if iceBlock then
+			for _, child in pairs(iceBlock:GetChildren()) do
+				if child:IsA("WeldConstraint") then
+					child:Destroy()
+				end
+			end
+		end
+
+		handle.Anchored = true
+		handle.CanCollide = false
+		handle.Massless = true
+		handle.CanTouch = false
+		handle.CFrame = CFrame.new(startPos)
+		handle.Parent = workspace
+
+		-- Also anchor ice block and save relative offset
+		local iceOffset = nil
+		if iceBlock then
+			iceOffset = iceBlock.CFrame:ToObjectSpace(handle.CFrame)
+			iceBlock.Anchored = true
+			iceBlock.CanCollide = false
+			iceBlock.Massless = true
+			iceBlock.CanTouch = false
+		end
+
+		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local tween = TweenService:Create(handle, tweenInfo, {Position = targetPos})
+
+		-- Sync ice block position during tween
+		local connection = nil
+		if iceBlock and iceOffset then
+			connection = game:GetService("RunService").Heartbeat:Connect(function()
+				if handle and handle.Parent and iceBlock and iceBlock.Parent then
+					iceBlock.CFrame = handle.CFrame * iceOffset
+				end
+			end)
+		end
+
+		tween:Play()
+
+		task.delay(duration - 0.2, function()
+			if player and player.Character then
+				local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+				if rootPart then
+					local attachment = Instance.new("Attachment")
+					attachment.Position = Vector3.new(0, 0, 0)
+					attachment.Parent = rootPart
+
+					local newEffect = FishGetEffect:Clone()
+					newEffect.Parent = attachment
+					newEffect.Enabled = false
+					newEffect:Emit(1)
+
+					local newGetSound = GetSound:Clone()
+					newGetSound.Parent = rootPart
+					newGetSound.RollOffMode = Enum.RollOffMode.Linear
+					newGetSound.EmitterSize = 5
+					newGetSound.MaxDistance = 100
+					newGetSound.Volume = 1
+					newGetSound:Play()
+
+					game:GetService("Debris"):AddItem(newGetSound, 1)
+					game:GetService("Debris"):AddItem(attachment, 1)
+				end
+			end
+		end)
+
+		task.delay(duration - 0.1, function()
+			-- Disconnect
+			if connection then
+				connection:Disconnect()
+			end
+			if handle then
+				handle:Destroy()  -- Ice block is also destroyed as child
+			end
+		end)
+	end
+
+	-- Create fish tool
+	local function createFishTool(fishInfo)
+		-- Clone base model (not using FishData.CreateFishModel)
+		local toolClone = fishInfo.model:Clone()
+		toolClone.CanBeDropped = false
+
+		-- Apply ice effect manually (for inventory)
+		if fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") then
+			-- Check for Snow weather
+			local weatherInfo = FishData.GetWeatherInfo()
+			if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Snow" then
+				-- Load FishIceEffect module
+				local success, FishIceEffect = pcall(function()
+					return require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("FishIceEffectModule"))
+				end)
+
+				if success then
+					FishIceEffect.ApplyIceEffect(toolClone, fishInfo)
+				else
+					warn("FishIceEffect module load failed")
+				end
+			end
+		end
+
+
+		-- Apply festival effect manually (for inventory)
+		if fishInfo.fishName and string.find(fishInfo.fishName, "Festival") then
+			-- Check for Firework weather
+			local weatherInfo = FishData.GetWeatherInfo()
+			if weatherInfo and weatherInfo.isActive and weatherInfo.currentWeather == "Firework" then
+				local success = pcall(function()
+					FishData.ApplyFestivalEffect(toolClone, fishInfo)
+				end)
+
+				if not success then
+					warn("Festival effect application failed")
+				end
+			end
+		end
+
+		-- Handle setup and size adjustment
+		local handle = toolClone:FindFirstChild("Handle")
+		if handle then
+			handle.Anchored = false
+
+			-- Size adjustment (keep 5x)
+			local ratio = getScaleRatio(fishInfo.weight, fishInfo.minWeight, fishInfo.maxWeight, 5)
+
+			if player and player:GetAttribute("SizeBubbleBuff") == true then
+				ratio = ratio * 1.35  -- +35% size
+			end
+
+			scaleHandleByRatio(handle, ratio)
+
+			-- Stabilize after size adjustment
+			handle.AssemblyLinearVelocity = Vector3.zero
+			handle.AssemblyAngularVelocity = Vector3.zero
+
+			-- Tool event connections (physics stabilization)
+			toolClone.Equipped:Connect(function()
+				-- Fully stop on equip
+				handle.AssemblyLinearVelocity = Vector3.zero
+				handle.AssemblyAngularVelocity = Vector3.zero
+
+				-- Remove all physics objects
+				for _, obj in pairs(handle:GetChildren()) do
+					if obj:IsA("BodyPosition") or obj:IsA("BodyVelocity") or obj:IsA("BodyAngularVelocity") or
+						obj:IsA("BodyThrust") or obj:IsA("BodyForce") or obj:IsA("BodyGyro") then
+						obj:Destroy()
+					end
+				end
+
+				-- Clean up again after delay (catch delayed physics objects)
+				task.wait(0.1)
+				handle.AssemblyLinearVelocity = Vector3.zero
+				handle.AssemblyAngularVelocity = Vector3.zero
+			end)
+
+			toolClone.Unequipped:Connect(function()
+				-- Natural physics on unequip
+			end)
+		end
+
+		-- Calculate price
+		local minW, maxW = fishInfo.minWeight or 1, fishInfo.maxWeight or 1
+		local baseValue = fishInfo.value or 0
+		local valueRatio = (fishInfo.weight - minW) / (maxW - minW)
+		local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+		toolClone.Name = string.format("%s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
+
+		-- Save values
+		local valueObj = toolClone:FindFirstChild("FishValue") or Instance.new("IntValue")
+		valueObj.Name = "FishValue"
+		valueObj.Value = adjustedValue
+		valueObj.Parent = toolClone
+
+		local weightObj = toolClone:FindFirstChild("FishWeight") or Instance.new("NumberValue")
+		weightObj.Name = "FishWeight"
+		weightObj.Value = fishInfo.weight
+		weightObj.Parent = toolClone
+
+		local rarityObj = toolClone:FindFirstChild("FishRarity") or Instance.new("StringValue")
+		rarityObj.Name = "FishRarity"
+		rarityObj.Value = fishInfo.name
+		rarityObj.Parent = toolClone
+
+		return toolClone
+	end
+
+	-- Handle result
+	if result == "success" then
+		local fishInfo = self.fishInfo
+		if fishInfo then
+			self.remote:FireClient(player, "success")
+
+			self:_updateQuestProgress(player, fishInfo.fishName)
+
+			-- Register fish in fish catalog (auto mutation removal)
+			local leaderstats = player:FindFirstChild("leaderstats")
+			if leaderstats then
+				local fishFolder = leaderstats:FindFirstChild("Fish")
+				if fishFolder then
+					-- Auto-extract base fish name
+					local baseFishName = getBaseFishName(fishInfo.fishName)
+
+					if baseFishName then
+						local fishBool = fishFolder:FindFirstChild(baseFishName)
+						if fishBool and fishBool:IsA("BoolValue") then
+							if not fishBool.Value then
+								fishBool.Value = true
+
+								-- New fish discovered notification (using base name)
+								game:GetService("ReplicatedStorage"):WaitForChild("DiscoverNoticeEvent"):FireClient(
+									player,
+									"New Fish Discovered: " .. baseFishName .. "!"
+								)
+							end
+						else
+							warn("Fish not found in catalog:", baseFishName, "(original:", fishInfo.fishName, ")")
+						end
+					else
+						warn("Failed to extract base fish name:", fishInfo.fishName)
+					end
+				else
+					warn("Fish folder not found:", player.Name)
+				end
+			else
+				warn("leaderstats not found:", player.Name)
+			end
+
+			-- Sans badge check (using base name)
+			local baseName = getBaseFishName(fishInfo.fishName)
+			if baseName == "Sans" then
+
+				local success, hasBadge = pcall(function()
+					return BadgeService:UserHasBadgeAsync(player.UserId, SANS_BADGE_ID)
+				end)
+
+				if success then
+					if not hasBadge then
+
+						local successAward, errorMsg = pcall(function()
+							BadgeService:AwardBadge(player.UserId, SANS_BADGE_ID)
+						end)
+
+						if not successAward then
+							warn("Badge award failed:", errorMsg)
+						end
+					end
+				else
+					warn("Badge check API failed:", hasBadge)
+				end
+			end
+
+			-- Add fish tool to backpack
+			local backpackTool = createFishTool(fishInfo)
+			backpackTool.Parent = player:FindFirstChild("Backpack")
+
+			-- Handle hooked fish
+			if self.hookedFishHandle then
+				local fishHandle = self.hookedFishHandle
+				self.hookedFishHandle = nil
+
+				local weld = fishHandle:FindFirstChildOfClass("WeldConstraint")
+				if weld then weld:Destroy() end
+
+				local targetPos = self.character and self.character:FindFirstChild("HumanoidRootPart") and self.character.HumanoidRootPart.Position
+				if targetPos then
+					tweenHandleToPlayerLinear(fishHandle, fishHandle.Position, targetPos, 0.3)
+				end
+			end
+
+			-- Success notification
+			game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(
+				player,
+				string.format("You got %s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
+			)
+		end
+
+	elseif result == "cancel" then
+		-- Cancelled
+		self:_resetPlayer()
+		self:_cleanup()
+		return
+
+	else
+		-- Failed (result == 0 or other)
+
+		-- Send fail message to client (to close UI)
+		self.remote:FireClient(player, "fail")
+
+		-- Remove hooked fish
+		if self.hookedFishHandle then
+			self.hookedFishHandle:Destroy()
+			self.hookedFishHandle = nil
+		end
+
+		-- Fail notification
+		game:GetService("ReplicatedStorage"):WaitForChild("FishNoticeEvent"):FireClient(player, "Nice try! Give it another shot!")
+	end
+
+	-- Clean up sounds
+	if self.fishingSoundLoop then
+		self.fishingSoundLoop:Stop()
+		self.fishingSoundLoop:Destroy()
+		self.fishingSoundLoop = nil
+	end
+
+	-- Restore player state and clean up
+	self:_resetPlayer()
+	self:_cleanup()
+end
+
+function FishingServer:_showFishCaughtNotice()
+	if not self.player or not self.player.Character then return end
+
+	local character = self.player.Character
+	local head = character:FindFirstChild("Head")
+	if not head then return end
+
+	-- Play FishBaitNoticeSound
+	local fishBaitNoticeSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("FishBaitNoticeSound")
+	if fishBaitNoticeSound then
+		local soundClone = fishBaitNoticeSound:Clone()
+		soundClone.Parent = head
+		soundClone.RollOffMode = Enum.RollOffMode.Linear
+		soundClone.EmitterSize = 5
+		soundClone.MaxDistance = 50
+		soundClone.Volume = 1
+		soundClone:Play()
+
+		-- Remove after playing
+		game:GetService("Debris"):AddItem(soundClone, 3)
+	end
+
+	-- Get GUI template from ReplicatedStorage
+	local noticeTemplate = ReplicatedStorage:FindFirstChild("FishingNoticeSurface")
+	if not noticeTemplate then
+		warn("FishingNoticeSurface not found")
+		return
+	end
+
+	-- Clone GUI and attach to player's head
+	local noticeGui = noticeTemplate:Clone()
+	noticeGui.Parent = head
+
+	-- Set text to "!"
+	local textLabel = noticeGui:FindFirstChildOfClass("TextLabel")
+	if textLabel then
+		textLabel.Text = "!"
+		textLabel.TextTransparency = 1
+
+		-- Fade in quickly
+		local fadeInTween = TweenService:Create(textLabel,
+			TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+			{ TextTransparency = 0 }
+		)
+		fadeInTween:Play()
+
+		-- Fade out slowly after a moment
+		fadeInTween.Completed:Connect(function()
+			task.wait(0.3)
+
+			local fadeOutTween = TweenService:Create(textLabel,
+				TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+				{ TextTransparency = 1 }
+			)
+			fadeOutTween:Play()
+
+			-- Remove GUI after animation completes
+			fadeOutTween.Completed:Connect(function()
+				if noticeGui and noticeGui.Parent then
+					noticeGui:Destroy()
+				end
+			end)
+		end)
+	end
+end
+
+
+function FishingServer:_resetPlayer()
+	if self.character then
+		local humanoid = self.character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.WalkSpeed = humanoid:GetAttribute("OriginalWalkSpeed") or 16
+			humanoid.UseJumpPower = humanoid:GetAttribute("OriginalUseJumpPower") ~= false
+			humanoid.JumpHeight = humanoid:GetAttribute("OriginalJumpHeight") or 7.2
+			humanoid.Jump = false
+		end
+	end
+end
+
+
+return FishingServer
