@@ -8,13 +8,29 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local SANS_BADGE_ID = 2468526859123734
-local RETRY_GAMEPASS_ID = 1290056221
+local POWER_X2_GAMEPASS_ID = 1290056221
 local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 local CastSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Cast")
 local FishingSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Reel")
 local GetSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("GetSound")
 local FishGetEffect = ReplicatedStorage:WaitForChild("Particle"):WaitForChild("GetFishParticle")
 local TweenService = game:GetService("TweenService")
+
+local baitSplashEvent = ReplicatedStorage:FindFirstChild("BaitSplashEvent")
+if not baitSplashEvent then
+	baitSplashEvent = Instance.new("RemoteEvent")
+	baitSplashEvent.Name = "BaitSplashEvent"
+	baitSplashEvent.Parent = ReplicatedStorage
+end
+
+-- Sent only to the fishing player so their client freezes the bait without lag
+local baitLandedEvent = ReplicatedStorage:FindFirstChild("BaitLandedEvent")
+if not baitLandedEvent then
+	baitLandedEvent = Instance.new("RemoteEvent")
+	baitLandedEvent.Name = "BaitLandedEvent"
+	baitLandedEvent.Parent = ReplicatedStorage
+end
+
 local FishingServer = {}
 FishingServer.__index = FishingServer
 
@@ -31,8 +47,6 @@ function FishingServer.init(tool)
 	self.isReeling = false
 	self.character = nil
 	self.player = nil
-	self.hasUsedRetry = false
-
 	self:_bindEvents()
 
 	self.playerLeavingConnection = Players.PlayerRemoving:Connect(function(leavingPlayer)
@@ -109,17 +123,20 @@ local function getBaseFishName(fishName)
 end
 
 
-function FishingServer:_hasRetryGamepass(player)
+function FishingServer:_hasPowerX2Gamepass(player)
 	local success, hasGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, RETRY_GAMEPASS_ID)
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, POWER_X2_GAMEPASS_ID)
 	end)
+	if success then return hasGamepass end
+	warn("Failed to check gamepass:", player.Name)
+	return false
+end
 
-	if success then
-		return hasGamepass
-	else
-		warn("Failed to check gamepass:", player.Name)
-		return false
+function FishingServer:_getEffectiveRodPower(player, baseRodPower)
+	if self:_hasPowerX2Gamepass(player) then
+		return baseRodPower * 2
 	end
+	return baseRodPower
 end
 
 
@@ -209,14 +226,6 @@ function FishingServer:_bindEvents()
 
 			self:_resolveFishing(player, "success")
 
-		elseif action == "check_retry" then
-			if not self.hasUsedRetry and self:_hasRetryGamepass(player) then
-				self.hasUsedRetry = true
-				self.remote:FireClient(player, "retry_granted")
-			else
-				self:_resolveFishing(player, "fail")
-			end
-
 		elseif action == "cancel" then
 			self:_resolveFishing(player, "cancel")
 
@@ -277,12 +286,21 @@ function FishingServer:_getValidatedToolConfig(player)
 		return nil
 	end
 
+	if toolConfig and toolConfig.RodPower then
+		toolConfig = {
+			Distance = toolConfig.Distance,
+			Rarity = toolConfig.Rarity,
+			RodPower = self:_getEffectiveRodPower(player, toolConfig.RodPower),
+			DifficultyMod = toolConfig.DifficultyMod,
+		}
+	end
+
 	return toolConfig, originalToolName
 end
 
 
-local WATER_SURFACE_Y = -3.693  -- top face of workspace.Map.Water
-local BAIT_REST_Y = -3.5        -- bait rests just at water surface
+local WATER_SURFACE_Y = -3.4    -- actual water surface Y
+local BAIT_REST_Y    = -3.4     -- final resting Y at water surface
 
 function FishingServer:_createBait()
 	self.baitPart = Instance.new("Part")
@@ -383,56 +401,11 @@ function FishingServer:_validateAttempt(player, payload)
 				sessionId = newSessionId,
 				nextAttempt = true,
 				toolName = self.tool.Name,
-				difficultyMod = difficultyMod
+				difficultyMod = difficultyMod,
+				fishWeight = self.fishInfo.weight or 0,
 			})
 		end
 	else
-		if not self.hasUsedRetry and self:_hasRetryGamepass(player) then
-			self.hasUsedRetry = true
-
-
-			local newSessionId = HttpService:GenerateGUID(false)
-			self.sessionId = newSessionId
-
-			-- Reset server timer for retry
-			self.lastServerAttempt = nil
-
-			-- Use original difficulty (saved value or recalculate)
-			local difficultyMod = self.currentDifficultyMod
-			if not difficultyMod then
-				local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
-				local toolConfig = Config[self.tool.Name]
-				difficultyMod = 1
-
-				if toolConfig and toolConfig.DifficultyMod then
-					difficultyMod = toolConfig.DifficultyMod
-				else
-					if self.tool:FindFirstChild("DifficultyMod") then
-						difficultyMod = self.tool.DifficultyMod.Value
-					elseif self.tool:GetAttribute("DifficultyMod") then
-						difficultyMod = self.tool:GetAttribute("DifficultyMod")
-					end
-				end
-				self.currentDifficultyMod = difficultyMod
-			end
-
-
-			self.remote:FireClient(player, {
-				rarity = self.fishInfo.name,
-				sessionId = newSessionId,
-				nextAttempt = true,
-				toolName = self.tool.Name,
-				difficultyMod = difficultyMod,  -- Use original difficulty
-				isRetry = true
-			})
-
-			ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(
-				player,
-				"Gamepass Retry! One more chance!"
-			)
-
-			return
-		end
 		self:_resolveFishing(player, "fail")
 	end
 end
@@ -553,23 +526,27 @@ function FishingServer:_setupRope()
 	local handle = self.tool.Handle
 	local tipAtt = handle:FindFirstChild("RodTip")
 	if not tipAtt then
+		-- LinePos part: convert to Attachment at its position
+		local linePosP = handle:FindFirstChild("LinePos", true)
+		if linePosP and linePosP:IsA("BasePart") then
+			tipAtt = Instance.new("Attachment")
+			tipAtt.Name = "RodTip"
+			tipAtt.Position = handle.CFrame:PointToObjectSpace(linePosP.Position)
+			tipAtt.Parent = handle
+		end
+	end
+	if not tipAtt then
 		local rodName = self.tool.Name
-		if rodName == "RealisticRod" or rodName == "VoidRod" or rodName == "Error Rod" then
-			-- Vertical rod handle (Size ~0.19 x 1.14 x 0.19). "up" attachment is at the rod tip (~Y=4.64).
+		if rodName == "RealisticRod" or rodName == "BlockyRod" or rodName == "VoidRod" or rodName == "Error Rod" then
 			tipAtt = handle:FindFirstChild("up")
 		end
 		if not tipAtt then
-			-- Standard horizontal rods: Handle.Size = 4 x 0.5 x 0.5.
-			-- "Att0" sits at the rod tip end (-2, 0, -0.25 in local space).
 			tipAtt = handle:FindFirstChild("Att0")
 		end
 		if not tipAtt then
-			-- MagneticRod: Handle.Size = 2 x 0.5 x 0.5, has "Attachment" at (-1, 0, 0).
 			tipAtt = handle:FindFirstChildOfClass("Attachment")
 		end
 		if not tipAtt then
-			-- Last resort: create one at the tip end of the handle.
-			-- Horizontal rods lie along X; tip is at -X end (handle.Size.X / 2).
 			tipAtt = Instance.new("Attachment")
 			tipAtt.Name = "RodTip"
 			tipAtt.Position = Vector3.new(-handle.Size.X / 2, 0, 0)
@@ -710,39 +687,83 @@ function FishingServer:_updateQuestProgress(player, fishName)
 	end
 end
 
+local GROUND_DETECT_ABOVE_WATER = 2.0  -- studs above WATER_SURFACE_Y to consider "ground not water"
+local GROUND_RAYCAST_DIST = 0.6        -- downward ray length for ground detection
+
 function FishingServer:_checkMaterial()
 	-- Heartbeat-based water landing: detects when bait crosses WATER_SURFACE_Y,
 	-- smoothly settles it at BAIT_REST_Y using BodyPosition, then starts the minigame.
-	-- Replaces the old Touched-based approach which failed because CanCollide=false
-	-- prevents Touched from firing reliably, and Anchored=true stopped physics entirely.
+	-- Also detects when bait hits ground (non-water surface) and cancels with warning.
 	local landed = false
+	local groundCancelled = false
+	local prevY = nil
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = {self.baitPart, self.character}
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local bait = self.baitPart
 		if not bait or not bait.Parent then conn:Disconnect(); return end
-		if landed then return end
+		if landed or groundCancelled then return end
 		if not self.activated then conn:Disconnect(); return end
 
-		if bait.Position.Y > WATER_SURFACE_Y then return end
+		local currentY = bait.Position.Y
+		local lastY = prevY or currentY
+		prevY = currentY
 
-		-- Bait has reached water surface
+		-- Ground detection: bait is above water level AND moving downward AND hits solid surface
+		if currentY > WATER_SURFACE_Y + GROUND_DETECT_ABOVE_WATER then
+			local vel = bait.AssemblyLinearVelocity
+			if vel.Y < -1 then
+				local hit = workspace:Raycast(bait.Position, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), rayParams)
+				if hit and hit.Instance then
+					groundCancelled = true
+					conn:Disconnect()
+					self.activated = false
+					self.cancelled = true
+					if self.player then
+						self.player:SetAttribute("IsFishing", false)
+						self.remote:FireClient(self.player, false)
+						local showNotice = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+						if showNotice then
+							showNotice:FireClient(self.player, "Bait hit the ground! Try casting into water.")
+						end
+					end
+					self:_resetPlayer()
+					self:_cleanup()
+					return
+				end
+			end
+		end
+
+		if currentY > WATER_SURFACE_Y then return end
+
 		landed = true
 		conn:Disconnect()
 
 		if not self.player then return end
 		self.activated = false
-		self.gameStartTime = tick()
-		self.hasUsedRetry = false
 
-		-- Anchor bait at water surface with high damping to prevent oscillation
+		local landX = bait.Position.X
+		local landZ = bait.Position.Z
+
+		-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
+		baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
+
+		-- Everyone else: gets BaitSplashEvent for spectator splash effect
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= self.player then
+				baitSplashEvent:FireClient(p, Vector3.new(landX, BAIT_REST_Y, landZ))
+			end
+		end
+
+		-- Server anchors bait so rope beam stays and physics is authoritative
 		bait.AssemblyLinearVelocity = Vector3.zero
 		bait.AssemblyAngularVelocity = Vector3.zero
-		local bodyPosition = Instance.new("BodyPosition")
-		bodyPosition.MaxForce = Vector3.new(1e4, 1e4, 1e4)
-		bodyPosition.Position = Vector3.new(bait.Position.X, BAIT_REST_Y, bait.Position.Z)
-		bodyPosition.D = 2500
-		bodyPosition.P = 8000
-		bodyPosition.Parent = bait
+		bait.CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
+		bait.Anchored = true
+
+		self.gameStartTime = tick()
 
 		-- Start minigame after random wait (fish biting delay)
 		task.spawn(function()
@@ -856,6 +877,7 @@ function FishingServer:_checkMaterial()
 				sessionId = sessionId,
 				toolName = self.tool.Name,
 				difficultyMod = difficultyMod,
+				fishWeight = fishInfo.weight or 0,
 			})
 		end)
 	end)
@@ -898,7 +920,11 @@ function FishingServer:_resolveFishing(player, result)
 		player:SetAttribute("IsFishing", false)
 	end
 
-	self.remote:FireClient(player, "stop_all_animations")
+	-- success path: client handles animations itself (Finish → Holding)
+	-- only send stop_all_animations for fail/cancel so other anims get cleaned up
+	if result ~= "success" then
+		self.remote:FireClient(player, "stop_all_animations")
+	end
 
 	-- Define scale functions
 	local function scaleHandleByRatio(handle, scaleRatio)

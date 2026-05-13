@@ -67,7 +67,7 @@ local function updateLeaderboardGui()
 		label.Size = UDim2.new(1, 0, 0, lineHeight)
 		label.Position = UDim2.new(0, 0, 0, startY + (i - 1) * (lineHeight + spacing))
 		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.Cartoon
+		label.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
 		label.TextScaled = true
 		label.RichText = true
 		label.TextXAlignment = Enum.TextXAlignment.Left

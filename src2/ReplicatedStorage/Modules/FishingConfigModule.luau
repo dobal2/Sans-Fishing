@@ -69,8 +69,14 @@ return {
 	RealisticRod = {
 		Distance = 120,
 		Rarity = "Unknown",
-		RodPower = 2.16,       -- +80% power (1.2 x 1.8)
-		DifficultyMod = 0.2    -- 80% easier
+		RodPower = 2.16,
+		DifficultyMod = 0.2
+	},
+	BlockyRod = {
+		Distance = 120,
+		Rarity = "Unknown",
+		RodPower = 2.16,
+		DifficultyMod = 0.2
 	},
 	ArcaneRod = {
 		Distance = 125,

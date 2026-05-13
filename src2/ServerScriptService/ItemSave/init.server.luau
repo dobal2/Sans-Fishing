@@ -177,13 +177,16 @@ local function createItemData(tool)
 	local rarity = rarityObj and rarityObj.Value
 	local isFish = fishValueObj ~= nil
 
-	-- Build item name
+	-- Build item name (strip non-ASCII characters that break DataStore UTF-8 validation)
+	local function sanitizeName(s)
+		return (s:gsub("[^\32-\126\194-\244][\128-\191]*", "?"))
+	end
 	local itemName
 	if weight and rarity then
-		local baseName = StripSuffixes(tool.Name)
+		local baseName = sanitizeName(StripSuffixes(tool.Name))
 		itemName = string.format("%s [%s] - %.1fkg", baseName, rarity, weight)
 	else
-		itemName = tool.Name
+		itemName = sanitizeName(tool.Name)
 	end
 
 	-- Lock state (fish only)
@@ -192,10 +195,13 @@ local function createItemData(tool)
 		isLocked = lockObj.Value
 	end
 
+	local hotbarSlot = tool:GetAttribute("hotbarSlot")
+
 	return {
 		name = itemName,
 		isLocked = isLocked,
-		isFish = isFish
+		isFish = isFish,
+		hotbarSlot = hotbarSlot,
 	}
 end
 
@@ -248,6 +254,7 @@ local function saveCurrentInventory(player)
 
 	local newItemsData = {}
 	local newLocksData = {}
+	local newHotbarSlots = {}
 	local index = 0
 
 	-- Tool scan function
@@ -260,6 +267,9 @@ local function saveCurrentInventory(player)
 
 		if itemData.isFish and itemData.isLocked ~= nil then
 			newLocksData[tostring(index)] = itemData.isLocked
+		end
+		if itemData.hotbarSlot then
+			newHotbarSlots[tostring(index)] = itemData.hotbarSlot
 		end
 	end
 
@@ -306,6 +316,7 @@ local function saveCurrentInventory(player)
 	-- Final save
 	Data.items = newItemsData
 	Data.fishLocks = newLocksData
+	Data.hotbarSlots = newHotbarSlots
 
 	DataManager:SaveData(player)
 end
@@ -797,6 +808,11 @@ game.Players.PlayerAdded:Connect(function(player)
 					error("No fish data found: " .. itemName)
 				end
 
+				local hotbarSlot = Data.hotbarSlots and Data.hotbarSlots[tostring(i)]
+				if hotbarSlot then
+					clone:SetAttribute("hotbarSlot", hotbarSlot)
+					clone:SetAttribute("position", hotbarSlot)
+				end
 				if SAVE_ON_DEATH then
 					clone:Clone().Parent = player.StarterGear
 				end
@@ -881,6 +897,7 @@ game.Players.PlayerRemoving:Connect(function(player)
 		if Data then
 			local newItemsData = {}
 			local newLocksData = {}
+			local newHotbarSlots = {}
 			local index = 0
 
 			for _, tool in ipairs(PlayerInventoryTracker[player]) do
@@ -892,11 +909,15 @@ game.Players.PlayerRemoving:Connect(function(player)
 					if itemData.isFish and itemData.isLocked ~= nil then
 						newLocksData[tostring(index)] = itemData.isLocked
 					end
+					if itemData.hotbarSlot then
+						newHotbarSlots[tostring(index)] = itemData.hotbarSlot
+					end
 				end
 			end
 
 			Data.items = newItemsData
 			Data.fishLocks = newLocksData
+			Data.hotbarSlots = newHotbarSlots
 			DataManager:SaveData(player)
 		end
 	else

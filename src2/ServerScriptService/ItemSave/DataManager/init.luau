@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 
 local DATA_TEMPLATE = {
 	items = {};
+	hotbarSlots = {};
 }
 
 local ProfileStore = ProfileService.New("AlphaData3", DATA_TEMPLATE)
@@ -59,9 +60,38 @@ function DataManager:UpdateData(player, key, data)
 	profile.Data[key] = data
 end
 
+local function sanitizeString(s)
+	if type(s) ~= "string" then return tostring(s) end
+	-- Replace invalid UTF-8 sequences with "?"
+	return (s:gsub("[\x80-\xFF][\x80-\xBF]*", function(seq)
+		-- Valid UTF-8 multi-byte check
+		local b1 = seq:byte(1)
+		if b1 >= 0xC2 and b1 <= 0xDF and #seq == 2 then return seq end
+		if b1 >= 0xE0 and b1 <= 0xEF and #seq == 3 then return seq end
+		if b1 >= 0xF0 and b1 <= 0xF4 and #seq == 4 then return seq end
+		return "?"
+	end))
+end
+
+local function sanitizeData(data)
+	if type(data) == "string" then
+		return sanitizeString(data)
+	elseif type(data) == "table" then
+		local clean = {}
+		for k, v in pairs(data) do
+			clean[k] = sanitizeData(v)
+		end
+		return clean
+	end
+	return data
+end
+
 function DataManager:SaveData(player)
 	local profile = Profiles[player]
 	if profile and profile:IsActive() then
+		if profile.Data.items then
+			profile.Data.items = sanitizeData(profile.Data.items)
+		end
 		profile:Save()
 	end
 end

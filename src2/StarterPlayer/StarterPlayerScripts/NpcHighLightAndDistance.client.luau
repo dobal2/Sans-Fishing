@@ -5,7 +5,7 @@ local updateShop = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSell
 local robuxShop = workspace:WaitForChild("Pap")
 local boatDealer1 = workspace:WaitForChild("BoatDealer1")
 local boatDealer2 = workspace:FindFirstChild("BoatDealer2")
-local voidQuestGiver = workspace:WaitForChild("Void Quest Giver") -- Void Quest Giver
+local voidQuestGiver = workspace:FindFirstChild("Void Quest Giver")
 
 local TweenService = game:GetService("TweenService")
 
@@ -31,8 +31,8 @@ if boatDealer2Highlight and boatDealer2 then
 end
 
 -- Add Void Quest Giver Highlight
-local voidQuestHighlight = voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight")
-voidQuestHighlight.Parent = voidQuestGiver
+local voidQuestHighlight = voidQuestGiver and (voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight"))
+if voidQuestHighlight and voidQuestGiver then voidQuestHighlight.Parent = voidQuestGiver end
 
 local RANGE = 10
 local UPDATE_SHOP_RANGE = 15  -- Separate range for upgrade shop
@@ -42,8 +42,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local sellChoiceEvent = ReplicatedStorage:WaitForChild("SellChoiceEvent")
 
 -- Void Quest related events
-local voidQuestEvents = ReplicatedStorage:WaitForChild("VoidQuestEvents")
-local voidQuestChoiceEvent = voidQuestEvents:WaitForChild("VoidQuestChoiceEvent")
+local voidQuestEvents = ReplicatedStorage:FindFirstChild("VoidQuestEvents")
+local voidQuestChoiceEvent = voidQuestEvents and voidQuestEvents:FindFirstChild("VoidQuestChoiceEvent")
 
 -- Wait for character to load
 repeat task.wait(0.1) until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -113,13 +113,13 @@ if boatDealer2Highlight then
 	boatDealer2Highlight.Enabled = true
 	boatDealer2Highlight.OutlineTransparency = 1
 end
-voidQuestHighlight.Enabled = true  -- Void Quest Giver init
-voidQuestHighlight.OutlineTransparency = 1
-
--- Void Quest Giver special color (purple)
-voidQuestHighlight.OutlineColor = Color3.fromRGB(150, 100, 255)
-voidQuestHighlight.FillColor = Color3.fromRGB(150, 100, 255)
-voidQuestHighlight.FillTransparency = 0.8
+if voidQuestHighlight then
+	voidQuestHighlight.Enabled = true
+	voidQuestHighlight.OutlineTransparency = 1
+	voidQuestHighlight.OutlineColor = Color3.fromRGB(150, 100, 255)
+	voidQuestHighlight.FillColor = Color3.fromRGB(150, 100, 255)
+	voidQuestHighlight.FillTransparency = 0.8
+end
 
 -- Main loop
 while true do
@@ -209,22 +209,25 @@ while true do
 	end
 
 	-- Void Quest Giver
-	local voidQuestNearby = isPlayerNearby(voidQuestGiver, VOID_QUEST_RANGE)
-	local canInteractVoidQuest = canInteractWithNPC(voidQuestGiver)
-	local shouldShowVoidQuestHighlight = voidQuestNearby and canInteractVoidQuest
+	if voidQuestGiver then
+		local voidQuestNearby = isPlayerNearby(voidQuestGiver, VOID_QUEST_RANGE)
+		local canInteractVoidQuest = canInteractWithNPC(voidQuestGiver)
+		local shouldShowVoidQuestHighlight = voidQuestNearby and canInteractVoidQuest
 
-	if shouldShowVoidQuestHighlight ~= wasNearby.voidQuestGiver then
-		animateHighlight(voidQuestHighlight, shouldShowVoidQuestHighlight and 0 or 1)
-	end
-
-	-- Close GUI when Void Quest Giver is out of range
-	if not voidQuestNearby and wasNearby.voidQuestGiver then
-		local prompt = voidQuestGiver:FindFirstChild("ProximityPrompt")
-		if prompt and not prompt.Enabled then
-			voidQuestChoiceEvent:FireServer("Option2") -- Close option
-			local gui = player.PlayerGui:FindFirstChild("VoidQuestOptions")
-			if gui then gui.Enabled = false end
+		if shouldShowVoidQuestHighlight ~= wasNearby.voidQuestGiver then
+			if voidQuestHighlight then
+				animateHighlight(voidQuestHighlight, shouldShowVoidQuestHighlight and 0 or 1)
+			end
 		end
+
+		if not voidQuestNearby and wasNearby.voidQuestGiver then
+			local prompt = voidQuestGiver:FindFirstChild("ProximityPrompt")
+			if prompt and not prompt.Enabled and voidQuestChoiceEvent then
+				voidQuestChoiceEvent:FireServer("Option2")
+				local gui = player.PlayerGui:FindFirstChild("VoidQuestOptions")
+				if gui then gui.Enabled = false end
+			end
+		end
+		wasNearby.voidQuestGiver = shouldShowVoidQuestHighlight
 	end
-	wasNearby.voidQuestGiver = shouldShowVoidQuestHighlight
 end

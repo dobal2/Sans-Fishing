@@ -204,14 +204,7 @@ local function claimReward(fishName, slot, rarityColor)
 
 	-- Remove claim overlay
 	local overlay = slot:FindFirstChild("ClaimOverlay")
-	if overlay then
-		TweenService:Create(overlay, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
-		local lbl = overlay:FindFirstChildOfClass("TextLabel")
-		if lbl then
-			TweenService:Create(lbl, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {TextTransparency = 1}):Play()
-		end
-		task.delay(0.2, function() if overlay.Parent then overlay:Destroy() end end)
-	end
+	if overlay then overlay:Destroy() end
 
 	-- Flash white then settle to rarity color
 	local us = slot:FindFirstChild("UIStroke")
@@ -256,7 +249,7 @@ local function addClaimOverlay(slot, fishName, rarityColor)
 	lbl.Position = UDim2.fromScale(0, 0.35)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = "Claim!"
-	lbl.TextColor3 = Color3.new(1, 1, 1)
+	lbl.TextColor3 = Color3.fromRGB(0, 210, 80)
 	lbl.TextScaled = true
 	lbl.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
 	lbl.ZIndex = 11

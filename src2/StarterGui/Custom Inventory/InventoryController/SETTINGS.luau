@@ -208,7 +208,7 @@ function toolObjectMetatable:updateIcon()
 		frame.toolIcon.Visible = false
 		frame.toolIcon.Image = ""
 		frame.toolName.Visible = SETTINGS.ALWAYS_SHOW_TOOL_NAME
-		buildViewport(frame, tool)
+		-- buildViewport(frame, tool)  -- disabled
 	elseif tool.TextureId ~= "" then
 		local vp = frame:FindFirstChild("toolViewport")
 		if vp then vp:Destroy() end
@@ -238,7 +238,7 @@ function toolObjectMetatable:showDescription() -- Shows the object.Tool.ToolTip
 	local descriptionFrame = Instance.new("TextLabel")
 	descriptionFrame.Name = "descriptionFrame"
 	descriptionFrame.AnchorPoint = Vector2.new(0.5, 0)
-	descriptionFrame.Font = Enum.Font.SourceSansSemibold
+	descriptionFrame.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
 	descriptionFrame.TextColor = BrickColor.Black()
 	descriptionFrame.TextSize = 14
 	descriptionFrame.BorderSizePixel = 0
@@ -295,9 +295,9 @@ function module:searchTool() -- Handler for the tool search feature in the inven
 	if searchText == "" then
 		for uniqueId, toolObject in pairs(self.OBJECTS.Inventory) do
 			toolObject.Frame.Visible = true
-			toolObject.Frame.LayoutOrder = 0
 		end
 		updateInventorySize()
+		module:sortInventoryByWeight()
 		return
 	end
 
@@ -306,12 +306,16 @@ function module:searchTool() -- Handler for the tool search feature in the inven
 	for uniqueId, toolObject in pairs(self.OBJECTS.Inventory) do
 		local toolName = toolObject.Name:lower():gsub("%s+", "")
 
-		-- Extract pure fish name by stripping Frozen prefix, rarity bracket, and weight suffix
+		-- Extract pure fish name by stripping Frozen/Festival prefix, rarity bracket, and weight suffix
 		local cleanName = toolName
 		cleanName = cleanName:gsub("frozen", "")
+		cleanName = cleanName:gsub("festival", "")
 		cleanName = cleanName:gsub("%[.-%]", "")
 		cleanName = cleanName:gsub("%-[%d%.]+kg", "")
 		cleanName = cleanName:gsub("^%s*", ""):gsub("%s*$", "")
+
+		-- Extract weight string for weight-based matching (e.g. "5.2" from "5.2kg")
+		local weightStr = toolName:match("%-([%d%.]+)kg$") or ""
 
 		local priority = 0
 		local matchFound = false
@@ -324,6 +328,10 @@ function module:searchTool() -- Handler for the tool search feature in the inven
 			matchFound = true
 		elseif cleanName:find(searchText) then
 			priority = 300
+			matchFound = true
+		elseif weightStr ~= "" and weightStr:find(searchText, 1, true) then
+			-- Weight match: "5" matches "5.2", "15.0", "50.3"
+			priority = 200
 			matchFound = true
 		else
 			local pos = 1
@@ -411,6 +419,22 @@ function module:newTool(tool: Tool)
 	module:addTool(tool, length == self.slotAmount and "Inventory" or "HotBar", tool:GetAttribute("position"))
 end
 
+local function getWeightFromName(name)
+	local w = name:match("%-% *([%d%.]+)kg$")
+	return tonumber(w) or 0
+end
+
+function module:sortInventoryByWeight()
+	local items = {}
+	for uniqueId, toolObject in pairs(self.OBJECTS.Inventory) do
+		table.insert(items, {uniqueId = uniqueId, toolObject = toolObject, weight = getWeightFromName(toolObject.Name)})
+	end
+	table.sort(items, function(a, b) return a.weight > b.weight end)
+	for i, item in ipairs(items) do
+		item.toolObject.Frame.LayoutOrder = i
+	end
+end
+
 function module:addTool(tool: Tool, parent: string, position: number)
 	tool:SetAttribute("position", nil)
 	if position == -1 then
@@ -433,8 +457,9 @@ function module:addTool(tool: Tool, parent: string, position: number)
 
 	local frame = toolButton:Clone()
 	local amount = tool:GetAttribute("amount") or 1
-	if amount > 1 then
-		frame.toolAmount.Text = "x" .. amount
+	local toolAmountLabel = frame:FindFirstChild("toolAmount")
+	if toolAmountLabel and amount > 1 then
+		toolAmountLabel.Text = "x" .. amount
 	end
 	frame.toolName.Text = tool.Name
 	frame.Parent = parent == "Inventory" and inventoryFrame.Frame or hotbar
@@ -466,6 +491,34 @@ function module:addTool(tool: Tool, parent: string, position: number)
 		self.OBJECTS[parent][position] = object
 	end
 
+	local HOTBAR_DEFAULT_SIZE  = UDim2.new(0.0844, 0, 0.971, 0)
+	local HOTBAR_EQUIPPED_SIZE = UDim2.new(0.0980, 0, 1.12,  0)
+
+	local function setEquippedVisual(f, equipped)
+		local stroke = f:FindFirstChildOfClass("UIStroke")
+		local isHotbar = f.Parent == hotbar
+		if equipped then
+			if not stroke then
+				stroke = Instance.new("UIStroke")
+				stroke.Color = Color3.fromRGB(255, 255, 255)
+				stroke.Thickness = 2.5
+				stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				stroke.Parent = f
+			end
+			stroke.Enabled = true
+			if isHotbar then
+				f.Size = HOTBAR_EQUIPPED_SIZE
+			end
+		else
+			if stroke then
+				stroke.Enabled = false
+			end
+			if isHotbar then
+				f.Size = HOTBAR_DEFAULT_SIZE
+			end
+		end
+	end
+
 	local function manageTool(_, inputState, inputObject)
 		if inputObject and inputObject.UserInputType ~= Enum.UserInputType.Keyboard and inputObject.UserInputType ~= Enum.UserInputType.Touch then
 			return
@@ -485,17 +538,17 @@ function module:addTool(tool: Tool, parent: string, position: number)
 
 		if object:isEquipped() then -- if tool is equipped then unequip it
 			humanoid:UnequipTools()
-			frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+			setEquippedVisual(frame, false)
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			module.currentlyEquipped = nil
 		elseif tool.Enabled then -- if tool isnt equipped then equip it
 			humanoid:EquipTool(tool)
 			if module.currentlyEquipped and module.currentlyEquipped.Parent then
-				module.currentlyEquipped.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+				setEquippedVisual(module.currentlyEquipped, false)
 				module.currentlyEquipped.Image = SETTINGS.DEFAULT_IMAGEID
 			end
 			module.currentlyEquipped = frame
-			frame.BackgroundColor3 = SETTINGS.EQUIPPED_COLOR
+			setEquippedVisual(frame, true)
 			frame.Image = SETTINGS.EQUIPPED_IMAGEID
 		end
 	end
@@ -503,14 +556,14 @@ function module:addTool(tool: Tool, parent: string, position: number)
 	local function updateEquipped()
 		if object:isEquipped() and tool.Enabled then
 			if module.currentlyEquipped and module.currentlyEquipped.Parent then
-				module.currentlyEquipped.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+				setEquippedVisual(module.currentlyEquipped, false)
 				module.currentlyEquipped.Image = SETTINGS.DEFAULT_IMAGEID
 			end
 			module.currentlyEquipped = frame
-			frame.BackgroundColor3 = SETTINGS.EQUIPPED_COLOR
+			setEquippedVisual(frame, true)
 			frame.Image = SETTINGS.EQUIPPED_IMAGEID
 		else
-			frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+			setEquippedVisual(frame, false)
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			module.currentlyEquipped = nil
 		end
@@ -520,14 +573,21 @@ function module:addTool(tool: Tool, parent: string, position: number)
 		if tool.Enabled then
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+			-- re-apply equipped stroke if still equipped
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Enabled = object:isEquipped() end
 			frame.ImageTransparency = 0
 			frame.toolIcon.ImageTransparency = 0
 			frame.toolName.TextTransparency = 0
 			frame.toolNumber.TextTransparency = 0
-			frame.toolAmount.TextTransparency = 0
-
-			frame.toolAmount.UIStroke.Transparency = 0
-			frame.toolName.UIStroke.Transparency = 0
+			local ta = frame:FindFirstChild("toolAmount")
+			if ta then
+				ta.TextTransparency = 0
+				local s = ta:FindFirstChildOfClass("UIStroke")
+				if s then s.Transparency = 0 end
+			end
+			local ns = frame.toolName:FindFirstChildOfClass("UIStroke")
+			if ns then ns.Transparency = 0 end
 		else
 			frame.Image = SETTINGS.DISABLED_IMAGEID
 			frame.BackgroundColor3 = SETTINGS.DISABLED_COLOR
@@ -535,10 +595,14 @@ function module:addTool(tool: Tool, parent: string, position: number)
 			frame.toolIcon.ImageTransparency = 0.5
 			frame.toolName.TextTransparency = 0.6
 			frame.toolNumber.TextTransparency = 0.6
-			frame.toolAmount.TextTransparency = 0.6
-
-			frame.toolAmount.UIStroke.Transparency = 0.6
-			frame.toolName.UIStroke.Transparency = 0.6
+			local ta = frame:FindFirstChild("toolAmount")
+			if ta then
+				ta.TextTransparency = 0.6
+				local s = ta:FindFirstChildOfClass("UIStroke")
+				if s then s.Transparency = 0.6 end
+			end
+			local ns = frame.toolName:FindFirstChildOfClass("UIStroke")
+			if ns then ns.Transparency = 0.6 end
 		end
 	end
 
@@ -582,10 +646,9 @@ function module:addTool(tool: Tool, parent: string, position: number)
 	end)
 	object.CONNECTIONS.AmountChanged = tool:GetAttributeChangedSignal("amount"):Connect(function()
 		amount = tool:GetAttribute("amount") or 1
-		if amount > 1 then
-			frame.toolAmount.Text = "x" .. amount
-		else
-			frame.toolAmount.Text = ""
+		local ta2 = frame:FindFirstChild("toolAmount")
+		if ta2 then
+			ta2.Text = amount > 1 and ("x" .. amount) or ""
 		end
 	end)
 
@@ -765,7 +828,8 @@ function module:addTool(tool: Tool, parent: string, position: number)
 				object.isGrabbed = true
 				newFrame = toolButton:Clone()
 				newFrame.toolName.Text = ""
-				newFrame.toolAmount.Text = ""
+				local nfta = newFrame:FindFirstChild("toolAmount")
+				if nfta then nfta.Text = "" end
 				newFrame.toolNumber.Text = position or ""
 				newFrame.Name = frame.Name
 				newFrame.Size = frame.Size
@@ -788,11 +852,15 @@ function module:addTool(tool: Tool, parent: string, position: number)
 
 	tool:SetAttribute("toolAdded", true)
 	if parent == "HotBar" and position then
+		tool:SetAttribute("hotbarSlot", position)
 		ContextActionService:BindAction(position .. "hotBar", manageTool, false, EnumKeys[position])
+	else
+		tool:SetAttribute("hotbarSlot", nil)
 	end
 
 	if parent == "Inventory" then
 		updateInventorySize()
+		module:sortInventoryByWeight()
 	end
 end
 

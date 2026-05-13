@@ -400,7 +400,7 @@ local function handleWeatherChange(newWeather)
 		StarterGui:SetCore("ChatMakeSystemMessage", {
 			Text = "The weather has cleared up",
 			Color = Color3.fromRGB(255, 255, 255),
-			Font = Enum.Font.SourceSansBold,
+			Font = Enum.Font.Cartoon,
 			FontSize = Enum.FontSize.Size18
 		})
 	end

@@ -4,9 +4,9 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local image = script.Parent:WaitForChild("ImageLabel")
 local button = script.Parent:WaitForChild("RobuxButton")
+local buttonLabel = button:FindFirstChildOfClass("TextLabel")
 local ownedFrame = script.Parent:WaitForChild("Owned")
 
--- 🎫 게임패스 ID 설정
 local gamePassId = 1293430515
 
 -- 🔄 게임패스 정보 가져오기 함수
@@ -16,12 +16,12 @@ local function loadGamePassInfo(passId)
 	end)
 
 	if success and gamePassInfo then
-		--nameLabel.Text = gamePassInfo.Name
 		image.Image = "rbxassetid://" .. gamePassInfo.IconImageAssetId
+		if buttonLabel and gamePassInfo.PriceInRobux then
+			buttonLabel.Text = "\xEE\x80\x82" .. gamePassInfo.PriceInRobux
+		end
 		return gamePassInfo
 	else
-		warn("Failed to load gamepass info:", gamePassInfo)
-		--nameLabel.Text = "게임패스 로드 실패"
 		image.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 		return nil
 	end

@@ -133,7 +133,7 @@ end
 
 function DataManager:GetTopCoinPlayers(limit)
 	local top = {}
-	limit = limit or 10
+	limit = math.min(limit or 10, 100)
 	local success, pages = pcall(function()
 		return CoinLeaderboard:GetSortedAsync(false, limit)
 	end)

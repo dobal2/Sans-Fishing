@@ -115,18 +115,28 @@ The fishing system is split across server and client modules.
 
 **Server** (`FishingServerModule.luau`):
 - `FishingServerStarter` attaches one `FishingServer` instance per rod tool.
-- On `CastRod` fire: creates a bait part, sets up a `RopeConstraint`, launches the bait toward the target position.
-- When bait touches water: waits 2-3 seconds, selects a random fish via `FishDataModule`, fires the fish data to the client, starts the minigame session.
-- On `progress_success`: validates timing and inventory, awards the fish tool to backpack.
+- On `CastRod` fire: creates a bait `Part` (name `"Bait"`) in workspace, sets up a `Beam` fishing line, launches bait toward target.
+- Bait landing: Heartbeat loop detects `bait.Position.Y <= WATER_SURFACE_Y (-3.4)`. On landing: anchors bait, fires `BaitLandedEvent:FireClient(player, restPos, baitPart)` to fishing player, fires `BaitSplashEvent` to all others.
+- After landing: waits 2–3 seconds, selects fish via `FishDataModule`, fires fish data to client, starts minigame session.
+- On `progress_success`: validates timing and inventory, awards fish tool to backpack.
 - Security checks: session ID validation, minimum game time, inventory limit, player ownership.
 - Retry gamepass (`RETRY_GAMEPASS_ID = 1290056221`): grants one retry per catch attempt.
 
 **Client** (`FishingClientModule.luau`):
 - Slider minigame: a tween-animated slider must land inside a hit zone.
-- Hit zones: normal zone (good) and strong zone (perfect), each granting different progress.
-- Progress bar fills to `targetProgress`; missing subtracts 15 points.
+- Hit zones: normal zone (+10 progress) and strong zone (+20 progress); miss subtracts 15.
+- Minigame starts at 30% progress. Passive drain: 4 progress/second. Fail when progress hits 0.
+- `_drainFired` flag prevents double-fire from drain + miss click.
+- `BaitLandedEvent` listener: receives exact `baitPart` Instance from server, anchors it locally + plays splash effect (no Name collision with Workspace.Bait Model).
+- `BaitSplashEvent` listener: spectators only, plays splash effect at position.
+- Animations loaded via `WaitForChild` in `task.spawn` (async) from `ReplicatedStorage.Animations`.
+- Animation IDs: Fishing=136011514785364, Finish=85733537741100, Waiting=79818740579248, Holding=71325506664100, FishBaitEat=110856542062910, Reeling=113396780604450, HoldBigFish=131373652396216.
+- Finish animation: `_playFinishAnimation()` is self-contained — stops all tracks, plays Finish (Action4 priority), waits for Ended, then plays Holding. No external race condition.
 - Inventory expansion gamepass (`INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302`) raises cap from 100 to 200 fish.
-- Animations: Fishing, Waiting, FishBaitEat, Finish, Holding — all loaded from `ReplicatedStorage.Animations`.
+
+**Known issues (as of 2026-05-14)**:
+- Finish animation may still not play — root cause was `preloadedFinishAnimation = nil` due to `FindFirstChild` timing. Fixed with `WaitForChild` async preload + direct fallback in `_playFinishAnimation`. Needs verification.
+- Bait landing position: actual water surface Y ≈ -3.69, `WATER_SURFACE_Y = BAIT_REST_Y = -3.4`. Small discrepancy may cause slight imprecision. Splash sound/effect asset IDs have authorization errors in Studio test mode (not a code bug).
 
 ### Fish Data
 

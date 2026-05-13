@@ -1,7 +1,8 @@
 local RunService = game:GetService("RunService")
 local lighting = game:GetService("Lighting")
 local Camera = workspace:WaitForChild("Camera")
-local Water = workspace:WaitForChild("ErrorRoomlightPart")
+local Water = workspace:FindFirstChild("ErrorRoomlightPart")
+if not Water then return end
 
 local bloom = lighting:WaitForChild("ErrorRoomBloom")
 local blur = lighting:WaitForChild("ErrorRoomBlur")

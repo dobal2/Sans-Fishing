@@ -3,13 +3,14 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
-local AUTO_CAST_COOLDOWN = 1.5
-local AUTO_CLICK_COOLDOWN = 2.0  -- cooldown after hitting zone
+local AUTO_CAST_COOLDOWN = 3.5   -- wait after IsFishing clears before next cast
+local AUTO_CLICK_COOLDOWN = 0.5  -- cooldown after hitting zone
 local EQUIP_DELAY = 1.0          -- delay after equipping rod before first cast
 
 local lastCastTime = 0
 local lastClickTime = 0
 local equipTime = 0
+local fishingEndedAt = 0         -- tick() when IsFishing last became false
 
 local function isAutoOn()
 	return player:GetAttribute("AutoFishing") == true
@@ -75,6 +76,13 @@ if player.Character then
 	watchEquip(player.Character)
 end
 
+-- Track when IsFishing clears so cooldown starts from that moment
+player.AttributeChanged:Connect(function(attr)
+	if attr == "IsFishing" and player:GetAttribute("IsFishing") == false then
+		fishingEndedAt = tick()
+	end
+end)
+
 RunService.Heartbeat:Connect(function()
 	if not isAutoOn() then return end
 
@@ -100,6 +108,7 @@ RunService.Heartbeat:Connect(function()
 	else
 		-- No minigame: auto cast with cooldowns
 		if now - lastCastTime < AUTO_CAST_COOLDOWN then return end
+		if now - fishingEndedAt < AUTO_CAST_COOLDOWN then return end
 		if now - equipTime < EQUIP_DELAY then return end
 		if player:GetAttribute("IsFishing") == true then return end
 

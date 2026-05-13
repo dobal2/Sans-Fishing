@@ -1,6 +1,6 @@
 local shopButton = script.Parent:WaitForChild("Free Reward")
 local shopFrame = script.Parent:WaitForChild("Free Reward Frame")
-local shopShadowFrame = script.Parent:WaitForChild("ShadowFrame")
+local shopShadowFrame = script.Parent:FindFirstChild("ShadowFrame")
 local clickSound = script:WaitForChild("click")
 local lighting = game:GetService("Lighting")
 local blur = lighting:WaitForChild("ShopBlur")
@@ -36,7 +36,7 @@ local function toggleShop()
 
 	isShopOpen = not isShopOpen
 	shopFrame.Visible = isShopOpen
-	shopShadowFrame.Visible = isShopOpen
+	if shopShadowFrame then shopShadowFrame.Visible = isShopOpen end
 
 	if isShopOpen then
 		blur.Enabled = true
@@ -96,7 +96,7 @@ end)
 
 
 shopFrame.Visible = false
-shopShadowFrame.Visible = false
+if shopShadowFrame then shopShadowFrame.Visible = false end
 isShopOpen = false
 blur.Enabled = false
 print("Shop UI initialized")

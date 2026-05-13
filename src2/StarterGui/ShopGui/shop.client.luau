@@ -5,8 +5,8 @@ local cam = workspace.CurrentCamera
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local RodData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("RodDataModule"))
-local voidRodModel = workspace:WaitForChild("VoidRodModel")
-local voidProximity = voidRodModel:WaitForChild("ProximityPrompt")
+local voidRodModel = workspace:FindFirstChild("VoidRodModel")
+local voidProximity = voidRodModel and voidRodModel:FindFirstChild("ProximityPrompt")
 local ROBUX_ROD_GAMEPASS_ID = 1410895892
 
 local gui = script.Parent
@@ -22,6 +22,7 @@ local originalTextColor = coinText.TextColor3
 
 local customInventory = player.PlayerGui:WaitForChild("Custom Inventory")
 local hotBar = customInventory:WaitForChild("hotBar")
+local inventoryOpenButton = customInventory:FindFirstChild("openButton") or customInventory:FindFirstChild("OpenButton")
 
 local mainGui = player.PlayerGui:WaitForChild("Main")
 local fishingButton = mainGui:WaitForChild("Fishing")
@@ -105,7 +106,9 @@ buyButton.MouseButton1Up:Connect(function()
 	ts:Create(buyBtnScale, HOVER_IN, {Scale = 1.1}):Play()
 end)
 
-local openShopRemote = game.ReplicatedStorage:WaitForChild("OpenShop")
+local openShopRemote    = game.ReplicatedStorage:WaitForChild("OpenShop")
+local openShopLocal     = game.ReplicatedStorage:WaitForChild("OpenShopLocal")
+local enablePromptEvent = game.ReplicatedStorage:WaitForChild("SetPromptEvent")
 local buyRemote = game.ReplicatedStorage:WaitForChild("BuyFishingRod")
 local proximy = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller"):WaitForChild("ProximityPrompt")
 local buySound = game:GetService("ReplicatedStorage"):WaitForChild("Sounds"):WaitForChild("Buy SFX")
@@ -283,15 +286,17 @@ local function updateView(skipTween)
 			local modelCFrame = rodModel:GetPrimaryPartCFrame() or rodModel:GetModelCFrame()
 			local modelSize = rodModel:GetExtentsSize()
 			local distance = math.max(8, modelSize.Magnitude * 1.5)
-			local height = math.max(0, modelSize.Y * 0)
 			local rightDirection
 			if rodName == "VoidRod" then
 				rightDirection = (modelCFrame * CFrame.Angles(0, math.rad(180), 0)).RightVector
+			elseif rodName == "MagneticRod" then
+				-- MagneticRod Handle orientation differs; use fixed world offset
+				rightDirection = Vector3.new(1, 0, 0)
 			else
 				rightDirection = modelCFrame.RightVector
 			end
-			camPos = modelPosition + (rightDirection * distance) + Vector3.new(0, height, 0)
-			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, height * 0.5, 0))
+			camPos = modelPosition + (rightDirection * distance) + Vector3.new(0, 2, 0)
+			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, 1, 0))
 		else
 			camPos = modelPosition + Vector3.new(8, 3, 0)
 			camCF = CFrame.lookAt(camPos, modelPosition)
@@ -309,12 +314,13 @@ local function openShop(voidMode)
 	end
 	setCharacterTransparency(player.Character, 1)
 	proximy.Enabled = false
-	voidProximity.Enabled = false
+	if voidProximity then voidProximity.Enabled = false end
 	hotBar.Visible = false
 	fishingButton.Visible = false
 	sellButton.Visible = false
 	upgradeButton.Visible = false
 	freeRewardButton.Visible = false
+	if inventoryOpenButton then inventoryOpenButton.Visible = false end
 	checkGroupMembership()
 	canShop = false
 	target = 1
@@ -333,6 +339,7 @@ local function closeShop()
 	sellButton.Visible = true
 	upgradeButton.Visible = true
 	freeRewardButton.Visible = true
+	if inventoryOpenButton then inventoryOpenButton.Visible = true end
 	checkGroupMembership()
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid and not isPlayerFishing() then
@@ -341,11 +348,17 @@ local function closeShop()
 	end
 	task.wait(0.5)
 	proximy.Enabled = true
-	voidProximity.Enabled = true
+	if voidProximity then voidProximity.Enabled = true end
+	enablePromptEvent:FireServer(true, "shop_seller")
 	canShop = true
 end
 
 openShopRemote.OnClientEvent:Connect(function()
+	if canShop then openShop(false) end
+end)
+
+openShopLocal.Event:Connect(function()
+	task.wait(0.8)
 	if canShop then openShop(false) end
 end)
 

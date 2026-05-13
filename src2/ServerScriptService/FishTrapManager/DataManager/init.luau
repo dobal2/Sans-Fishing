@@ -248,7 +248,17 @@ function DataManager:RestorePlayerFishTraps(player)
 						local storedFish = trapData.storedFish or {}
 						for i = 1, fishToCatch do
 							local fishInfo = FishData.GetRandomFish(config.rodType, nil)
-							if fishInfo then table.insert(storedFish, fishInfo) end
+							if fishInfo then
+								table.insert(storedFish, {
+									name = fishInfo.name,
+									fishName = fishInfo.fishName,
+									value = fishInfo.value,
+									minWeight = fishInfo.minWeight,
+									maxWeight = fishInfo.maxWeight,
+									weight = fishInfo.weight,
+									chance = fishInfo.chance
+								})
+							end
 						end
 						trapData.storedFish = storedFish
 					end

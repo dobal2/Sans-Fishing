@@ -73,6 +73,9 @@
       "ProcessReceipt": {
         "$path": "src2/ServerScriptService/ProcessReceipt.server.luau"
       },
+      "ServerBoostManager": {
+        "$path": "src2/ServerScriptService/ServerBoostManager.server.luau"
+      },
       "server": {
         "$path": "src2/ServerScriptService/server.server.luau"
       },
@@ -151,6 +154,9 @@
         },
         "BoatBuoyancy": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/BoatBuoyancy.client.luau"
+        },
+        "NpcDialogClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/NpcDialogClient.client.luau"
         }
       },
       "StarterCharacterScripts": {

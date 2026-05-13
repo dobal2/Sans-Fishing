@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local frame = script.Parent:WaitForChild("Frame")
 local ScrollingFrame = frame:WaitForChild("ScrollingFrame")
 local button = frame:WaitForChild("Button")
-local questFrame = script:WaitForChild("Quest")
+local questFrame = script:WaitForChild("Template")
 
 local questEvents = ReplicatedStorage:WaitForChild("Quest Events")
 local questGuiEvent = questEvents:WaitForChild("QuestGuiEvent")
@@ -90,7 +90,7 @@ local function createQuestFrame(questData)
 				progressText.BackgroundTransparency = 1
 				progressText.TextScaled = true
 				progressText.TextColor3 = Color3.fromRGB(255, 255, 255)
-				progressText.Font = Enum.Font.SourceSansBold
+				progressText.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
 				progressText.Parent = barFrame
 			end
 
