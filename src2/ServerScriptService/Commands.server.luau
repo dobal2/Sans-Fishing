@@ -423,6 +423,63 @@ local function command(plr, chat)
 		end
 	end
 
+	-- :odds [target] — show current fish probabilities with luck applied
+	if chat:lower():sub(1, #Prefix + 4) == Prefix .. "odds" then
+		if hasPermission(plr.Name, "forcefish") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local MarketplaceService = game:GetService("MarketplaceService")
+			local LuckGamePassId = 1289569606
+
+			for _, v in pairs(foundPlayers) do
+				local hasLuck = false
+				local ok, res = pcall(function()
+					return MarketplaceService:UserOwnsGamePassAsync(v.UserId, LuckGamePassId)
+				end)
+				if ok then hasLuck = res end
+				local hasBubble = v:GetAttribute("LuckBubbleBuff") == true
+
+				local chances
+				if hasLuck then
+					chances = {
+						Common=37.4, Uncommon=21.07, Rare=14.33, Epic=14.0,
+						Legendary=8.0, Mystic=4.0, Fantasy=1.0, Unknown=0.2
+					}
+				else
+					chances = {
+						Common=50.0, Uncommon=25.0, Rare=13.0, Epic=6.5,
+						Legendary=3.0, Mystic=1.8, Fantasy=0.5, Unknown=0.1
+					}
+				end
+
+				if hasBubble then
+					chances.Common    = chances.Common    * 0.8
+					chances.Uncommon  = chances.Uncommon  * 0.9
+					chances.Rare      = chances.Rare      * 1.1
+					chances.Epic      = chances.Epic      * 1.3
+					chances.Legendary = chances.Legendary * 1.5
+					chances.Mystic    = chances.Mystic    * 1.8
+					chances.Fantasy   = chances.Fantasy   * 2.0
+					chances.Unknown   = chances.Unknown   * 2.5
+				end
+
+				-- Normalize to 100%
+				local total = 0
+				for _, w in pairs(chances) do total += w end
+
+				local order = {"Common","Uncommon","Rare","Epic","Legendary","Mystic","Fantasy","Unknown"}
+				local lines = {string.format("=== %s Fish Odds (Luck=%s Bubble=%s) ===", v.Name, tostring(hasLuck), tostring(hasBubble))}
+				for _, rarity in ipairs(order) do
+					local pct = chances[rarity] / total * 100
+					table.insert(lines, string.format("%s: %.2f%%", rarity, pct))
+				end
+				local msg = table.concat(lines, "\n")
+				announceRemote:FireClient(plr, msg, "SYSTEM")
+			end
+		end
+	end
+
 	-- :reset [target] — full data reset (leaderstats + inventory)
 	if chat:lower():sub(1, #Prefix + 5) == Prefix .. "reset" and not chat:lower():find("coinreset") and not chat:lower():find("invenreset") and not chat:lower():find("indexreset") then
 		if hasPermission(plr.Name, "reset") then
