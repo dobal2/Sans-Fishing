@@ -324,10 +324,8 @@ function FishingServer:_createBait()
 	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
 	self.baitPart.Massless = true
 	self.baitPart.Parent = workspace
-	-- Give physics ownership to the fishing player so bait movement is lag-free on their client
-	if self.player then
-		self.baitPart:SetNetworkOwner(self.player)
-	end
+	-- Server owns physics — ensures Anchor + CFrame snap is authoritative with no client override
+	self.baitPart:SetNetworkOwner(nil)
 	-- baitLandConn is set in _checkMaterial which starts the Heartbeat loop
 end
 
@@ -773,14 +771,17 @@ function FishingServer:_checkMaterial()
 		end
 
 		-- Slow approach: dampen velocity near surface
-		if pos.Y > waterSurfaceY + 0.5 then
+		if pos.Y > waterSurfaceY + 1.0 then
 			if vel.Y < 0 then
 				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
 			end
 			return
 		end
 
-		-- Bait center has reached waterSurfaceY — snap it here
+		-- Catch bait 0.3 studs above the rest point to absorb the 50ms check lag
+		if pos.Y > waterSurfaceY + 0.3 then return end
+
+		-- Snap here
 		local restY = waterSurfaceY
 
 		landed = true
