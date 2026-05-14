@@ -184,10 +184,6 @@ function FishingServer:_bindEvents()
 		-- Client already plays fishing animation (Raft style: client-first)
 		task.spawn(function()
 			if not self.cancelled and self.player == player then
-				-- Funnel: step 1 — rod cast
-				pcall(function()
-					AnalyticsService:LogFunnelStepEvent(player, "Fishing", 1, "RodCast")
-				end)
 				self:_createBait()
 				self:_setupRope()
 				self:_moveBaitTo(targetPos)
@@ -793,11 +789,6 @@ function FishingServer:_checkMaterial()
 
 			if not self.player then return end
 
-			-- Funnel: step 2 — bait landed in water
-			pcall(function()
-				AnalyticsService:LogFunnelStepEvent(self.player, "Fishing", 2, "BaitLanded")
-			end)
-
 			-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
 			baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
 
@@ -1268,10 +1259,6 @@ function FishingServer:_resolveFishing(player, result)
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
 					caughtValue, 0, "FishCaught", fishInfo.name or "Unknown", fishInfo.fishName)
 			end)
-			-- Funnel: step 3 — minigame completed successfully
-			pcall(function()
-				AnalyticsService:LogFunnelStepEvent(player, "Fishing", 3, "MinigameSuccess")
-			end)
 
 			-- 5% chance to trigger free random fish gacha
 			local didTriggerGacha = math.random() < 0.05
@@ -1329,10 +1316,6 @@ function FishingServer:_resolveFishing(player, result)
 
 	else
 		-- Failed (result == 0 or other)
-		-- Funnel: step 4 — minigame failed
-		pcall(function()
-			AnalyticsService:LogFunnelStepEvent(player, "Fishing", 4, "MinigameFail")
-		end)
 
 		-- Send fail message to client (to close UI)
 		self.remote:FireClient(player, "fail")

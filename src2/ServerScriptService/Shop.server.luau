@@ -3,6 +3,24 @@ local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local AnalyticsService = game:GetService("AnalyticsService")
 
+-- RodProgression funnel: each rod = one milestone step
+local ROD_FUNNEL_STEP = {
+	["FishingRod"]  = 1,
+	["SliverRod"]   = 2,
+	["GoldRod"]     = 3,
+	["CrystalRod"]  = 4,
+	["MagneticRod"] = 5,
+	["BoneRod"]     = 6,
+	["CloverRod"]   = 7,
+	["RainbowRod"]  = 8,
+	["UnknownRod"]  = 9,
+	["RobuxRod"]    = 10,
+	["ElectricRod"] = 11,
+	["RealisticRod"]= 12,
+	["ArcaneRod"]   = 13,
+	["VoidRod"]     = 14,
+}
+
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishingRod")
 local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
 local setFavoriteRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("SetFavoriteRemote")
@@ -78,6 +96,12 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 		-- Grant ownership only after validation
 		if not alreadyOwned and rodBool then
 			rodBool.Value = true
+			pcall(function()
+				local funnelStep = ROD_FUNNEL_STEP["RobuxRod"]
+				if funnelStep then
+					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", funnelStep, "RobuxRod")
+				end
+			end)
 		end
 	else
 		-- Normal rod processing (including void rod)
@@ -94,6 +118,12 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 				AnalyticsService:LogEconomyEvent(plr, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
 					item.price, coins.Value, "ShopPurchase", "Rod", itemname)
 			end)
+			local funnelStep = ROD_FUNNEL_STEP[itemname]
+			if funnelStep then
+				pcall(function()
+					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", funnelStep, itemname)
+				end)
+			end
 
 		end
 	end
