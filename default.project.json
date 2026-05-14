@@ -4,6 +4,7 @@
     "$className": "DataModel",
 
     "ServerScriptService": {
+      "$ignoreUnknownInstances": false,
       "RemoteInit": {
         "$path": "src2/ServerScriptService/RemoteInit.server.luau"
       },
