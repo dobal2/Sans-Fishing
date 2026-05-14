@@ -1,7 +1,9 @@
 local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(ServerScriptService.leaderstats.DataManager)
 local surfaceGui = workspace:WaitForChild("DonationBoard"):WaitForChild("LeadBoardPart"):WaitForChild("SurfaceGui")
+local donationRefreshEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("DonationRefresh")
 --local NextUpdateGui = workspace:WaitForChild("DonationBoard"):WaitForChild("NextUpdateValue"):WaitForChild("SurfaceGui")
 
 local excludedUsernames = {}
@@ -150,7 +152,72 @@ local function updateLeaderboardGui()
 	--progressText.Parent = barBackground
 end
 
+-- Build and send donation list to a specific player (or all players)
+local cachedList = {}
+
+local function buildDonationList()
+	local raw = DataManager:GetTopDonationPlayers(50)
+	local result = {}
+	for _, entry in ipairs(raw) do
+		if (entry.Donations or 0) > 0 and not shouldExcludeUser(entry.UserId) then
+			local name = getNameFromUserId(entry.UserId)
+			table.insert(result, {
+				userId   = entry.UserId,
+				name     = name,
+				donations = entry.Donations,
+				rank     = #result + 1,
+			})
+			if #result >= 20 then break end
+		end
+	end
+	-- Also include current player's own data even if not in top 20
+	return result
+end
+
+local function sendToPlayer(player)
+	-- Find player's own rank
+	local myData = nil
+	for i, entry in ipairs(cachedList) do
+		if entry.userId == player.UserId then
+			myData = entry
+			break
+		end
+	end
+	if not myData then
+		-- Player not in top list — get their personal donation count
+		local profile = DataManager:GetData(player)
+		local donations = profile and profile.Donations or 0
+		myData = {
+			userId = player.UserId,
+			name = player.Name,
+			donations = donations,
+			rank = nil,
+		}
+	end
+	donationRefreshEvent:FireClient(player, cachedList, myData)
+end
+
+local function refreshAll()
+	cachedList = buildDonationList()
+	for _, player in ipairs(Players:GetPlayers()) do
+		sendToPlayer(player)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	task.wait(3)
+	sendToPlayer(player)
+end)
+
+-- Also fire when a player donates (ProcessReceipt triggers DonationRefresh)
+donationRefreshEvent.OnServerEvent:Connect(function(player)
+	-- Client requests a refresh
+	sendToPlayer(player)
+end)
+
 updateLeaderboardGui()
-while task.wait(3) do
+refreshAll()
+while task.wait(30) do
 	updateLeaderboardGui()
+	refreshAll()
 end

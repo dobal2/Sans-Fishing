@@ -281,6 +281,7 @@ function WeatherSystem.SetWeather(name, duration)
 end
 
 function WeatherSystem.Initialize()
+	if not game:GetService("RunService"):IsServer() then return end
 	if not WeatherSystem.WeatherChanged then
 		WeatherSystem.WeatherChanged = Instance.new("BindableEvent")
 	end

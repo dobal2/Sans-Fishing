@@ -183,6 +183,9 @@
         "UIStrokeScale": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/UIStrokeScale.client.luau"
         },
+        "DonationGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/DonationGui.client.luau"
+        },
         "TopbarController": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/TopbarController.client.luau"
         },
