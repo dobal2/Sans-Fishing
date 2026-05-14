@@ -725,13 +725,13 @@ function FishingServer:_checkMaterial()
 	groundParams.FilterType = Enum.RaycastFilterType.Exclude
 	groundParams.FilterDescendantsInstances = {self.baitPart, self.character}
 
-	-- Find the Water part to use as an include filter for water detection
+	-- Pre-calculate exact water surface Y (top face of Water part) + bait radius offset
+	-- so the bait center sits flush on the surface, not half-submerged.
 	local waterPart = workspace:FindFirstChild("Water", true)
-	local waterIncludeParams = RaycastParams.new()
-	waterIncludeParams.FilterType = Enum.RaycastFilterType.Include
-	if waterPart then
-		waterIncludeParams.FilterDescendantsInstances = {waterPart}
-	end
+	local BAIT_RADIUS = 0.2  -- half of bait Size (0.4)
+	local waterSurfaceY = waterPart
+		and (waterPart.Position.Y + waterPart.Size.Y / 2 + BAIT_RADIUS)
+		or  (BAIT_REST_Y + BAIT_RADIUS)
 
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
@@ -748,7 +748,7 @@ function FishingServer:_checkMaterial()
 		local vel = bait.AssemblyLinearVelocity
 
 		-- Ground detection: above water zone, moving down, hits solid surface
-		if pos.Y > WATER_SURFACE_Y + GROUND_DETECT_ABOVE_WATER then
+		if pos.Y > waterSurfaceY + GROUND_DETECT_ABOVE_WATER then
 			if vel.Y < -1 then
 				local hit = workspace:Raycast(pos, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), groundParams)
 				if hit and hit.Instance then
@@ -773,22 +773,15 @@ function FishingServer:_checkMaterial()
 		end
 
 		-- Slow approach: dampen velocity near surface
-		if pos.Y > WATER_SURFACE_Y + 0.5 then
+		if pos.Y > waterSurfaceY + 0.5 then
 			if vel.Y < 0 then
 				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
 			end
 			return
 		end
 
-		-- Raycast downward from bait to find exact water surface hit point
-		local waterHit = waterPart and workspace:Raycast(pos, Vector3.new(0, -WATER_DETECT_DIST, 0), waterIncludeParams)
-		local restY
-		if waterHit then
-			restY = waterHit.Position.Y
-		else
-			-- Fallback: use hardcoded value if raycast misses (e.g. bait already past surface)
-			restY = BAIT_REST_Y
-		end
+		-- Bait center has reached waterSurfaceY — snap it here
+		local restY = waterSurfaceY
 
 		landed = true
 		conn:Disconnect()
