@@ -411,6 +411,7 @@ function FishingClient:_processFishingInput()
 		local progressGain = self.strongZoneProgress * strengthMultiplier
 		self.currentProgress = math.min(self.currentProgress + progressGain, self.maxProgress)
 		self:_updateProgressBar()
+		self:_triggerHitShake("strong")
 
 		self:_rotateHitZone()
 		self:_showHitText("strong", sliderLeft)
@@ -429,6 +430,7 @@ function FishingClient:_processFishingInput()
 		local progressGain = self.normalZoneProgress * strengthMultiplier
 		self.currentProgress = math.min(self.currentProgress + progressGain, self.maxProgress)
 		self:_updateProgressBar()
+		self:_triggerHitShake("normal")
 
 		self:_rotateHitZone()
 		self:_showHitText("normal", sliderLeft)
@@ -480,7 +482,6 @@ function FishingClient:_startCameraShake(rarity, fishWeight)
 	self:_stopCameraShake()
 
 	local base = RARITY_BASE_INTENSITY[rarity] or 0.06
-	-- 무게 보너스: 최대 +0.20 (100kg 기준)
 	local weightBonus = math.clamp((fishWeight or 0) / 100, 0, 1) * 0.20
 	local intensity = base + weightBonus
 	self.cameraShakeIntensity = intensity
@@ -489,16 +490,32 @@ function FishingClient:_startCameraShake(rarity, fishWeight)
 	if not camera then return end
 
 	local t = 0
+	-- hitImpulse: extra one-shot shake added when player hits the zone
+	self.hitImpulse = 0
 	self.cameraShakeConn = RunService.RenderStepped:Connect(function(dt)
 		if not camera or not camera.Parent then return end
 		t = t + dt * 18
-		local ix = math.sin(t * 1.3) * intensity
-		local iy = math.sin(t * 1.7 + 1) * intensity * 0.6
-		local iz = math.sin(t * 2.1 + 2) * intensity * 0.4
-		-- CFrame offset added on top of current camera CFrame
+
+		-- Decay hit impulse each frame
+		if self.hitImpulse > 0 then
+			self.hitImpulse = math.max(0, self.hitImpulse - dt * 8)
+		end
+
+		local total = intensity + self.hitImpulse
+		local ix = math.sin(t * 1.3) * total
+		local iy = math.sin(t * 1.7 + 1) * total * 0.6
+		local iz = math.sin(t * 2.1 + 2) * total * 0.4
 		self.cameraShakeOffset = CFrame.new(ix, iy, 0) * CFrame.Angles(math.rad(iz), math.rad(ix * 0.5), 0)
 		camera.CFrame = camera.CFrame * self.cameraShakeOffset
 	end)
+end
+
+-- One-shot hit impulse proportional to current shake intensity
+function FishingClient:_triggerHitShake(hitType)
+	if not self.cameraShakeConn then return end
+	-- strong hit: 2× intensity spike, normal hit: 1.2×
+	local multiplier = hitType == "strong" and 2.0 or 1.2
+	self.hitImpulse = (self.hitImpulse or 0) + self.cameraShakeIntensity * multiplier
 end
 
 function FishingClient:_stopCameraShake()
@@ -1176,7 +1193,7 @@ function FishingClient:_bind()
 			if (not self.fishBaitEatAnimationTrack or not self.fishBaitEatAnimationTrack.IsPlaying) and
 				(not self.finishAnimationTrack or not self.finishAnimationTrack.IsPlaying) and
 				self.tool.Parent == self.player.Character then
-				self:_playHoldingAnimation()
+				self:_playHoldingAnimation(true)
 			end
 		end)
 	end)

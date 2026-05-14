@@ -626,7 +626,11 @@ local CAST_PITCH_DEG = 55
 local CAST_SPEED = 80
 
 function FishingServer:_moveBaitTo(targetPos)
-	local origin = self.tool.Handle.Position + Vector3.new(0, 3, 0)
+	-- Use HumanoidRootPart as origin so repeated casts are consistent
+	-- regardless of animation-driven hand/handle position drift
+	local hrp = self.character and self.character:FindFirstChild("HumanoidRootPart")
+	local origin = hrp and (hrp.Position + Vector3.new(0, 2, 0))
+		or (self.tool.Handle.Position + Vector3.new(0, 3, 0))
 
 	-- Project direction onto XZ plane, then apply fixed upward pitch
 	local flat = targetPos - origin
@@ -895,7 +899,7 @@ function FishingServer:_checkMaterial()
 				weld.Part1 = fakeHandle
 				weld.Parent = fakeHandle
 
-				self:_showFishCaughtNotice()
+				self:_showFishCaughtNotice(fishInfo.name)
 				self.hookedFishHandle = fakeHandle
 			end
 
@@ -1342,7 +1346,17 @@ function FishingServer:_resolveFishing(player, result)
 	self:_cleanup()
 end
 
-function FishingServer:_showFishCaughtNotice()
+local RARITY_EXCLAMATION_COLOR = {
+	Common    = Color3.fromRGB(255, 255, 255),
+	Uncommon  = Color3.fromRGB(80, 220, 80),
+	Rare      = Color3.fromRGB(80, 140, 255),
+	Epic      = Color3.fromRGB(180, 80, 255),
+	Legendary = Color3.fromRGB(255, 200, 0),
+	Mythical  = Color3.fromRGB(255, 80, 80),
+	Fantasy   = Color3.fromRGB(255, 120, 220),
+}
+
+function FishingServer:_showFishCaughtNotice(rarity)
 	if not self.player or not self.player.Character then return end
 
 	local character = self.player.Character
@@ -1359,8 +1373,6 @@ function FishingServer:_showFishCaughtNotice()
 		soundClone.MaxDistance = 50
 		soundClone.Volume = 1
 		soundClone:Play()
-
-		-- Remove after playing
 		Debris:AddItem(soundClone, 3)
 	end
 
@@ -1375,10 +1387,24 @@ function FishingServer:_showFishCaughtNotice()
 	local noticeGui = noticeTemplate:Clone()
 	noticeGui.Parent = head
 
+	-- Resize BillboardGui based on rarity importance
+	local rarityScale = {
+		Common = 1.0, Uncommon = 1.1, Rare = 1.2,
+		Epic = 1.3, Legendary = 1.5, Mythical = 1.6, Fantasy = 1.8,
+	}
+	local scale = rarityScale[rarity] or 1.0
+	if noticeGui:IsA("BillboardGui") then
+		local base = noticeGui.Size
+		noticeGui.Size = UDim2.new(base.X.Scale * scale, base.X.Offset * scale, base.Y.Scale * scale, base.Y.Offset * scale)
+	end
+
+	local textColor = RARITY_EXCLAMATION_COLOR[rarity] or Color3.fromRGB(255, 255, 255)
+
 	-- Set text to "!"
 	local textLabel = noticeGui:FindFirstChildOfClass("TextLabel")
 	if textLabel then
 		textLabel.Text = "!"
+		textLabel.TextColor3 = textColor
 		textLabel.TextTransparency = 1
 
 		-- Fade in quickly
