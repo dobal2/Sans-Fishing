@@ -708,19 +708,31 @@ end
 
 local GROUND_DETECT_ABOVE_WATER = 2.0  -- studs above WATER_SURFACE_Y to consider "ground not water"
 local GROUND_RAYCAST_DIST = 0.6        -- downward ray length for ground detection
-local BAIT_CHECK_INTERVAL = 0.05       -- seconds between bait position checks (20Hz instead of 60Hz)
+local BAIT_CHECK_INTERVAL = 0.05       -- seconds between bait position checks (20Hz)
+local WATER_DETECT_DIST   = 2.0        -- how far below bait to raycast for water surface
 
 function FishingServer:_checkMaterial()
-	-- Heartbeat-based water landing: detects when bait crosses WATER_SURFACE_Y,
-	-- smoothly settles it at BAIT_REST_Y using BodyPosition, then starts the minigame.
-	-- Also detects when bait hits ground (non-water surface) and cancels with warning.
 	local landed = false
 	local groundCancelled = false
-	local prevY = nil
 	local lastCheckTime = 0
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = {self.baitPart, self.character}
+
+	-- Two separate raycast params: one that includes Water, one that excludes it for ground check
+	local waterParams = RaycastParams.new()
+	waterParams.FilterType = Enum.RaycastFilterType.Exclude
+	waterParams.FilterDescendantsInstances = {self.baitPart, self.character}
+
+	local groundParams = RaycastParams.new()
+	groundParams.FilterType = Enum.RaycastFilterType.Exclude
+	groundParams.FilterDescendantsInstances = {self.baitPart, self.character}
+
+	-- Find the Water part to use as an include filter for water detection
+	local waterPart = workspace:FindFirstChild("Water", true)
+	local waterIncludeParams = RaycastParams.new()
+	waterIncludeParams.FilterType = Enum.RaycastFilterType.Include
+	if waterPart then
+		waterIncludeParams.FilterDescendantsInstances = {waterPart}
+	end
+
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local now = tick()
@@ -732,15 +744,13 @@ function FishingServer:_checkMaterial()
 		if landed or groundCancelled then return end
 		if not self.activated then conn:Disconnect(); return end
 
-		local currentY = bait.Position.Y
-		local lastY = prevY or currentY
-		prevY = currentY
+		local pos = bait.Position
+		local vel = bait.AssemblyLinearVelocity
 
-		-- Ground detection: bait is above water level AND moving downward AND hits solid surface
-		if currentY > WATER_SURFACE_Y + GROUND_DETECT_ABOVE_WATER then
-			local vel = bait.AssemblyLinearVelocity
+		-- Ground detection: above water zone, moving down, hits solid surface
+		if pos.Y > WATER_SURFACE_Y + GROUND_DETECT_ABOVE_WATER then
 			if vel.Y < -1 then
-				local hit = workspace:Raycast(bait.Position, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), rayParams)
+				local hit = workspace:Raycast(pos, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), groundParams)
 				if hit and hit.Instance then
 					groundCancelled = true
 					conn:Disconnect()
@@ -759,20 +769,26 @@ function FishingServer:_checkMaterial()
 					return
 				end
 			end
+			return
 		end
 
-		-- Slow approach: dampen velocity when bait is near the surface
-		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y + 0.4 then
-			local vel = bait.AssemblyLinearVelocity
+		-- Slow approach: dampen velocity near surface
+		if pos.Y > WATER_SURFACE_Y + 0.5 then
 			if vel.Y < 0 then
 				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
 			end
 			return
 		end
 
-		-- Catch bait 0.4 studs above surface — client owns physics so server reads
-		-- replicated position which arrives slightly late; catching early compensates.
-		if currentY > WATER_SURFACE_Y + 0.4 then return end
+		-- Raycast downward from bait to find exact water surface hit point
+		local waterHit = waterPart and workspace:Raycast(pos, Vector3.new(0, -WATER_DETECT_DIST, 0), waterIncludeParams)
+		local restY
+		if waterHit then
+			restY = waterHit.Position.Y
+		else
+			-- Fallback: use hardcoded value if raycast misses (e.g. bait already past surface)
+			restY = BAIT_REST_Y
+		end
 
 		landed = true
 		conn:Disconnect()
@@ -787,21 +803,21 @@ function FishingServer:_checkMaterial()
 			local landX = baitRef.Position.X
 			local landZ = baitRef.Position.Z
 
-			-- Anchor first to kill physics, then snap position
+			-- Anchor first to kill physics, then snap to exact water surface
 			baitRef.Anchored = true
 			baitRef.AssemblyLinearVelocity = Vector3.zero
 			baitRef.AssemblyAngularVelocity = Vector3.zero
-			baitRef.CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
+			baitRef.CFrame = CFrame.new(landX, restY, landZ)
 
 			if not self.player then return end
 
-			-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
-			baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
+			-- Fishing player: gets BaitLandedEvent (splash effect)
+			baitLandedEvent:FireClient(self.player, Vector3.new(landX, restY, landZ), self.baitPart)
 
 			-- Everyone else: gets BaitSplashEvent for spectator splash effect
 			for _, p in ipairs(Players:GetPlayers()) do
 				if p ~= self.player then
-					baitSplashEvent:FireClient(p, Vector3.new(landX, BAIT_REST_Y, landZ))
+					baitSplashEvent:FireClient(p, Vector3.new(landX, restY, landZ))
 				end
 			end
 
