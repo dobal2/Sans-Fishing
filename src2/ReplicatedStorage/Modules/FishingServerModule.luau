@@ -782,11 +782,11 @@ function FishingServer:_checkMaterial()
 			local landX = baitRef.Position.X
 			local landZ = baitRef.Position.Z
 
-			-- Snap immediately to rest position — no tween, prevents visible sink/rise
+			-- Anchor first to kill physics, then snap position
+			baitRef.Anchored = true
 			baitRef.AssemblyLinearVelocity = Vector3.zero
 			baitRef.AssemblyAngularVelocity = Vector3.zero
 			baitRef.CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
-			baitRef.Anchored = true
 
 			if not self.player then return end
 

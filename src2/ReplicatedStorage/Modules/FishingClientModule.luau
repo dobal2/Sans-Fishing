@@ -1388,25 +1388,12 @@ local function playBaitSplashEffect(pos)
 	end
 end
 
--- BaitLandedEvent: fires only to the fishing player — freeze bait + effects with zero lag
+-- BaitLandedEvent: fires only to the fishing player — play splash effect only.
+-- Server already anchored + snapped the bait; touching CFrame client-side causes jitter.
 task.spawn(function()
 	local baitLandedEvent = ReplicatedStorage:WaitForChild("BaitLandedEvent", 30)
 	if not baitLandedEvent then return end
 	baitLandedEvent.OnClientEvent:Connect(function(restPos, baitInstance)
-		-- Use the exact Part passed from server; fallback to workspace search
-		local baitPart = baitInstance
-		if not baitPart then
-			local found = workspace:FindFirstChild("Bait")
-			if found then
-				baitPart = found:IsA("BasePart") and found or (found.PrimaryPart or found:FindFirstChildOfClass("BasePart"))
-			end
-		end
-		if baitPart and baitPart:IsA("BasePart") then
-			baitPart.AssemblyLinearVelocity = Vector3.zero
-			baitPart.AssemblyAngularVelocity = Vector3.zero
-			baitPart.Anchored = true
-			baitPart.CFrame = CFrame.new(restPos)
-		end
 		playBaitSplashEffect(restPos)
 	end)
 end)
