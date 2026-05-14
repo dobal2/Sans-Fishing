@@ -168,7 +168,8 @@ function FishingServer:_bindEvents()
 		humanoid:SetAttribute("OriginalWalkSpeed", humanoid.WalkSpeed)
 		humanoid:SetAttribute("OriginalJumpHeight", humanoid.JumpHeight)
 		humanoid:SetAttribute("OriginalUseJumpPower", humanoid.UseJumpPower)
-		humanoid.WalkSpeed = 0
+		-- Allow slow movement while waiting for a bite; fully locked when fish bites
+		humanoid.WalkSpeed = 4
 		humanoid.UseJumpPower = false
 		humanoid.JumpHeight = 0
 		humanoid.Jump = false
@@ -839,6 +840,10 @@ function FishingServer:_checkMaterial()
 				if self.player and self.player:GetAttribute("SizeBubbleBuff") == true then
 					ratio = ratio * 1.35
 				end
+
+				-- Fish has bitten — lock movement fully for the minigame
+				local hum = self.character and self.character:FindFirstChildOfClass("Humanoid")
+				if hum then hum.WalkSpeed = 0 end
 
 				self.remote:FireClient(self.player, "keep_waiting_animation")
 				fakeHandle.Size = fakeHandle.Size * ratio
