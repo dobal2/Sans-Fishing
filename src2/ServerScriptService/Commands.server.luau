@@ -402,9 +402,9 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :randomfish <epic|legendary|mystic|fantasy|unknown> [target]
+	-- :rf <epic|legendary|mystic|fantasy|unknown> [target]
 	-- Forces next RandomFish gacha pull to that rarity (one-time)
-	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "randomfish" then
+	if chat:lower():sub(1, #Prefix + 2) == Prefix .. "rf" then
 		if hasPermission(plr.Name, "forcerandomfish") then
 			local args = string.split(chat, " ")
 			local rarityArg = args[2] and args[2]:lower()
