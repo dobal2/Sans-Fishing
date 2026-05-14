@@ -9,7 +9,7 @@ local ROD_TOOLS = {
 	"FishingRod", "SliverRod", "GoldRod", "CrystalRod", "MagneticRod",
 	"BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
 	"ElectricRod", "RealisticRod", "BlockyRod", "ArcaneRod", "VoidRod",
-	"FriendRod", "DevRod",
+	"DevRod",
 }
 local ROD_SET = {}
 for _, name in ipairs(ROD_TOOLS) do ROD_SET[name] = true end
