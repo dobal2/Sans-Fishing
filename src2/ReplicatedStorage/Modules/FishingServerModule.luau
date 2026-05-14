@@ -1352,8 +1352,14 @@ local RARITY_EXCLAMATION_COLOR = {
 	Rare      = Color3.fromRGB(80, 140, 255),
 	Epic      = Color3.fromRGB(180, 80, 255),
 	Legendary = Color3.fromRGB(255, 200, 0),
-	Mythical  = Color3.fromRGB(255, 80, 80),
-	Fantasy   = Color3.fromRGB(255, 120, 220),
+	Mystic    = Color3.fromRGB(255, 80, 80),
+	Fantasy   = Color3.fromRGB(100, 220, 255),
+	Unknown   = Color3.fromRGB(255, 255, 255),
+}
+
+local RARITY_SCALE = {
+	Common = 1.0, Uncommon = 1.1, Rare = 1.2,
+	Epic = 1.3, Legendary = 1.5, Mystic = 1.6, Fantasy = 1.8, Unknown = 2.0,
 }
 
 function FishingServer:_showFishCaughtNotice(rarity)
@@ -1387,44 +1393,40 @@ function FishingServer:_showFishCaughtNotice(rarity)
 	local noticeGui = noticeTemplate:Clone()
 	noticeGui.Parent = head
 
-	-- Resize BillboardGui based on rarity importance
-	local rarityScale = {
-		Common = 1.0, Uncommon = 1.1, Rare = 1.2,
-		Epic = 1.3, Legendary = 1.5, Mythical = 1.6, Fantasy = 1.8,
-	}
-	local scale = rarityScale[rarity] or 1.0
+	-- Resize BillboardGui based on rarity
+	local scale = RARITY_SCALE[rarity] or 1.0
 	if noticeGui:IsA("BillboardGui") then
 		local base = noticeGui.Size
 		noticeGui.Size = UDim2.new(base.X.Scale * scale, base.X.Offset * scale, base.Y.Scale * scale, base.Y.Offset * scale)
 	end
 
-	local textColor = RARITY_EXCLAMATION_COLOR[rarity] or Color3.fromRGB(255, 255, 255)
+	local startColor = RARITY_EXCLAMATION_COLOR[rarity] or Color3.fromRGB(255, 255, 255)
+	-- Unknown: fades from white to black; all others: stay same color
+	local endColor = (rarity == "Unknown") and Color3.fromRGB(0, 0, 0) or startColor
 
-	-- Set text to "!"
 	local textLabel = noticeGui:FindFirstChildOfClass("TextLabel")
 	if textLabel then
 		textLabel.Text = "!"
-		textLabel.TextColor3 = textColor
+		textLabel.TextColor3 = startColor
 		textLabel.TextTransparency = 1
 
-		-- Fade in quickly
+		-- Fade in
 		local fadeInTween = TweenService:Create(textLabel,
 			TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{ TextTransparency = 0 }
 		)
 		fadeInTween:Play()
 
-		-- Fade out slowly after a moment
 		fadeInTween.Completed:Connect(function()
 			task.wait(0.3)
 
+			-- Fade out (+ color transition for Unknown)
 			local fadeOutTween = TweenService:Create(textLabel,
 				TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-				{ TextTransparency = 1 }
+				{ TextTransparency = 1, TextColor3 = endColor }
 			)
 			fadeOutTween:Play()
 
-			-- Remove GUI after animation completes
 			fadeOutTween.Completed:Connect(function()
 				if noticeGui and noticeGui.Parent then
 					noticeGui:Destroy()
