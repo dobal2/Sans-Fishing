@@ -310,6 +310,9 @@
         },
         "PromptFavorite": {
           "$path": "src2/StarterPlayer/StarterCharacterScripts/PromptFavorite.client.luau"
+        },
+        "RodOnBack": {
+          "$path": "src2/StarterPlayer/StarterCharacterScripts/RodOnBack.client.luau"
         }
       }
     },
