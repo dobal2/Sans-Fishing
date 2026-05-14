@@ -197,7 +197,7 @@ local function claimReward(fishName, slot, rarityColor)
 	if not unclaimed[fishName] then return end
 	unclaimed[fishName] = nil
 	updateNotifBadge()
-	discoverRemote:FireServer(fishName, fishRewardMap[fishName] or 0)
+	discoverRemote:FireServer(fishName)
 
 	stopClaimPulse(slot)
 

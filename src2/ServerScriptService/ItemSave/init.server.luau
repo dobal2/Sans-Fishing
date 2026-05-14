@@ -346,9 +346,12 @@ local function ItemObtained(player, itemName)
 
 	-- Find tool (improved)
 	local tool = nil
+	local backpack = player:FindFirstChild("Backpack")
 
 	-- Find in Backpack
-	tool = player.Backpack:FindFirstChild(itemName)
+	if backpack then
+		tool = backpack:FindFirstChild(itemName)
+	end
 	if not tool and player.Character then
 		-- Find in Character
 		tool = player.Character:FindFirstChild(itemName)
@@ -357,7 +360,7 @@ local function ItemObtained(player, itemName)
 	-- Find by exact name again (Unknown case)
 	if not tool then
 		local strippedName = StripSuffixes(itemName)
-		tool = player.Backpack:FindFirstChild(strippedName) or
+		tool = (backpack and backpack:FindFirstChild(strippedName)) or
 			(player.Character and player.Character:FindFirstChild(strippedName))
 	end
 

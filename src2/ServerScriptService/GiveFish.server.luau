@@ -141,16 +141,7 @@ local function addPromptToCharacter(char, owner)
 	end)
 end
 
--- Attach prompt when player joins
-Players.PlayerAdded:Connect(function(player)
-	player.CharacterAdded:Connect(function(char)
-		task.wait(1)
-		addPromptToCharacter(char, player)
-	end)
-end)
-
--- Also handle already connected players
-for _, player in pairs(Players:GetPlayers()) do
+local function setupPlayer(player)
 	if player.Character then
 		addPromptToCharacter(player.Character, player)
 	end
@@ -158,4 +149,9 @@ for _, player in pairs(Players:GetPlayers()) do
 		task.wait(1)
 		addPromptToCharacter(char, player)
 	end)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+for _, player in pairs(Players:GetPlayers()) do
+	setupPlayer(player)
 end

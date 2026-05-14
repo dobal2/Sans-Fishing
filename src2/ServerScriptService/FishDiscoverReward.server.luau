@@ -6,28 +6,40 @@ local dataManager = require(script.Parent.leaderstats.DataManager)
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
 local discoverNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("DiscoverNoticeEvent")
 
-local VALID_FISHES = {
-	["Small Carp"] = true, ["Gold Fish"] = true, ["Stone Fish"] = true,
-	["Crab"] = true, ["Crystal Bass"] = true, ["Dust Fish"] = true,
-	["Bass"] = true, ["Snow Fish"] = true, ["Diri"] = true,
-	["Dragon Head Fish"] = true, ["Reggigash"] = true,
-	["Golden Trout"] = true, ["Armor Fish"] = true,
-	["Shark"] = true, ["Ray"] = true,
-	["Undyine"] = true, ["Sans"] = true, ["Electric Fish"] = true,
-	["Unknown"] = true, ["Nyan Cat"] = true,
+-- Server-authoritative fish → rarity mapping (client cannot spoof reward amount)
+local FISH_RARITY = {
+	["Small Carp"] = "Common", ["Gold Fish"] = "Common", ["Stone Fish"] = "Common",
+	["Crab"] = "Uncommon", ["Crystal Bass"] = "Uncommon", ["Dust Fish"] = "Uncommon",
+	["Bass"] = "Rare", ["Snow Fish"] = "Rare", ["Diri"] = "Rare",
+	["Dragon Head Fish"] = "Epic", ["Reggigash"] = "Epic",
+	["Golden Trout"] = "Legendary", ["Armor Fish"] = "Legendary",
+	["Shark"] = "Mystic", ["Ray"] = "Mystic",
+	["Undyine"] = "Fantasy", ["Sans"] = "Fantasy", ["Electric Fish"] = "Fantasy",
+	["Unknown"] = "Unknown", ["Nyan Cat"] = "Unknown",
 }
 
-local MAX_REWARD = 100000
+local DISCOVER_REWARDS = {
+	Common = 50, Uncommon = 150, Rare = 400, Epic = 1000,
+	Legendary = 3000, Mystic = 8000, Fantasy = 25000, Unknown = 100000,
+}
 
-remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
-	if type(fishName) ~= "string" or not VALID_FISHES[fishName] then
-		warn("FishDiscoverReward: invalid fishName from", player.Name, tostring(fishName))
+local discoverCooldowns = {}
+Players.PlayerRemoving:Connect(function(p) discoverCooldowns[p] = nil end)
+
+remote.OnServerEvent:Connect(function(player, fishName)
+	-- Rate limit: once per 2 seconds
+	local now = tick()
+	if discoverCooldowns[player] and now - discoverCooldowns[player] < 2 then return end
+	discoverCooldowns[player] = now
+
+	if type(fishName) ~= "string" then
+		warn("FishDiscoverReward: invalid fishName from", player.Name)
 		return
 	end
 
-	rewardCoins = math.floor(tonumber(rewardCoins) or 0)
-	if rewardCoins <= 0 or rewardCoins > MAX_REWARD then
-		warn("FishDiscoverReward: invalid rewardCoins from", player.Name, rewardCoins)
+	local rarity = FISH_RARITY[fishName]
+	if not rarity then
+		warn("FishDiscoverReward: unknown fish from", player.Name, tostring(fishName))
 		return
 	end
 
@@ -36,6 +48,7 @@ remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
 	local fishFolder = leaderstats:FindFirstChild("Fish")
 	if not fishFolder then return end
 
+	-- Verify the fish is actually discovered server-side
 	local fishBool = fishFolder:FindFirstChild(fishName)
 	if not fishBool or not fishBool.Value then
 		warn("FishDiscoverReward: fish not actually discovered for", player.Name, fishName)
@@ -45,6 +58,8 @@ remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
 	local coinsValue = leaderstats:FindFirstChild("Coins")
 	if not coinsValue then return end
 
+	-- Server calculates reward — client input ignored
+	local rewardCoins = DISCOVER_REWARDS[rarity] or 0
 	local newCoins = coinsValue.Value + rewardCoins
 	coinsValue.Value = newCoins
 

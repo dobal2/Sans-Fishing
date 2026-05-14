@@ -21,16 +21,18 @@ CodeResponseEvent.Name = "CodeResponseEvent"
 CodeResponseEvent.Parent = ReplicatedStorage
 
 local function save(p)
-	local saved,failed = pcall(function()
+	local folder = p:FindFirstChild("CodesFolder")
+	if not folder then return end
+	local saved, failed = pcall(function()
 		local usedCodes = {}
-		for i, v in pairs(p.CodesFolder:GetChildren()) do
+		for _, v in pairs(folder:GetChildren()) do
 			if v.Value == true then
-				table.insert(usedCodes,v.Name)
+				table.insert(usedCodes, v.Name)
 			end
 		end
 		gameDataStore:SetAsync(p.UserId, usedCodes)
 	end)
-	if not saved then warn(failed) end
+	if not saved then warn("plrCodes save failed:", failed) end
 end
 
 local function load(p)
