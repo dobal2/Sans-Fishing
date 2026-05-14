@@ -324,6 +324,10 @@ function FishingServer:_createBait()
 	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
 	self.baitPart.Massless = true
 	self.baitPart.Parent = workspace
+	-- Give physics ownership to the fishing player so bait movement is lag-free on their client
+	if self.player then
+		self.baitPart:SetNetworkOwner(self.player)
+	end
 	-- baitLandConn is set in _checkMaterial which starts the Heartbeat loop
 end
 
@@ -758,7 +762,7 @@ function FishingServer:_checkMaterial()
 		end
 
 		-- Slow approach: dampen velocity when bait is near the surface
-		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y + 0.15 then
+		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y + 0.4 then
 			local vel = bait.AssemblyLinearVelocity
 			if vel.Y < 0 then
 				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
@@ -766,9 +770,9 @@ function FishingServer:_checkMaterial()
 			return
 		end
 
-		-- Catch bait just before it breaks the surface (0.15 studs above) to avoid
-		-- the visible "sink then pop up" effect caused by detecting after crossing.
-		if currentY > WATER_SURFACE_Y + 0.15 then return end
+		-- Catch bait 0.4 studs above surface — client owns physics so server reads
+		-- replicated position which arrives slightly late; catching early compensates.
+		if currentY > WATER_SURFACE_Y + 0.4 then return end
 
 		landed = true
 		conn:Disconnect()
@@ -1396,11 +1400,14 @@ function FishingServer:_showFishCaughtNotice(rarity)
 	local noticeGui = noticeTemplate:Clone()
 	noticeGui.Parent = head
 
-	-- Resize BillboardGui based on rarity
+	-- Size in studs: small base so it looks right up-close, not huge from far away.
+	-- Rarity scale adds a modest boost for rarer fish.
 	local scale = RARITY_SCALE[rarity] or 1.0
 	if noticeGui:IsA("BillboardGui") then
-		local base = noticeGui.Size
-		noticeGui.Size = UDim2.new(base.X.Scale * scale, base.X.Offset * scale, base.Y.Scale * scale, base.Y.Offset * scale)
+		local baseStuds = 1.4  -- studs wide for Common
+		local studs = baseStuds * scale
+		noticeGui.Size = UDim2.new(studs, 0, studs * 1.25, 0)
+		noticeGui.MaxDistance = 20  -- only visible within 20 studs
 	end
 
 	local startColor = RARITY_EXCLAMATION_COLOR[rarity] or Color3.fromRGB(255, 255, 255)
