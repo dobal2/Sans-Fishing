@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
+local AnalyticsService = game:GetService("AnalyticsService")
 
 local SANS_BADGE_ID = 2468526859123734
 local POWER_X2_GAMEPASS_ID = 1290056221
@@ -183,6 +184,10 @@ function FishingServer:_bindEvents()
 		-- Client already plays fishing animation (Raft style: client-first)
 		task.spawn(function()
 			if not self.cancelled and self.player == player then
+				-- Funnel: step 1 — rod cast
+				pcall(function()
+					AnalyticsService:LogFunnelStepEvent(player, "Fishing", 1, "RodCast")
+				end)
 				self:_createBait()
 				self:_setupRope()
 				self:_moveBaitTo(targetPos)
@@ -698,6 +703,7 @@ end
 
 local GROUND_DETECT_ABOVE_WATER = 2.0  -- studs above WATER_SURFACE_Y to consider "ground not water"
 local GROUND_RAYCAST_DIST = 0.6        -- downward ray length for ground detection
+local BAIT_CHECK_INTERVAL = 0.05       -- seconds between bait position checks (20Hz instead of 60Hz)
 
 function FishingServer:_checkMaterial()
 	-- Heartbeat-based water landing: detects when bait crosses WATER_SURFACE_Y,
@@ -706,11 +712,16 @@ function FishingServer:_checkMaterial()
 	local landed = false
 	local groundCancelled = false
 	local prevY = nil
+	local lastCheckTime = 0
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	rayParams.FilterDescendantsInstances = {self.baitPart, self.character}
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
+		local now = tick()
+		if now - lastCheckTime < BAIT_CHECK_INTERVAL then return end
+		lastCheckTime = now
+
 		local bait = self.baitPart
 		if not bait or not bait.Parent then conn:Disconnect(); return end
 		if landed or groundCancelled then return end
@@ -781,6 +792,11 @@ function FishingServer:_checkMaterial()
 			task.wait(settleDuration)
 
 			if not self.player then return end
+
+			-- Funnel: step 2 — bait landed in water
+			pcall(function()
+				AnalyticsService:LogFunnelStepEvent(self.player, "Fishing", 2, "BaitLanded")
+			end)
 
 			-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
 			baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
@@ -1159,6 +1175,8 @@ function FishingServer:_resolveFishing(player, result)
 		local valueObj = toolClone:FindFirstChild("FishValue") or Instance.new("IntValue")
 		valueObj.Name = "FishValue"
 		valueObj.Value = adjustedValue
+		-- Store original base so GamblerHandler never needs reverse-calculation
+		valueObj:SetAttribute("OriginalBaseValue", baseValue)
 		valueObj.Parent = toolClone
 
 		local weightObj = toolClone:FindFirstChild("FishWeight") or Instance.new("NumberValue")
@@ -1242,6 +1260,19 @@ function FishingServer:_resolveFishing(player, result)
 			local backpackTool = createFishTool(fishInfo)
 			backpackTool.Parent = player:FindFirstChild("Backpack")
 
+			-- Economy: fish caught (sink — player receives item worth adjustedValue coins)
+			local minW2, maxW2 = fishInfo.minWeight or 1, fishInfo.maxWeight or 1
+			local vRatio2 = math.clamp((fishInfo.weight - minW2) / math.max(maxW2 - minW2, 0.001), 0, 1)
+			local caughtValue = math.floor((fishInfo.value or 0) * (1.2 + math.pow(vRatio2, 0.8) * 7.0))
+			pcall(function()
+				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
+					caughtValue, 0, "FishCaught", fishInfo.name or "Unknown", fishInfo.fishName)
+			end)
+			-- Funnel: step 3 — minigame completed successfully
+			pcall(function()
+				AnalyticsService:LogFunnelStepEvent(player, "Fishing", 3, "MinigameSuccess")
+			end)
+
 			-- 5% chance to trigger free random fish gacha
 			local didTriggerGacha = math.random() < 0.05
 			if didTriggerGacha then
@@ -1298,6 +1329,10 @@ function FishingServer:_resolveFishing(player, result)
 
 	else
 		-- Failed (result == 0 or other)
+		-- Funnel: step 4 — minigame failed
+		pcall(function()
+			AnalyticsService:LogFunnelStepEvent(player, "Fishing", 4, "MinigameFail")
+		end)
 
 		-- Send fail message to client (to close UI)
 		self.remote:FireClient(player, "fail")

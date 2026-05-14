@@ -4,9 +4,13 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnalyticsService = game:GetService("AnalyticsService")
 
 local DOUBLE_SELL_GAMEPASS_ID = 1293430515
 local GROUP_ID = 9744474
+local SELL_COOLDOWN = 1.0
+
+local sellCooldowns = {}
 
 local soldNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
 local sellGuiEvent          = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellGuiEvent")
@@ -86,7 +90,15 @@ end
 
 task.spawn(wireSellShop)
 
+Players.PlayerRemoving:Connect(function(player)
+	sellCooldowns[player] = nil
+end)
+
 sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
+	local now = tick()
+	if sellCooldowns[player] and now - sellCooldowns[player] < SELL_COOLDOWN then return end
+	sellCooldowns[player] = now
+
 	local character = player.Character
 	local backpack = player:FindFirstChild("Backpack")
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -143,6 +155,10 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
 			coins.Value += totalEarned
 			soldNotificationEvent:FireClient(player, totalEarned)
+			pcall(function()
+				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
+					totalEarned, coins.Value, "FishSell", "SellAll", nil)
+			end)
 		else
 			soldNotificationEvent:FireClient(player, 0, true)
 		end
@@ -166,6 +182,10 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
 			coins.Value += totalEarned
 			soldNotificationEvent:FireClient(player, totalEarned)
+			pcall(function()
+				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
+					totalEarned, coins.Value, "FishSell", "SellHeld", nil)
+			end)
 		end
 		enablePromptEvent:FireClient(player, true)
 

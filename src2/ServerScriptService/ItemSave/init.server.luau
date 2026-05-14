@@ -15,6 +15,11 @@ local FishData = require(moduleScript)
 -- Real-time inventory tracking table per player
 local PlayerInventoryTracker = {}
 
+-- Debounce batch-save state (scheduleSave defined after saveCurrentInventory)
+local pendingSaveTimers = {}
+local SAVE_DEBOUNCE = 3.0
+local scheduleSave -- forward declaration
+
 -- StripSuffixes modified to handle Festival + Frozen fish
 local function StripSuffixes(name: string)
 	local originalName = name
@@ -321,6 +326,18 @@ local function saveCurrentInventory(player)
 	DataManager:SaveData(player)
 end
 
+scheduleSave = function(player)
+	if pendingSaveTimers[player] then
+		task.cancel(pendingSaveTimers[player])
+	end
+	pendingSaveTimers[player] = task.delay(SAVE_DEBOUNCE, function()
+		pendingSaveTimers[player] = nil
+		if player:IsDescendantOf(game.Players) then
+			saveCurrentInventory(player)
+		end
+	end)
+end
+
 local function ItemObtained(player, itemName)
 	-- Skip rods
 	if IsRod(itemName) then
@@ -365,7 +382,7 @@ local function ItemObtained(player, itemName)
 				end
 
 				table.insert(originalData.items, itemName)
-				DataManager:SaveData(player)
+				scheduleSave(player)
 			end)
 
 			if not success then
@@ -441,7 +458,7 @@ local function ItemObtained(player, itemName)
 				originalData.fishLocks[tostring(itemIndex)] = isLocked
 			end
 
-			DataManager:SaveData(player)
+			scheduleSave(player)
 		end)
 
 		if not success then
@@ -503,7 +520,7 @@ local function ItemLost(player, itemName)
 			end
 			originalData.fishLocks = newFishLocks
 
-			DataManager:SaveData(player)
+			scheduleSave(player)
 			return
 		end
 	end
@@ -884,6 +901,11 @@ end)
 
 -- PlayerRemoving event (revised, checks ItemReady)
 game.Players.PlayerRemoving:Connect(function(player)
+	-- Cancel any pending debounce timer; we save immediately below
+	if pendingSaveTimers[player] then
+		task.cancel(pendingSaveTimers[player])
+		pendingSaveTimers[player] = nil
+	end
 
 	-- Skip save if ItemReady not set
 	if not player:FindFirstChild("ItemReady") then

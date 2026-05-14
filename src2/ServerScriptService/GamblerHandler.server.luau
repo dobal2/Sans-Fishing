@@ -3,6 +3,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnalyticsService = game:GetService("AnalyticsService")
 
 local gambleChoiceEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleChoiceEvent")
 local enablePromptEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SetPromptEvent")
@@ -258,6 +259,10 @@ local function performGamble(player, tool)
 		return
 	end
 	coins.Value -= GAMBLE_COST
+	pcall(function()
+		AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
+			GAMBLE_COST, coins.Value, "Gamble", "GambleFish", nil)
+	end)
 	local wasFrozen = hasFrozenPrefix(fishName)
 	local wasFestival = hasFestivalPrefix(fishName)
 	local newWeight = calculateWeightChange(weight)

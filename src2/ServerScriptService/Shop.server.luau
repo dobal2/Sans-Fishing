@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local AnalyticsService = game:GetService("AnalyticsService")
 
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishingRod")
 local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
@@ -89,6 +90,10 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 			if rodBool then
 				rodBool.Value = true
 			end
+			pcall(function()
+				AnalyticsService:LogEconomyEvent(plr, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
+					item.price, coins.Value, "ShopPurchase", "Rod", itemname)
+			end)
 
 		end
 	end
