@@ -757,7 +757,7 @@ function FishingServer:_checkMaterial()
 		end
 
 		-- Slow approach: dampen velocity when bait is near the surface
-		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y then
+		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y + 0.15 then
 			local vel = bait.AssemblyLinearVelocity
 			if vel.Y < 0 then
 				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
@@ -765,7 +765,9 @@ function FishingServer:_checkMaterial()
 			return
 		end
 
-		if currentY > WATER_SURFACE_Y then return end
+		-- Catch bait just before it breaks the surface (0.15 studs above) to avoid
+		-- the visible "sink then pop up" effect caused by detecting after crossing.
+		if currentY > WATER_SURFACE_Y + 0.15 then return end
 
 		landed = true
 		conn:Disconnect()
@@ -780,16 +782,11 @@ function FishingServer:_checkMaterial()
 			local landX = baitRef.Position.X
 			local landZ = baitRef.Position.Z
 
-			-- Smoothly settle bait at rest Y with tween (avoids teleport pop)
+			-- Snap immediately to rest position — no tween, prevents visible sink/rise
 			baitRef.AssemblyLinearVelocity = Vector3.zero
 			baitRef.AssemblyAngularVelocity = Vector3.zero
+			baitRef.CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
 			baitRef.Anchored = true
-			local overshoot = math.abs(BAIT_REST_Y - baitRef.Position.Y)
-			local settleDuration = math.clamp(overshoot * 0.06, 0.04, 0.18)
-			TweenService:Create(baitRef, TweenInfo.new(settleDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
-			}):Play()
-			task.wait(settleDuration)
 
 			if not self.player then return end
 
