@@ -845,6 +845,7 @@ function FishingServer:_checkMaterial()
 				self._hookedBaseSize = fakeHandle.Size
 
 				local highLight = Instance.new("Highlight")
+				highLight.DepthMode = Enum.HighlightDepthMode.Occluded
 				highLight.FillColor = Color3.new(0, 0, 0)
 				highLight.FillTransparency = 0
 				highLight.OutlineTransparency = 0
