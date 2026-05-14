@@ -157,7 +157,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			soldNotificationEvent:FireClient(player, totalEarned)
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
-					totalEarned, coins.Value, "FishSell", "SellAll", nil)
+					totalEarned, coins.Value, "FishSell", "SellAll")
 			end)
 		else
 			soldNotificationEvent:FireClient(player, 0, true)
@@ -184,7 +184,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			soldNotificationEvent:FireClient(player, totalEarned)
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
-					totalEarned, coins.Value, "FishSell", "SellHeld", nil)
+					totalEarned, coins.Value, "FishSell", "SellHeld")
 			end)
 		end
 		enablePromptEvent:FireClient(player, true)

@@ -14,7 +14,7 @@ end
 -- Funnel step 1: player joined (tutorial started)
 Players.PlayerAdded:Connect(function(player)
 	pcall(function()
-		AnalyticsService:LogFunnelStepEvent(player, "Tutorial", 1, "Joined")
+		AnalyticsService:LogFunnelStepEvent(player, "Tutorial", nil, 1, "Joined")
 	end)
 end)
 
@@ -28,6 +28,6 @@ tutorialCompleteRemote.OnServerEvent:Connect(function(player)
 
 	-- Funnel step 2: tutorial completed
 	pcall(function()
-		AnalyticsService:LogFunnelStepEvent(player, "Tutorial", 2, "Completed")
+		AnalyticsService:LogFunnelStepEvent(player, "Tutorial", nil, 2, "Completed")
 	end)
 end)

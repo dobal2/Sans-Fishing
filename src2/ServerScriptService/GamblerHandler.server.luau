@@ -261,7 +261,7 @@ local function performGamble(player, tool)
 	coins.Value -= GAMBLE_COST
 	pcall(function()
 		AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
-			GAMBLE_COST, coins.Value, "Gamble", "GambleFish", nil)
+			GAMBLE_COST, coins.Value, "Gamble", "GambleFish")
 	end)
 	local wasFrozen = hasFrozenPrefix(fishName)
 	local wasFestival = hasFestivalPrefix(fishName)

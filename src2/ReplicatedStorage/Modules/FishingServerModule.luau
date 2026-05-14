@@ -1257,7 +1257,7 @@ function FishingServer:_resolveFishing(player, result)
 			local caughtValue = math.floor((fishInfo.value or 0) * (1.2 + math.pow(vRatio2, 0.8) * 7.0))
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
-					caughtValue, 0, "FishCaught", fishInfo.name or "Unknown", fishInfo.fishName)
+					caughtValue, 0, "FishCaught", fishInfo.name or "Unknown")
 			end)
 
 			-- 5% chance to trigger free random fish gacha

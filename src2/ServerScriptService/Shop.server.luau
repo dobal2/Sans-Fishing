@@ -99,7 +99,7 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 			pcall(function()
 				local funnelStep = ROD_FUNNEL_STEP["RobuxRod"]
 				if funnelStep then
-					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", funnelStep, "RobuxRod")
+					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", nil, funnelStep, "RobuxRod")
 				end
 			end)
 		end
@@ -116,12 +116,12 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 			end
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(plr, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
-					item.price, coins.Value, "ShopPurchase", "Rod", itemname)
+					item.price, coins.Value, "ShopPurchase", itemname)
 			end)
 			local funnelStep = ROD_FUNNEL_STEP[itemname]
 			if funnelStep then
 				pcall(function()
-					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", funnelStep, itemname)
+					AnalyticsService:LogFunnelStepEvent(plr, "RodProgression", nil, funnelStep, itemname)
 				end)
 			end
 
