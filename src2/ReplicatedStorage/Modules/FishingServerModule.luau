@@ -40,8 +40,12 @@ function FishingServer.init(tool)
 	local self = setmetatable({}, FishingServer)
 	self.tool = tool
 
-	self.castEvent = tool:WaitForChild("CastRod")
-	self.remote = tool:WaitForChild("RemoteEvent")
+	self.castEvent = tool:FindFirstChild("CastRod") or tool:WaitForChild("CastRod", 5)
+	self.remote = tool:FindFirstChild("RemoteEvent") or tool:WaitForChild("RemoteEvent", 5)
+	if not self.castEvent or not self.remote then
+		warn("FishingServer.init: missing CastRod or RemoteEvent on", tool.Name)
+		return
+	end
 	self.cancelled = false
 	self.baitPart = nil
 	self.rope = nil
