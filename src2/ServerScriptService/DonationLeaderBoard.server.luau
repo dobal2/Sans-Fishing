@@ -25,7 +25,7 @@ end
 local cachedList = {}
 
 local function buildDonationList()
-	local raw = DataManager:GetTopDonationPlayers(50)
+	local raw = DataManager:GetTopDonationPlayers(120)
 	local result = {}
 	for _, entry in ipairs(raw) do
 		if (entry.Donations or 0) > 0 and not shouldExcludeUser(entry.UserId) then
@@ -36,7 +36,7 @@ local function buildDonationList()
 				donations = entry.Donations,
 				rank      = #result + 1,
 			})
-			if #result >= 20 then break end
+			if #result >= 100 then break end
 		end
 	end
 	return result
