@@ -72,16 +72,16 @@ local function setupCharacter(player, character)
 	local humanoid = character:WaitForChild("Humanoid")
 
 	-- Tool equipped (rod moved from Backpack → Character)
-	humanoid.ToolEquipped:Connect(function(tool)
-		if ROD_SET[tool.Name] then
+	character.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") and ROD_SET[child.Name] then
 			removeBackRod(character)
 		end
 	end)
 
 	-- Tool unequipped (rod moved back to Backpack)
-	humanoid.ToolUnequipped:Connect(function(tool)
-		if ROD_SET[tool.Name] then
-			task.wait(0.1) -- wait for tool to land in Backpack
+	character.ChildRemoved:Connect(function(child)
+		if child:IsA("Tool") and ROD_SET[child.Name] then
+			task.wait(0.1)
 			local inBackpack = getBackpackRod(player)
 			if inBackpack and not getEquippedRod(character) then
 				showBackRod(character, inBackpack)
