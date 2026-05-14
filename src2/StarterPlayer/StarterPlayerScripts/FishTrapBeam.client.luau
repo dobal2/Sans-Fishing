@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
-local ShowBeamEvent = ReplicatedStorage:WaitForChild("ShowBeamEvent")
+local ShowBeamEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("ShowBeamEvent")
 local tutorialBeam = ReplicatedStorage:WaitForChild("TutorialBeam")
 
 -- Beam management variables

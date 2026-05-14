@@ -5,6 +5,10 @@ local MessagingService = game:GetService("MessagingService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local ItemSaveDataManager = require(ServerScriptService:WaitForChild("ItemSave"):WaitForChild("DataManager"))
 
 -- Create/get announcement remote event
 local announceRemote = ReplicatedStorage:FindFirstChild("AnnounceRemote")
@@ -32,6 +36,12 @@ local Permissions = {
 		SlapBattleAll = true,
 		DevRod = true,
 		DevRodAll = true,
+		forcefish = true,
+		forcerandomfish = true,
+		reset = true,
+		coinreset = true,
+		invenreset = true,
+		indexreset = true,
 	},
 	Moderator = {
 		kick = true,
@@ -41,10 +51,16 @@ local Permissions = {
 		SlapBattleAll = true,
 		DevRod = true,
 		DevRodAll = true,
+		forcefish = true,
+		forcerandomfish = true,
+		reset = true,
+		coinreset = true,
+		invenreset = true,
+		indexreset = true,
 	}
 }
 
-local Prefix = ":"
+local Prefix = "/"
 
 -- Utility functions
 local function getPlayerRank(playerName)
@@ -103,13 +119,11 @@ local function giveSlapBattle(targetPlayer, executorName)
 		return false
 	end
 
-	-- Check for duplicates
 	local existingTool = backpack:FindFirstChild("SlapBattle")
 	if existingTool then
 		return true
 	end
 
-	-- Clone and give SlapBattle
 	local clonedTool = slapBattleTool:Clone()
 	clonedTool.Parent = backpack
 
@@ -117,21 +131,10 @@ local function giveSlapBattle(targetPlayer, executorName)
 end
 
 local function giveSlapBattleToAllInServer(senderName)
-	local successCount = 0
-	local failCount = 0
-
 	for _, player in pairs(Players:GetPlayers()) do
-		if giveSlapBattle(player, senderName) then
-			successCount = successCount + 1
-		else
-			failCount = failCount + 1
-		end
-
-		-- Notify player
-		local message = string.format("Received SlapBattle from developer %s", senderName)
-		announceRemote:FireClient(player, message, "SYSTEM")
+		giveSlapBattle(player, senderName)
+		announceRemote:FireClient(player, string.format("Received SlapBattle from developer %s", senderName), "SYSTEM")
 	end
-
 end
 
 -- DevRod functions
@@ -149,13 +152,11 @@ local function giveDevRod(targetPlayer, executorName)
 		return false
 	end
 
-	-- Check for duplicates
 	local existingTool = backpack:FindFirstChild("DevRod")
 	if existingTool then
 		return true
 	end
 
-	-- Clone and give DevRod
 	local clonedTool = devRodTool:Clone()
 	clonedTool.Parent = backpack
 
@@ -163,38 +164,21 @@ local function giveDevRod(targetPlayer, executorName)
 end
 
 local function giveDevRodToAllInServer(senderName)
-	local successCount = 0
-	local failCount = 0
-
 	for _, player in pairs(Players:GetPlayers()) do
-		if giveDevRod(player, senderName) then
-			successCount = successCount + 1
-		else
-			failCount = failCount + 1
-		end
-
-		-- Notify player
-		local message = string.format("Received DevRod from developer %s", senderName)
-		announceRemote:FireClient(player, message, "SYSTEM")
+		giveDevRod(player, senderName)
+		announceRemote:FireClient(player, string.format("Received DevRod from developer %s", senderName), "SYSTEM")
 	end
-
 end
 
 -- Coin functions
 local function giveCoinsToAllInServer(amount, senderName)
-	local playersAffected = 0
-
 	for _, player in pairs(Players:GetPlayers()) do
 		local stats = player:FindFirstChild("leaderstats")
 		if stats and stats:FindFirstChild("Coins") then
 			stats.Coins.Value = stats.Coins.Value + amount
-			playersAffected = playersAffected + 1
-
-			local message = string.format("Received %s coins from developer %s", amount, senderName)
-			announceRemote:FireClient(player, message, "SYSTEM")
+			announceRemote:FireClient(player, string.format("Received %s coins from developer %s", amount, senderName), "SYSTEM")
 		end
 	end
-
 end
 
 local function sendAnnounceToServer(message, senderName, senderRank)
@@ -234,9 +218,7 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local speed = tonumber(args[3]) or 16
-
 			if not targetName then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
 			for _, v in pairs(foundPlayers) do
 				if v.Character and v.Character:FindFirstChild("Humanoid") then
@@ -251,9 +233,7 @@ local function command(plr, chat)
 		if hasPermission(plr.Name, "ang") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
-
 			if not targetName then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
 			for _, v in pairs(foundPlayers) do
 				if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
@@ -273,9 +253,7 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local reason = table.concat(args, " ", 3) or "No reason provided"
-
 			if not targetName or targetName:lower() == "all" then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
 			for _, v in pairs(foundPlayers) do
 				v:Kick("You have been kicked by " .. plr.Name .. ". Reason: " .. reason)
@@ -289,9 +267,7 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local amount = tonumber(args[3])
-
 			if not targetName or not amount then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
 			for _, v in pairs(foundPlayers) do
 				local stats = v:FindFirstChild("leaderstats")
@@ -306,7 +282,6 @@ local function command(plr, chat)
 	if chat:sub(1, 9) == Prefix.."announce" then
 		if hasPermission(plr.Name, "announce") then
 			local message = chat:sub(11)
-
 			if message and message:len() > 0 then
 				local success, errorMessage = pcall(function()
 					MessagingService:PublishAsync("GlobalAnnouncement", {
@@ -316,7 +291,6 @@ local function command(plr, chat)
 						timestamp = os.time()
 					})
 				end)
-
 				if not success then
 					warn("MessagingService error:", errorMessage)
 				end
@@ -329,9 +303,7 @@ local function command(plr, chat)
 		if hasPermission(plr.Name, "GlobalGiveCoins") then
 			local args = string.split(chat, " ")
 			local amount = tonumber(args[2])
-
 			if not amount or amount <= 0 then return end
-
 			local success, errorMessage = pcall(function()
 				MessagingService:PublishAsync("GlobalCoinGive", {
 					amount = amount,
@@ -340,7 +312,6 @@ local function command(plr, chat)
 					timestamp = os.time()
 				})
 			end)
-
 			if not success then
 				warn("MessagingService error:", errorMessage)
 			end
@@ -357,10 +328,8 @@ local function command(plr, chat)
 					timestamp = os.time()
 				})
 			end)
-
 			if not success then
 				warn("MessagingService error:", errorMessage)
-				-- Fallback: give to current server only
 				giveSlapBattleToAllInServer(plr.Name)
 			end
 		end
@@ -371,21 +340,11 @@ local function command(plr, chat)
 		if hasPermission(plr.Name, "SlapBattle") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
-
 			if not targetName then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
-			local successCount = 0
-			local failCount = 0
-
 			for _, v in pairs(foundPlayers) do
-				if giveSlapBattle(v, plr.Name) then
-					successCount = successCount + 1
-				else
-					failCount = failCount + 1
-				end
+				giveSlapBattle(v, plr.Name)
 			end
-
 		end
 	end
 
@@ -399,10 +358,8 @@ local function command(plr, chat)
 					timestamp = os.time()
 				})
 			end)
-
 			if not success then
 				warn("MessagingService error:", errorMessage)
-				-- Fallback: give to current server only
 				giveDevRodToAllInServer(plr.Name)
 			end
 		end
@@ -413,23 +370,172 @@ local function command(plr, chat)
 		if hasPermission(plr.Name, "DevRod") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
-
 			if not targetName then return end
-
 			local foundPlayers = findPlayers(plr, targetName)
-			local successCount = 0
-			local failCount = 0
-
 			for _, v in pairs(foundPlayers) do
-				if giveDevRod(v, plr.Name) then
-					successCount = successCount + 1
-				else
-					failCount = failCount + 1
-				end
+				giveDevRod(v, plr.Name)
 			end
-
 		end
 	end
+
+	-- :common/:uncommon/:rare/:epic/:legendary/:mystic/:fantasy/:unknown [target]
+	-- Forces the next normal fish catch to that rarity (one-time)
+	do
+		local VALID_RARITIES = {
+			common="Common", uncommon="Uncommon", rare="Rare",
+			epic="Epic", legendary="Legendary", mystic="Mystic",
+			fantasy="Fantasy", unknown="Unknown"
+		}
+		local lowerChat = chat:lower()
+		for cmdKey, rarityName in pairs(VALID_RARITIES) do
+			if lowerChat:sub(1, #Prefix + #cmdKey) == Prefix .. cmdKey then
+				if hasPermission(plr.Name, "forcefish") then
+					local args = string.split(chat, " ")
+					local targetName = args[2] or plr.Name
+					local foundPlayers = findPlayers(plr, targetName)
+					for _, v in pairs(foundPlayers) do
+						v:SetAttribute("ForcedRarity", rarityName)
+					end
+				end
+				return
+			end
+		end
+	end
+
+	-- :randomfish <epic|legendary|mystic|fantasy|unknown> [target]
+	-- Forces next RandomFish gacha pull to that rarity (one-time)
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "randomfish" then
+		if hasPermission(plr.Name, "forcerandomfish") then
+			local args = string.split(chat, " ")
+			local rarityArg = args[2] and args[2]:lower()
+			local targetName = args[3] or plr.Name
+			local GACHA_RARITIES = {
+				epic="Epic", legendary="Legendary", mystic="Mystic",
+				fantasy="Fantasy", unknown="Unknown"
+			}
+			local forcedRarity = rarityArg and GACHA_RARITIES[rarityArg]
+			if forcedRarity then
+				local foundPlayers = findPlayers(plr, targetName)
+				for _, v in pairs(foundPlayers) do
+					v:SetAttribute("ForcedRandomFish", forcedRarity)
+				end
+			end
+		end
+	end
+
+	-- :reset [target] — full data reset (leaderstats + inventory)
+	if chat:lower():sub(1, #Prefix + 5) == Prefix .. "reset" and not chat:lower():find("coinreset") and not chat:lower():find("invenreset") and not chat:lower():find("indexreset") then
+		if hasPermission(plr.Name, "reset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local data = LeaderstatsDataManager:GetData(v)
+				if data then
+					data.Coins = 2000
+					data.CurrentRod = "FishingRod"
+					data.Rods = {}
+					data.Fish = {}
+					data.Boats = {}
+					data.FishTraps = {}
+					data.Playtime = 0
+					data.Donations = 0
+					LeaderstatsDataManager:UpdateData(v, "Coins", 2000)
+				end
+				local itemData = ItemSaveDataManager:GetData(v)
+				if itemData then
+					itemData.items = {}
+					itemData.hotbarSlots = {}
+					ItemSaveDataManager:UpdateData(v, "items", {})
+					ItemSaveDataManager:UpdateData(v, "hotbarSlots", {})
+				end
+				local leaderstats = v:FindFirstChild("leaderstats")
+				if leaderstats then
+					local coins = leaderstats:FindFirstChild("Coins")
+					if coins then coins.Value = 2000 end
+					local fishFolder = leaderstats:FindFirstChild("Fish")
+					if fishFolder then
+						for _, fish in ipairs(fishFolder:GetChildren()) do
+							if fish:IsA("BoolValue") then fish.Value = false end
+						end
+					end
+				end
+				announceRemote:FireClient(v, "Your data has been fully reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :coinreset [target] — reset coins to 0
+	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "coinreset" then
+		if hasPermission(plr.Name, "coinreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				LeaderstatsDataManager:UpdateData(v, "Coins", 0)
+				local leaderstats = v:FindFirstChild("leaderstats")
+				if leaderstats then
+					local coins = leaderstats:FindFirstChild("Coins")
+					if coins then coins.Value = 0 end
+				end
+				announceRemote:FireClient(v, "Your coins have been reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :invenreset [target] — reset fish inventory (ItemSave)
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "invenreset" then
+		if hasPermission(plr.Name, "invenreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local itemData = ItemSaveDataManager:GetData(v)
+				if itemData then
+					itemData.items = {}
+					itemData.hotbarSlots = {}
+					ItemSaveDataManager:UpdateData(v, "items", {})
+					ItemSaveDataManager:UpdateData(v, "hotbarSlots", {})
+				end
+				local backpack = v:FindFirstChild("Backpack")
+				if backpack then
+					for _, tool in ipairs(backpack:GetChildren()) do
+						if tool:IsA("Tool") and tool:FindFirstChild("FishRarity") then
+							tool:Destroy()
+						end
+					end
+				end
+				announceRemote:FireClient(v, "Your fish inventory has been reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :indexreset [target] — reset fish discovery catalog
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "indexreset" then
+		if hasPermission(plr.Name, "indexreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local data = LeaderstatsDataManager:GetData(v)
+				if data then
+					data.Fish = {}
+					LeaderstatsDataManager:UpdateData(v, "Fish", {})
+				end
+				local leaderstats = v:FindFirstChild("leaderstats")
+				if leaderstats then
+					local fishFolder = leaderstats:FindFirstChild("Fish")
+					if fishFolder then
+						for _, fish in ipairs(fishFolder:GetChildren()) do
+							if fish:IsA("BoolValue") then fish.Value = false end
+						end
+					end
+				end
+				announceRemote:FireClient(v, "Your fish catalog has been reset.", "SYSTEM")
+			end
+		end
+	end
+
 end
 
 -- Connect player events

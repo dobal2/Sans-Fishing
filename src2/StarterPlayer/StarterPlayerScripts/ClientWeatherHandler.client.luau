@@ -22,8 +22,8 @@ local modules = ReplicatedStorage:WaitForChild("Modules")
 local RainModule = require(modules:WaitForChild("Rain"))
 
 -- Wait for events (indefinitely)
-local weatherChangedEvent = ReplicatedStorage:WaitForChild("WeatherChangedEvent")
-local fireworkEffectEvent = ReplicatedStorage:WaitForChild("FireworkEffectEvent")
+local weatherChangedEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("WeatherChangedEvent")
+local fireworkEffectEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("FireworkEffectEvent")
 
 
 -- Track current firework state

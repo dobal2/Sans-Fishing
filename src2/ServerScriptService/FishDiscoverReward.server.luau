@@ -3,24 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local dataManager = require(script.Parent.leaderstats.DataManager)
 
--- Create the RemoteEvent if it doesn't exist yet
-local remote = ReplicatedStorage:FindFirstChild("FishDiscoverReward")
-if not remote then
-	remote = Instance.new("RemoteEvent")
-	remote.Name = "FishDiscoverReward"
-	remote.Parent = ReplicatedStorage
-end
-
--- Notification RemoteEvent (reuse existing or create)
-local function getNotifyRemote()
-	local r = ReplicatedStorage:FindFirstChild("LeaderboardNotificationEvent")
-	if not r then
-		r = Instance.new("RemoteEvent")
-		r.Name = "LeaderboardNotificationEvent"
-		r.Parent = ReplicatedStorage
-	end
-	return r
-end
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
+local discoverNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("DiscoverNoticeEvent")
 
 local VALID_FISHES = {
 	["Small Carp"] = true, ["Gold Fish"] = true, ["Stone Fish"] = true,
@@ -36,7 +20,6 @@ local VALID_FISHES = {
 local MAX_REWARD = 100000
 
 remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
-	-- Validate inputs
 	if type(fishName) ~= "string" or not VALID_FISHES[fishName] then
 		warn("FishDiscoverReward: invalid fishName from", player.Name, tostring(fishName))
 		return
@@ -48,7 +31,6 @@ remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
 		return
 	end
 
-	-- Verify the fish is actually discovered in leaderstats
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
 	local fishFolder = leaderstats:FindFirstChild("Fish")
@@ -60,7 +42,6 @@ remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
 		return
 	end
 
-	-- Give coins
 	local coinsValue = leaderstats:FindFirstChild("Coins")
 	if not coinsValue then return end
 
@@ -72,8 +53,6 @@ remote.OnServerEvent:Connect(function(player, fishName, rewardCoins)
 		dataManager:UpdateData(player, "Coins", newCoins)
 	end
 
-	-- Notify the discovering player
-	local notifyRemote = getNotifyRemote()
-	local message = string.format("New discovery: %s! +" .. rewardCoins .. " coins", fishName)
-	notifyRemote:FireClient(player, message, "#00FFCC")
+	local message = string.format("New discovery: %s! +%d coins", fishName, rewardCoins)
+	discoverNoticeEvent:FireClient(player, message, "#00FFCC")
 end)

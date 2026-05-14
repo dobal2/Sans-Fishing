@@ -15,14 +15,8 @@ local FISH_TRAP_DATA = {
 	["RobuxFishTrap"]    = 0,
 }
 
-local buyFishTrapBindable = ReplicatedStorage:FindFirstChild("BuyFishTrapBindable")
-if not buyFishTrapBindable then
-	buyFishTrapBindable = Instance.new("BindableEvent")
-	buyFishTrapBindable.Name = "BuyFishTrapBindable"
-	buyFishTrapBindable.Parent = ReplicatedStorage
-end
-
-local showNoticeEvent = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+local buyFishTrapBindable = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishTrapBindable")
+local showNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 
 local function hasGamepass(player, gamepassId)
 	local success, result = pcall(function()

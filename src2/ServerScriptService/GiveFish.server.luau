@@ -10,30 +10,22 @@ FishReceiveNoticeEvent.Parent = ReplicatedStorage
 -- Inventory expansion gamepass ID (same as FishingServerModule)
 local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
 
--- Check inventory expansion gamepass
+-- Cache gamepass results per player (cleared on leave)
+local gamepassCache = {}
+Players.PlayerRemoving:Connect(function(p) gamepassCache[p.UserId] = nil end)
+
 local function hasInventoryExpansionGamepass(player)
-	local success, hasGamepass = pcall(function()
+	if gamepassCache[player.UserId] ~= nil then return gamepassCache[player.UserId] end
+	local success, result = pcall(function()
 		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
 	end)
-
-	if success then
-		return hasGamepass
-	else
-		warn("Failed to check inventory expansion gamepass:", player.Name)
-		return false
-	end
+	local has = success and result or false
+	gamepassCache[player.UserId] = has
+	return has
 end
 
--- Get inventory limit function
 local function getInventoryLimit(player)
-	local baseLimit = 100
-	local expandedLimit = 200
-
-	if hasInventoryExpansionGamepass(player) then
-		return expandedLimit
-	else
-		return baseLimit
-	end
+	return hasInventoryExpansionGamepass(player) and 200 or 100
 end
 
 -- Check if tool is a fish
@@ -77,10 +69,10 @@ local function checkInventoryLimit(player)
 		end
 	end
 
-	local inventoryLimit = getInventoryLimit(player)
+	local hasExpansion = hasInventoryExpansionGamepass(player)
+	local inventoryLimit = hasExpansion and 200 or 100
 
 	if fishCount >= inventoryLimit then
-		local hasExpansion = hasInventoryExpansionGamepass(player)
 		local message = hasExpansion and
 			string.format("Expanded inventory full! (%d/200) Go sell fish", fishCount) or
 			string.format("Inventory full! (%d/100) Go sell fish or buy expansion pass", fishCount)
@@ -111,11 +103,15 @@ local function addPromptToCharacter(char, owner)
 		local senderChar = fromPlayer.Character
 		if not senderChar then return end
 
-		-- Check if held tool is a fish
+		-- Check if held tool is a fish and belongs to sender
 		local tool = senderChar:FindFirstChildWhichIsA("Tool")
 		if not isFish(tool) then
-			-- Notify sender if not a fish
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "You need to hold a fish to give!")
+			return
+		end
+		-- Ownership: tool must be in sender's character (not cloned/injected)
+		if tool.Parent ~= senderChar then
+			warn("Fish ownership mismatch:", fromPlayer.Name)
 			return
 		end
 

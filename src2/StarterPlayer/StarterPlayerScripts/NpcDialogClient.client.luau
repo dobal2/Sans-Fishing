@@ -7,19 +7,14 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.Keyboard
 
 local DialogModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("DialogModule"))
 
-local sellChoiceEvent      = ReplicatedStorage:WaitForChild("SellChoiceEvent")
-local gambleChoiceEvent    = ReplicatedStorage:WaitForChild("GambleChoiceEvent")
-local soldNotificationEvent = ReplicatedStorage:WaitForChild("SoldNotification")
-local gambleNotificationEvent = ReplicatedStorage:WaitForChild("GambleNotification")
-local enablePromptEvent    = ReplicatedStorage:WaitForChild("SetPromptEvent")
+local sellChoiceEvent      = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellChoiceEvent")
+local gambleChoiceEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleChoiceEvent")
+local soldNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
+local gambleNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleNotification")
+local enablePromptEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SetPromptEvent")
 
-local voidQuestEvents      = ReplicatedStorage:FindFirstChild("VoidQuestEvents")
-local voidQuestChoiceEvent = voidQuestEvents and voidQuestEvents:FindFirstChild("VoidQuestChoiceEvent")
-local voidQuestGuiEvent    = voidQuestEvents and voidQuestEvents:FindFirstChild("VoidQuestGuiEvent")
-local voidQuestNotifEvent  = voidQuestEvents and voidQuestEvents:FindFirstChild("VoidQuestNotificationEvent")
-
-local shopSellerDialogEvent = ReplicatedStorage:WaitForChild("ShopSellerDialog")
-local openShopLocalEvent    = ReplicatedStorage:WaitForChild("OpenShopLocal")
+local shopSellerDialogEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("ShopSellerDialog")
+local openShopLocalEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenShopLocal")
 
 -- ─── Seller ───────────────────────────────────────────────────────────────────
 local sellerDialog = nil
@@ -143,54 +138,6 @@ local function initGambler()
 	end)
 end
 
--- ─── Void Quest Giver ─────────────────────────────────────────────────────────
-local voidDialog = nil
-
-local function initVoidQuestGiver()
-	local voidNpc = workspace:WaitForChild("Void Quest Giver", 20)
-	if not voidNpc then return end
-	local root   = voidNpc:WaitForChild("HumanoidRootPart", 5)
-	local head   = voidNpc:WaitForChild("Head", 5)
-	local prompt = voidNpc:WaitForChild("ProximityPrompt", 5)
-	if not root or not head or not prompt then return end
-
-	local dialog = DialogModule.new("Void Collector", root, head, prompt)
-	dialog:addDialog("<font color='rgb(180,130,255)'>The void hungers for Unknown fish...</font>", {
-		"Tell me more",
-		"Leave",
-	})
-	voidDialog = dialog
-
-	prompt.Triggered:Connect(function()
-		prompt.Enabled = false
-		dialog:triggerDialog(player, 1)
-	end)
-
-	dialog.responded:Connect(function(idx)
-		if idx == 1 then
-			voidQuestChoiceEvent:FireServer("Option1")
-		else
-			voidQuestChoiceEvent:FireServer("Option2")
-			dialog:hideGui("<font color='rgb(180,130,255)'>The void will wait...</font>")
-			enablePromptEvent:FireServer(true, "void_collector")
-		end
-	end)
-
-	voidQuestNotifEvent.OnClientEvent:Connect(function(title, message, messageType)
-		if not voidDialog then return end
-		local color = "rgb(255,255,255)"
-		if messageType == "success" or messageType == "complete" then
-			color = "rgb(180,130,255)"
-		elseif messageType == "error" then
-			color = "rgb(255,100,100)"
-		elseif messageType == "progress" then
-			color = "rgb(180,130,255)"
-		end
-		dialog:hideGui(("<font color='%s'>%s</font>"):format(color, message))
-		enablePromptEvent:FireServer(true, "void_collector")
-	end)
-end
-
 -- ─── Shop Seller ──────────────────────────────────────────────────────────────
 local shopSellerDialog = nil
 
@@ -230,5 +177,4 @@ end
 
 task.spawn(initSeller)
 task.spawn(initGambler)
-task.spawn(initVoidQuestGiver)
 task.spawn(initShopSeller)

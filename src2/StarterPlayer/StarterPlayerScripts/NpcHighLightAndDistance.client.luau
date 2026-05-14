@@ -39,7 +39,7 @@ local UPDATE_SHOP_RANGE = 15  -- Separate range for upgrade shop
 local VOID_QUEST_RANGE = 12   -- Void Quest Giver range
 local CHECK_INTERVAL = 0.1
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local sellChoiceEvent = ReplicatedStorage:WaitForChild("SellChoiceEvent")
+local sellChoiceEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellChoiceEvent")
 
 -- Void Quest related events
 local voidQuestEvents = ReplicatedStorage:FindFirstChild("VoidQuestEvents")

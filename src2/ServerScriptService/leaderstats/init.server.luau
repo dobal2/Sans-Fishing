@@ -194,9 +194,9 @@ Players.PlayerAdded:Connect(function(plr)
 
 		IsTutorialed.Value = Data.IsTutorialed
 
-		if(Coins.Value < 0) then
-			warn("Abnormal coin value detected (" .. Coins.Value .. ") - correcting to 11111")
-			Coins.Value = 11111
+		if Coins.Value < 0 then
+			warn("Abnormal coin value detected (" .. Coins.Value .. ") - clamping to 0")
+			Coins.Value = 0
 		end
 
 		-- Apply rod data

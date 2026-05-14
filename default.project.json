@@ -4,6 +4,9 @@
     "$className": "DataModel",
 
     "ServerScriptService": {
+      "RemoteInit": {
+        "$path": "src2/ServerScriptService/RemoteInit.server.luau"
+      },
       "leaderstats": {
         "$path": "src2/ServerScriptService/leaderstats"
       },
@@ -79,20 +82,11 @@
       "server": {
         "$path": "src2/ServerScriptService/server.server.luau"
       },
-      "BoatShopSever": {
-        "$path": "src2/ServerScriptService/BoatShopSever.server.luau"
-      },
-      "BoatSpawner": {
-        "$path": "src2/ServerScriptService/BoatSpawner.server.luau"
-      },
       "PlayTimeLeaderBoard": {
         "$path": "src2/ServerScriptService/PlayTimeLeaderBoard.server.luau"
       },
       "BubbleShopSever": {
         "$path": "src2/ServerScriptService/BubbleShopSever.server.luau"
-      },
-      "DailyRewardServer": {
-        "$path": "src2/ServerScriptService/DailyRewardServer.server.luau"
       },
       "DeleteFishTrap": {
         "$path": "src2/ServerScriptService/DeleteFishTrap.server.luau"
@@ -105,6 +99,36 @@
       },
       "FishDiscoverReward": {
         "$path": "src2/ServerScriptService/FishDiscoverReward.server.luau"
+      },
+      "BubbleProximityHandler": {
+        "$path": "src2/ServerScriptService/BubbleProximityHandler.server.luau"
+      },
+      "FishTrapProximityHandler": {
+        "$path": "src2/ServerScriptService/FishTrapProximityHandler.server.luau"
+      },
+      "PapHandler": {
+        "$path": "src2/ServerScriptService/PapHandler.server.luau"
+      },
+      "UpgradeShopHandler": {
+        "$path": "src2/ServerScriptService/UpgradeShopHandler.server.luau"
+      },
+      "SellShopHandler": {
+        "$path": "src2/ServerScriptService/SellShopHandler.server.luau"
+      },
+      "GamblerHandler": {
+        "$path": "src2/ServerScriptService/GamblerHandler.server.luau"
+      },
+      "ChairHandler": {
+        "$path": "src2/ServerScriptService/ChairHandler.server.luau"
+      },
+      "CoinLeaderboardServer": {
+        "$path": "src2/ServerScriptService/CoinLeaderboardServer.server.luau"
+      },
+      "LikeCounterHandler": {
+        "$path": "src2/ServerScriptService/LikeCounterHandler.server.luau"
+      },
+      "PlayTimeLeaderboardServer": {
+        "$path": "src2/ServerScriptService/PlayTimeLeaderboardServer.server.luau"
       }
     },
 
@@ -152,11 +176,125 @@
         "FishTrapBeam": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/FishTrapBeam.client.luau"
         },
-        "BoatBuoyancy": {
-          "$path": "src2/StarterPlayer/StarterPlayerScripts/BoatBuoyancy.client.luau"
-        },
         "NpcDialogClient": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/NpcDialogClient.client.luau"
+        },
+        "UIStrokeScale": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/UIStrokeScale.client.luau"
+        },
+        "TopbarController": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/TopbarController.client.luau"
+        },
+        "AutoFishing": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/AutoFishing.client.luau"
+        },
+        "CustomInventory": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/CustomInventory"
+        },
+        "Main": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main.client.luau"
+        },
+        "Main_AutoButton_AutoButtonController": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_AutoButton_AutoButtonController.client.luau"
+        },
+        "Main_DeviceDetect": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_DeviceDetect.client.luau"
+        },
+        "Main_Fishing_Fishing_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Fishing_Fishing_Teleport.client.luau"
+        },
+        "Main_FreeReward_FreeReward": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_FreeReward_FreeReward.client.luau"
+        },
+        "Main_FreeRewardShop": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_FreeRewardShop.client.luau"
+        },
+        "Main_Fishing_Fishing_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Fishing_Fishing_Teleport.client.luau"
+        },
+        "Main_Sell_Sell_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Sell_Sell_Teleport.client.luau"
+        },
+        "Main_Upgrade_Upgrade_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Upgrade_Upgrade_Teleport.client.luau"
+        },
+        "Main_NoticeFrame_NoticeSystem": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_NoticeFrame_NoticeSystem.client.luau"
+        },
+        "Main_RandomFishClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_RandomFishClient.client.luau"
+        },
+        "Main_Sell_Sell_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Sell_Sell_Teleport.client.luau"
+        },
+        "Main_Upgrade_Upgrade_Teleport": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Upgrade_Upgrade_Teleport.client.luau"
+        },
+        "Main_FriendBonus": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_FriendBonus.client.luau"
+        },
+        "Main_Money": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Money.client.luau"
+        },
+        "Main_WeatherInfo": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_WeatherInfo.client.luau"
+        },
+        "SellOptions": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions.client.luau"
+        },
+        "OptionButtonTween": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/OptionButtonTween.client.luau"
+        },
+        "SellOptions_Sell": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_Sell.client.luau"
+        },
+        "SellOptions_SellHandler": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_SellHandler.client.luau"
+        },
+        "SellOptions_SellOptions": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_SellOptions.client.luau"
+        },
+        "GambleOptions": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/GambleOptions.client.luau"
+        },
+        "GambleOptions_Sell": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/GambleOptions_Sell.client.luau"
+        },
+        "QuestOptions": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/QuestOptions.client.luau"
+        },
+        "QuestOptions_Sell": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/QuestOptions_Sell.client.luau"
+        },
+        "GambleOptions_Sell": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/GambleOptions_Sell.client.luau"
+        },
+        "SellOptions_Sell": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_Sell.client.luau"
+        },
+        "SellOptions_SellHandler": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_SellHandler.client.luau"
+        },
+        "SellOptions_SellOptions": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions_SellOptions.client.luau"
+        },
+        "QuestGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/QuestGui.client.luau"
+        },
+        "RobuxShop": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/RobuxShop.client.luau"
+        },
+        "RobuxShopButtons": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/RobuxShopButtons.client.luau"
+        },
+        "ServerBoostClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/ServerBoostClient.client.luau"
+        },
+        "ShopGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/ShopGui.client.luau"
+        },
+        "Index": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Index.client.luau"
         }
       },
       "StarterCharacterScripts": {

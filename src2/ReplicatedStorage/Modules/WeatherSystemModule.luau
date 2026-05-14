@@ -36,11 +36,11 @@ local SecureWeatherState = {
 
 -- Signal all clients to play a firework burst
 local function createFireworkEffect()
-	local fireworkEvent = ReplicatedStorage:FindFirstChild("FireworkEffectEvent")
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	local weatherFolder = remotes and remotes:FindFirstChild("Weather")
+	local fireworkEvent = weatherFolder and weatherFolder:FindFirstChild("FireworkEffectEvent")
 	if fireworkEvent then
 		fireworkEvent:FireAllClients()
-	else
-		warn("FireworkEffectEvent not found")
 	end
 end
 
@@ -285,13 +285,9 @@ function WeatherSystem.Initialize()
 		WeatherSystem.WeatherChanged = Instance.new("BindableEvent")
 	end
 
-	local weatherChangedEvent = Instance.new("RemoteEvent")
-	weatherChangedEvent.Name = "WeatherChangedEvent"
-	weatherChangedEvent.Parent = ReplicatedStorage
-
-	local fireworkEffectEvent = Instance.new("RemoteEvent")
-	fireworkEffectEvent.Name = "FireworkEffectEvent"
-	fireworkEffectEvent.Parent = ReplicatedStorage
+	local weatherRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather")
+	local weatherChangedEvent = weatherRemotes:WaitForChild("WeatherChangedEvent")
+	local fireworkEffectEvent = weatherRemotes:WaitForChild("FireworkEffectEvent")
 
 	WeatherSystem.WeatherChanged.Event:Connect(function(newWeather)
 		updateSnowPartState(newWeather)

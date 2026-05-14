@@ -15,7 +15,8 @@ local FishTrapManager = {}
 function FishTrapManager.PlaceFishTrap(player, trapName, position, rotation)
 	-- Check trap count limit (max 1)
 	if not FishTrapManager.CanPlaceTrap(player) then
-		local ShowNoticeEvent = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local ShowNoticeEvent = remotes and remotes:FindFirstChild("Notice") and remotes.Notice:FindFirstChild("ShowNoticeEvent")
 		if ShowNoticeEvent then
 			ShowNoticeEvent:FireClient(player, "You already have a FishTrap! You can only place 1 trap total.")
 		end

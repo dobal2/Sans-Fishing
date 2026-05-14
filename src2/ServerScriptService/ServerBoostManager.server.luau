@@ -83,7 +83,8 @@ local function applyBoost(step)
 	broadcastState()
 
 	local mult = BOOST_STEPS[boostStep] or 1
-	local showNoticeEvent = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+	local showNoticeEvent = remotes and remotes:FindFirstChild("Notice") and remotes.Notice:FindFirstChild("ShowNoticeEvent")
 	if showNoticeEvent then
 		showNoticeEvent:FireAllClients("Server Luck boosted to " .. mult .. "x!", false)
 	end

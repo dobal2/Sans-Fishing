@@ -2,9 +2,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 
-local remote = ReplicatedStorage:WaitForChild("BuyFishingRod")
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishingRod")
 local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
-local setFavoriteRemote = ReplicatedStorage:WaitForChild("SetFavoriteRemote")
+local setFavoriteRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("SetFavoriteRemote")
 
 -- Robux rod gamepass ID
 local ROBUX_ROD_GAMEPASS_ID = 1410895892
@@ -82,8 +82,7 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 		-- Normal rod processing (including void rod)
 		if not alreadyOwned then
 			if coins.Value < item.price then
-				warn("Insufficient balance")
-				plr:Kick("ClientHacker")
+				warn("Insufficient balance for", plr.Name, "on", itemname)
 				return
 			end
 			coins.Value -= item.price
@@ -120,10 +119,11 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 	-- Equip rod
 	currentRod.Value = item.storageName
 	local storageItem = ServerStorage:FindFirstChild(item.storageName)
-	if storageItem then
-		storageItem:Clone().Parent = plr:FindFirstChild("Backpack") or plr
-	else
-		error("Item '" .. item.storageName .. "' not found in ServerStorage.")
+	local backpack = plr:FindFirstChild("Backpack")
+	if storageItem and backpack then
+		storageItem:Clone().Parent = backpack
+	elseif not storageItem then
+		warn("Item '" .. item.storageName .. "' not found in ServerStorage.")
 	end
 
 	if itemname == "GoldRod" then

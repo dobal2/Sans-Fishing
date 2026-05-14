@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local remote = ReplicatedStorage:WaitForChild("BuyBoat")
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyBoat")
 local BoatData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BoatDataModule"))
 
 remote.OnServerEvent:Connect(function(plr, boatName)

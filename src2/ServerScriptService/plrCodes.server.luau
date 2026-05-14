@@ -59,7 +59,7 @@ local function load(p)
 end
 
 -- Secure code processing
-ReplicatedStorage.codeEvent.OnServerEvent:Connect(function(Player, Entered)
+ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("codeEvent").OnServerEvent:Connect(function(Player, Entered)
 	-- Validate input
 	if type(Entered) ~= "string" or string.len(Entered) > 50 then
 		CodeResponseEvent:FireClient(Player, "invalid")

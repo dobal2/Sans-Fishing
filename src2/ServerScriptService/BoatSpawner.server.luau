@@ -1,5 +1,5 @@
 -- Boat spawn server code (personal boat management revised)
-local spawnBoatRemote = game:GetService("ReplicatedStorage"):WaitForChild("SpawnBoat")
+local spawnBoatRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("SpawnBoat")
 local BoatData = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("BoatDataModule"))
 
 -- Boat spawn area setup

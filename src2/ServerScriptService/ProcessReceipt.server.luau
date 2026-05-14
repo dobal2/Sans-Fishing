@@ -77,7 +77,18 @@ local REVEAL_DELAY = 4.5  -- seconds to wait before granting fish (matches clien
 
 local function processRandomFish(player, count)
 	for _ = 1, count do
-		local fish = rollFish()
+		-- Check for forced random fish rarity (admin command)
+		local forcedName = player:GetAttribute("ForcedRandomFish")
+		if forcedName then
+			player:SetAttribute("ForcedRandomFish", nil)
+		end
+		local fish
+		if forcedName then
+			for _, f in ipairs(FISH_POOL) do
+				if f.rarity == forcedName then fish = f break end
+			end
+		end
+		fish = fish or rollFish()
 		-- Fire reveal immediately, grant fish after animation plays
 		if randomFishResult then
 			randomFishResult:FireClient(player, fish.name, fish.rarity)
@@ -89,6 +100,12 @@ local function processRandomFish(player, count)
 		end)
 	end
 end
+
+-- 5% free gacha trigger from fishing success
+local triggerRandomFish = game.ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("TriggerRandomFish")
+triggerRandomFish.Event:Connect(function(player)
+	processRandomFish(player, 1)
+end)
 
 local donationValues = {
 	[3364008117] = 2,

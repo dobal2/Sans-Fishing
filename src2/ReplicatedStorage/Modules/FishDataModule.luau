@@ -564,6 +564,34 @@ function FishData.GetRandomFish(rodName, player)
 		finalTotal = finalTotal + finalChance
 	end
 
+	-- Forced rarity override (set via admin command)
+	if player then
+		local forced = player:GetAttribute("ForcedRarity")
+		if forced then
+			player:SetAttribute("ForcedRarity", nil)
+			for _, rarity in ipairs(FishData.Rarities) do
+				if rarity.name == forced then
+					local selectedFish = selectRandomFishFromRarity(rarity)
+					local minW = selectedFish.minWeight or 1
+					local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
+					local weight = getFixedProbabilityWeight(minW, maxW)
+					weight = math.floor(weight * 10 + 0.5) / 10
+					local fishInfo = {
+						name = rarity.name,
+						fishName = selectedFish.fishName,
+						value = selectedFish.value,
+						model = selectedFish.model,
+						minWeight = selectedFish.minWeight,
+						maxWeight = selectedFish.maxWeight,
+						weight = weight,
+						chance = 0
+					}
+					return WeatherSystem.ApplyWeatherEffects(fishInfo)
+				end
+			end
+		end
+	end
+
 	-- Draw result
 	local target = rng:NextNumber(0, finalTotal)
 

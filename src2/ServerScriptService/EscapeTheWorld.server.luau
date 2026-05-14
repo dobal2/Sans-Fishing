@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local BadgeService = game:GetService("BadgeService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local badgeEvent = ReplicatedStorage:WaitForChild("EscapeTheWorld")
+local badgeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("EscapeTheWorld")
 
 local FALL_RECOVERY_BADGE_ID = 3105116633857431
 

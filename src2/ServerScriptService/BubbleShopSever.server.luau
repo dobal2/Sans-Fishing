@@ -12,16 +12,8 @@ local BUBBLE_DATA = {
 -- Inventory expansion gamepass ID
 local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
 
--- Find/create BindableEvent
-local buyBubbleBindable = ReplicatedStorage:FindFirstChild("BuyBubbleBindable")
-if not buyBubbleBindable then
-	buyBubbleBindable = Instance.new("BindableEvent")
-	buyBubbleBindable.Name = "BuyBubbleBindable"
-	buyBubbleBindable.Parent = ReplicatedStorage
-end
-
--- Find notice RemoteEvent
-local showNoticeEvent = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+local buyBubbleBindable = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyBubbleBindable")
+local showNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 
 -- Check if item is a rod or trap
 local function IsRod(itemName)

@@ -23,6 +23,7 @@ if not baitSplashEvent then
 	baitSplashEvent.Parent = ReplicatedStorage
 end
 
+
 -- Sent only to the fishing player so their client freezes the bait without lag
 local baitLandedEvent = ReplicatedStorage:FindFirstChild("BaitLandedEvent")
 if not baitLandedEvent then
@@ -64,20 +65,23 @@ end
 
 
 
+-- Cache base fish names for getBaseFishName (built once on first call)
+local _baseFishNameCache = nil
+local function _buildBaseFishNameCache()
+	_baseFishNameCache = {}
+	for _, rarity in ipairs(FishData.Rarities) do
+		for _, fish in ipairs(rarity.fishes) do
+			_baseFishNameCache[fish.fishName] = true
+		end
+	end
+end
+
 -- Auto-remove mutation prefix function
 local function getBaseFishName(fishName)
 	if not fishName then return nil end
+	if not _baseFishNameCache then _buildBaseFishNameCache() end
 
-	-- Get all base fish names from FishData
-	local FishData = require(ReplicatedStorage.Modules:WaitForChild("FishDataModule"))
-	local allBaseFishNames = {}
-
-	-- Collect base fish names from all rarities
-	for _, rarity in ipairs(FishData.Rarities) do
-		for _, fish in ipairs(rarity.fishes) do
-			allBaseFishNames[fish.fishName] = true
-		end
-	end
+	local allBaseFishNames = _baseFishNameCache
 
 	-- Check if current name is already a base fish name
 	if allBaseFishNames[fishName] then
@@ -224,7 +228,11 @@ function FishingServer:_bindEvents()
 				return
 			end
 
+			self.sessionId = nil -- Prevent replay after first success
 			self:_resolveFishing(player, "success")
+
+		elseif action == "fail" then
+			self:_resolveFishing(player, "fail")
 
 		elseif action == "cancel" then
 			self:_resolveFishing(player, "cancel")
@@ -299,8 +307,8 @@ function FishingServer:_getValidatedToolConfig(player)
 end
 
 
-local WATER_SURFACE_Y = -3.4    -- actual water surface Y
-local BAIT_REST_Y    = -3.4     -- final resting Y at water surface
+local WATER_SURFACE_Y = -3.69   -- actual water surface Y (top of Water part)
+local BAIT_REST_Y    = -3.69   -- final resting Y at water surface
 
 function FishingServer:_createBait()
 	self.baitPart = Instance.new("Part")
@@ -309,7 +317,7 @@ function FishingServer:_createBait()
 	self.baitPart.Shape = Enum.PartType.Ball
 	self.baitPart.Anchored = false
 	self.baitPart.CanCollide = false
-	self.baitPart.BrickColor = BrickColor.new("Bright orange")
+	self.baitPart.BrickColor = BrickColor.new("Bright red")
 	self.baitPart.Material = Enum.Material.SmoothPlastic
 	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
 	self.baitPart.Massless = true
@@ -333,11 +341,11 @@ function FishingServer:_validateAttempt(player, payload)
 		return
 	end
 
-	-- Server spam prevention: 0.05s interval
+	-- Server spam prevention: 0.5s minimum between attempts
 	local currentTime = tick()
-	if self.lastServerAttempt and (currentTime - self.lastServerAttempt) < 0.15 then
+	if self.lastServerAttempt and (currentTime - self.lastServerAttempt) < 0.5 then
 		warn("Server spam blocked:", player.Name)
-		return -- Silently ignore
+		return
 	end
 	self.lastServerAttempt = currentTime
 
@@ -506,7 +514,7 @@ function FishingServer:_checkInventoryLimit(player)
 
 	if totalItemCount >= inventoryLimit then
 		-- Notify client
-		local noticeEvent = ReplicatedStorage:FindFirstChild("FishNoticeEvent")
+		local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent")
 		if noticeEvent then
 			local hasExpansion = self:_hasInventoryExpansionGamepass(player)
 			local message = hasExpansion and
@@ -583,6 +591,7 @@ function FishingServer:_setupRope()
 end
 
 function FishingServer:_cleanup()
+	if self.playerLeavingConnection then self.playerLeavingConnection:Disconnect(); self.playerLeavingConnection = nil end
 	if self.baitLandConn then self.baitLandConn:Disconnect(); self.baitLandConn = nil end
 	if self.baitPart then self.baitPart:Destroy() end
 	if self.rope then self.rope:Destroy() end
@@ -724,7 +733,7 @@ function FishingServer:_checkMaterial()
 					if self.player then
 						self.player:SetAttribute("IsFishing", false)
 						self.remote:FireClient(self.player, false)
-						local showNotice = ReplicatedStorage:FindFirstChild("ShowNoticeEvent")
+						local showNotice = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 						if showNotice then
 							showNotice:FireClient(self.player, "Bait hit the ground! Try casting into water.")
 						end
@@ -736,6 +745,15 @@ function FishingServer:_checkMaterial()
 			end
 		end
 
+		-- Slow approach: dampen velocity when bait is near the surface
+		if currentY <= WATER_SURFACE_Y + 1.5 and currentY > WATER_SURFACE_Y then
+			local vel = bait.AssemblyLinearVelocity
+			if vel.Y < 0 then
+				bait.AssemblyLinearVelocity = Vector3.new(vel.X * 0.7, math.max(vel.Y * 0.55, -6), vel.Z * 0.7)
+			end
+			return
+		end
+
 		if currentY > WATER_SURFACE_Y then return end
 
 		landed = true
@@ -744,29 +762,40 @@ function FishingServer:_checkMaterial()
 		if not self.player then return end
 		self.activated = false
 
-		local landX = bait.Position.X
-		local landZ = bait.Position.Z
-
-		-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
-		baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
-
-		-- Everyone else: gets BaitSplashEvent for spectator splash effect
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= self.player then
-				baitSplashEvent:FireClient(p, Vector3.new(landX, BAIT_REST_Y, landZ))
-			end
-		end
-
-		-- Server anchors bait so rope beam stays and physics is authoritative
-		bait.AssemblyLinearVelocity = Vector3.zero
-		bait.AssemblyAngularVelocity = Vector3.zero
-		bait.CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
-		bait.Anchored = true
-
-		self.gameStartTime = tick()
-
-		-- Start minigame after random wait (fish biting delay)
 		task.spawn(function()
+			local baitRef = self.baitPart
+			if not baitRef or not baitRef.Parent then return end
+
+			local landX = baitRef.Position.X
+			local landZ = baitRef.Position.Z
+
+			-- Smoothly settle bait at rest Y with tween (avoids teleport pop)
+			baitRef.AssemblyLinearVelocity = Vector3.zero
+			baitRef.AssemblyAngularVelocity = Vector3.zero
+			baitRef.Anchored = true
+			local overshoot = math.abs(BAIT_REST_Y - baitRef.Position.Y)
+			local settleDuration = math.clamp(overshoot * 0.06, 0.04, 0.18)
+			TweenService:Create(baitRef, TweenInfo.new(settleDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = CFrame.new(landX, BAIT_REST_Y, landZ)
+			}):Play()
+			task.wait(settleDuration)
+
+			if not self.player then return end
+
+			-- Fishing player: gets BaitLandedEvent (freezes bait client-side + plays effects)
+			baitLandedEvent:FireClient(self.player, Vector3.new(landX, BAIT_REST_Y, landZ), self.baitPart)
+
+			-- Everyone else: gets BaitSplashEvent for spectator splash effect
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= self.player then
+					baitSplashEvent:FireClient(p, Vector3.new(landX, BAIT_REST_Y, landZ))
+				end
+			end
+
+			self.gameStartTime = tick()
+
+			-- Start minigame after random wait (fish biting delay)
+			task.spawn(function()
 			local sessionId = HttpService:GenerateGUID(false)
 			self.sessionId = sessionId
 			self.successCount = 0
@@ -796,6 +825,7 @@ function FishingServer:_checkMaterial()
 			local handle = toolModel:FindFirstChild("Handle")
 
 			if handle then
+				-- Use the actual fish model as silhouette (black fill, white outline)
 				local fakeHandle = handle:Clone()
 				local ratio = getScaleRatio(fishInfo.weight, fishInfo.minWeight, fishInfo.maxWeight, 5)
 				if self.player and self.player:GetAttribute("SizeBubbleBuff") == true then
@@ -804,9 +834,11 @@ function FishingServer:_checkMaterial()
 
 				self.remote:FireClient(self.player, "keep_waiting_animation")
 				fakeHandle.Size = fakeHandle.Size * ratio
+				self._hookedBaseSize = fakeHandle.Size
 
 				local highLight = Instance.new("Highlight")
-				highLight.FillTransparency = 1
+				highLight.FillColor = Color3.new(0, 0, 0)
+				highLight.FillTransparency = 0
 				highLight.OutlineTransparency = 0
 				highLight.OutlineColor = Color3.new(1, 1, 1)
 				highLight.Parent = fakeHandle
@@ -879,8 +911,9 @@ function FishingServer:_checkMaterial()
 				difficultyMod = difficultyMod,
 				fishWeight = fishInfo.weight or 0,
 			})
-		end)
-	end)
+		end) -- end minigame task.spawn
+		end) -- end settle task.spawn
+	end) -- end Heartbeat
 	self.baitLandConn = conn
 end
 
@@ -1163,7 +1196,7 @@ function FishingServer:_resolveFishing(player, result)
 								fishBool.Value = true
 
 								-- New fish discovered notification (using base name)
-								ReplicatedStorage:WaitForChild("DiscoverNoticeEvent"):FireClient(
+								ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("DiscoverNoticeEvent"):FireClient(
 									player,
 									"New Fish Discovered: " .. baseFishName .. "!"
 								)
@@ -1209,6 +1242,33 @@ function FishingServer:_resolveFishing(player, result)
 			local backpackTool = createFishTool(fishInfo)
 			backpackTool.Parent = player:FindFirstChild("Backpack")
 
+			-- 5% chance to trigger free random fish gacha
+			local didTriggerGacha = math.random() < 0.05
+			if didTriggerGacha then
+				local triggerEvt = game.ReplicatedStorage:FindFirstChild("Remotes") and
+					game.ReplicatedStorage.Remotes:FindFirstChild("Fishing") and
+					game.ReplicatedStorage.Remotes.Fishing:FindFirstChild("TriggerRandomFish")
+				if triggerEvt then
+					triggerEvt:Fire(player)
+				end
+				-- Pulse the hooked fish visual to signal gacha triggered
+				if self.hookedFishHandle then
+					local pulsePart = self.hookedFishHandle
+					local baseSize = self._hookedBaseSize or pulsePart.Size
+					local bigSize = baseSize * 1.4
+					task.spawn(function()
+						for _ = 1, 4 do
+							if not pulsePart or not pulsePart.Parent then break end
+							TweenService:Create(pulsePart, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {Size = bigSize}):Play()
+							task.wait(0.25)
+							if not pulsePart or not pulsePart.Parent then break end
+							TweenService:Create(pulsePart, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {Size = baseSize}):Play()
+							task.wait(0.25)
+						end
+					end)
+				end
+			end
+
 			-- Handle hooked fish
 			if self.hookedFishHandle then
 				local fishHandle = self.hookedFishHandle
@@ -1224,7 +1284,7 @@ function FishingServer:_resolveFishing(player, result)
 			end
 
 			-- Success notification
-			ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(
+			ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent"):FireClient(
 				player,
 				string.format("You got %s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
 			)
@@ -1249,7 +1309,7 @@ function FishingServer:_resolveFishing(player, result)
 		end
 
 		-- Fail notification
-		ReplicatedStorage:WaitForChild("FishNoticeEvent"):FireClient(player, "Nice try! Give it another shot!")
+		ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent"):FireClient(player, "Nice try! Give it another shot!")
 	end
 
 	-- Clean up sounds

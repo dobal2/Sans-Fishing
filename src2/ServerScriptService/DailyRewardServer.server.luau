@@ -7,18 +7,9 @@ local ServerStorage = game:GetService("ServerStorage")
 -- DataStore setup
 local DailyRewardStore = DataStoreService:GetDataStore("DailyRewards")
 
--- Create remote events
-local RemoteEvents = Instance.new("Folder")
-RemoteEvents.Name = "RemoteEvents"
-RemoteEvents.Parent = ReplicatedStorage
-
-local ClaimDailyReward = Instance.new("RemoteEvent")
-ClaimDailyReward.Name = "ClaimDailyReward"
-ClaimDailyReward.Parent = RemoteEvents
-
-local CheckDailyReward = Instance.new("RemoteEvent")
-CheckDailyReward.Name = "CheckDailyReward"
-CheckDailyReward.Parent = RemoteEvents
+local miscRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
+local ClaimDailyReward = miscRemotes:WaitForChild("ClaimDailyReward")
+local CheckDailyReward = miscRemotes:WaitForChild("CheckDailyReward")
 
 -- Daily reward settings (different reward per day)
 local DAILY_REWARDS = {

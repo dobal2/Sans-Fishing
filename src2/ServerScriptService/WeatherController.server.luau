@@ -20,7 +20,7 @@ end
 local function handleAdminCommand(player, message)
 	local args = string.split(message, " ")
 	local command = args[1]:lower()
-	local weatherEvent = ReplicatedStorage:FindFirstChild("WeatherChangedEvent")
+	local weatherEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("WeatherChangedEvent", 5)
 
 	local weatherMap = {
 		["/rain"]     = { name = "Rain",     default = 600 },
