@@ -234,15 +234,42 @@ local function reloadInventory(character)
 	inventoryHandler.currentlyEquipped = nil
 	backpack = player:WaitForChild("Backpack")
 
-	for _, tool in pairs(backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			newTool(tool)
-		end
-	end
+	-- 이후 추가되는 툴은 바로 처리 (저장 레이아웃 무관)
 	backpack.ChildAdded:Connect(newTool)
 	character.ChildAdded:Connect(newTool)
 
 	task.spawn(function()
+		-- 저장된 핫바 레이아웃 비동기 로드 (첫 캐릭터 로드 시 1회)
+		local nameToSlot = {}
+		if not _G.hotBarLayoutLoaded then
+			_G.hotBarLayoutLoaded = true
+			local ok, result = pcall(function()
+				local RS = game:GetService("ReplicatedStorage")
+				local getRemote = RS:WaitForChild("Remotes", 10)
+					and RS.Remotes:WaitForChild("Misc", 10)
+					and RS.Remotes.Misc:WaitForChild("GetHotBarLayout", 10)
+				if not getRemote then return {} end
+				return getRemote:InvokeServer()
+			end)
+			if ok and typeof(result) == "table" then
+				for slot, toolName in pairs(result) do
+					nameToSlot[toolName] = slot
+				end
+			end
+		end
+
+		-- 이미 백팩에 있는 툴 배치 (저장 슬롯 있으면 적용, 없으면 빈 슬롯에 그냥 넣음)
+		for _, tool in pairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") and not tool:GetAttribute("toolAdded") then
+				local slot = nameToSlot[tool.Name]
+				if slot then
+					tool:SetAttribute("position", slot)
+					nameToSlot[tool.Name] = nil
+				end
+				newTool(tool)
+			end
+		end
+
 		task.wait(0.5)
 		updateFishCount()
 	end)

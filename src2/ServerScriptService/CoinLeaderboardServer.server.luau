@@ -19,6 +19,20 @@ for _, c in ipairs(scrollFrame:GetChildren()) do
 	if c:IsA("Frame") then c:Destroy() end
 end
 
+-- Loading placeholder shown until first updateBoard() completes
+local loadingFrame = Instance.new("Frame")
+loadingFrame.Name = "_Loading"
+loadingFrame.Size = UDim2.new(1, 0, 0, 60)
+loadingFrame.BackgroundTransparency = 1
+local loadingLabel = Instance.new("TextLabel", loadingFrame)
+loadingLabel.Size = UDim2.fromScale(1, 1)
+loadingLabel.BackgroundTransparency = 1
+loadingLabel.Text = "로딩중..."
+loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+loadingLabel.TextScaled = true
+loadingLabel.Font = Enum.Font.GothamBold
+loadingFrame.Parent = scrollFrame
+
 scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
 local function updateCanvas()
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y)

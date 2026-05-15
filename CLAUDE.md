@@ -331,3 +331,11 @@ All shops communicate via BindableEvent or RemoteEvent from GUI scripts to serve
 - **ProfileService**: data is accessed via `DataManager:GetData(player)` and modified via `DataManager:UpdateData(player, key, value)`.
 - **File naming**: server scripts end in `.server.luau`, client scripts in `.client.luau`, module scripts in `.luau`.
 - **No LocalScripts inside StarterGui**: all client logic lives in StarterPlayerScripts; ScreenGuis contain UI elements only.
+
+  local POS=Vector3.new(0,0,0);local ROT=Vector3.new(0,0,0);local
+  char=workspace:FindFirstChildOfClass("Model");local torso=char
+  and(char:FindFirstChild("UpperTorso")or char:FindFirstChild("Torso"));local
+  existing=char and char:FindFirstChild("BackRodVisual");if existing and torso then
+  local weld=existing:FindFirstChild("BackRodWeld");if weld then weld.C0=CFrame.new(POS
+  )*CFrame.Angles(math.rad(ROT.X),math.rad(ROT.Y),math.rad(ROT.Z));print("Applied!     
+  POS="..tostring(POS).." ROT="..tostring(ROT))end end

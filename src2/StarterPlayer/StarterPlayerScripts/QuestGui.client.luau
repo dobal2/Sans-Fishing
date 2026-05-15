@@ -106,8 +106,6 @@ local function createQuestFrame(questData)
 
 			if questData.currentProgress >= questData.requiredProgress then
 				fillFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-			else
-				fillFrame.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
 			end
 		end
 	end

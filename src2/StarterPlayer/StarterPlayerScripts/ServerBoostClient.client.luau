@@ -22,8 +22,13 @@ local buyFrame     = sb:WaitForChild("Buy")
 local buyButton    = buyFrame:WaitForChild("TextButton")
 local buyLabel     = buyFrame:WaitForChild("TextLabel")
 
+local ROBUX_ICON = "\u{E002}"  -- Roblox 로벅스 아이콘
+
+-- 초기 기본값 표시 (서버 응답 전)
+buyLabel.Text = ROBUX_ICON .. "99"
+
 -- STEP_PRICE mirrors ServerBoostManager
-local STEP_PRICE = { [1] = 49, [2] = 99, [3] = 199, [4] = 299 }
+local STEP_PRICE = { [1] = 99, [2] = 199, [3] = 299, [4] = 499 }
 local STEP_PRODUCTS = { [1] = 3591613623, [2] = 3591613620, [3] = 3591613622, [4] = 3591613619 }
 local MAX_MULT = 8
 
@@ -40,13 +45,13 @@ local function updateUI(mult, nextMult, remaining, nextPrice, atMax, buyStep)
 	labelTimer.Text   = remaining > 0 and formatTime(remaining) or "Inactive"
 
 	if atMax then
-		buyLabel.Text          = "MAX"
-		buyButton.Active       = false
+		buyLabel.Text             = "MAX"
+		buyButton.Active          = false
 		buyButton.AutoButtonColor = false
 	else
 		local price = STEP_PRICE[buyStep] or nextPrice
-		buyLabel.Text          = tostring(price)
-		buyButton.Active       = true
+		buyLabel.Text             = ROBUX_ICON .. tostring(price)
+		buyButton.Active          = true
 		buyButton.AutoButtonColor = true
 	end
 end
@@ -75,5 +80,23 @@ buyButton.MouseButton1Click:Connect(function()
 	local productId = STEP_PRODUCTS[buyStep]
 	if productId then
 		MarketplaceService:PromptProductPurchase(player, productId)
+	end
+end)
+
+-- 구매 완료 후 서버에서 새 상태 가져와 버튼 가격 갱신
+MarketplaceService.PromptProductPurchaseFinished:Connect(function(_, productId, purchased)
+	if not purchased then return end
+	local isBoostProduct = false
+	for _, pid in pairs(STEP_PRODUCTS) do
+		if pid == productId then isBoostProduct = true; break end
+	end
+	if not isBoostProduct then return end
+
+	task.wait(1)
+	local ok, mult, nextMult, remaining, nextPrice, atMax, buyStep = pcall(function()
+		return getBoostStateRF:InvokeServer()
+	end)
+	if ok then
+		updateUI(mult, nextMult, remaining, nextPrice, atMax, buyStep)
 	end
 end)

@@ -42,8 +42,8 @@ local function showBackRod(character, toolName)
 	weld.Name = "BackRodWeld"
 	weld.Part0 = torso
 	weld.Part1 = clone
-	weld.C0 = CFrame.new(0.2, 0.3, 0.55)
-		* CFrame.Angles(math.rad(35), math.rad(15), math.rad(-20))
+	weld.C0 = CFrame.new(-1, -1.5, 0.55)
+		* CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30))
 	weld.C1 = CFrame.new(0, 0, 0)
 	weld.Parent = clone
 end

@@ -31,6 +31,7 @@ ensureRemote(Fishing, "BaitLandedEvent")
 ensureRemote(Fishing, "BaitSplashEvent")
 ensureRemote(Fishing, "RandomFishResult")
 ensureRemote(Fishing, "FishDiscoverReward")
+ensureRemote(Fishing, "GetDiscoveryClaimed", "RemoteFunction")
 ensureRemote(Fishing, "TriggerRandomFish", "BindableEvent")
 
 -- Shop
@@ -87,6 +88,8 @@ ensureRemote(Misc, "EscapeTheWorld")
 ensureRemote(Misc, "DonationRefresh")
 ensureRemote(Misc, "ClaimDailyReward")
 ensureRemote(Misc, "CheckDailyReward")
+ensureRemote(Misc, "SaveHotBarLayout")
+ensureRemote(Misc, "GetHotBarLayout", "RemoteFunction")
 
 -- VoidQuestEvents (RS root — referenced by client scripts)
 local voidQuestEvents = ensureFolder(ReplicatedStorage, "VoidQuestEvents")

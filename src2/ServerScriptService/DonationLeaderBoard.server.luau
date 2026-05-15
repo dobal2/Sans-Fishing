@@ -12,37 +12,57 @@ local function getNameFromUserId(userId)
 	local ok, result = pcall(function()
 		return Players:GetNameFromUserIdAsync(userId)
 	end)
-	local name = ok and result or "Unknown"
+	local name = ok and result or ("User_" .. userId)
 	nameCache[userId] = name
 	return name
 end
 
-local function shouldExcludeUser(userId)
-	local name = string.lower(getNameFromUserId(userId))
-	return excludedUsernames[name] == true
-end
-
 local cachedList = {}
+local listReady = false
 
 local function buildDonationList()
-	local raw = DataManager:GetTopDonationPlayers(120)
+	local raw = DataManager:GetTopDonationPlayers(100)
+	if #raw == 0 then return {} end
+
+	-- 이름 병렬 조회
+	local threads = {}
+	for _, entry in ipairs(raw) do
+		if not nameCache[entry.UserId] then
+			threads[#threads + 1] = task.spawn(getNameFromUserId, entry.UserId)
+		end
+	end
+	-- 모든 스레드 완료 대기
+	for _, t in ipairs(threads) do
+		task.wait()
+	end
+
 	local result = {}
 	for _, entry in ipairs(raw) do
-		if (entry.Donations or 0) > 0 and not shouldExcludeUser(entry.UserId) then
+		if (entry.Donations or 0) > 0 then
 			local name = getNameFromUserId(entry.UserId)
-			table.insert(result, {
-				userId    = entry.UserId,
-				name      = name,
-				donations = entry.Donations,
-				rank      = #result + 1,
-			})
-			if #result >= 100 then break end
+			local lname = string.lower(name)
+			if not excludedUsernames[lname] then
+				result[#result + 1] = {
+					userId    = entry.UserId,
+					name      = name,
+					donations = entry.Donations,
+					rank      = #result + 1,
+				}
+				if #result >= 100 then break end
+			end
 		end
 	end
 	return result
 end
 
 local function sendToPlayer(player)
+	-- 최초 로드 완료될 때까지 대기 (최대 15초)
+	local waited = 0
+	while not listReady and waited < 15 do
+		task.wait(1)
+		waited += 1
+	end
+
 	local myData = nil
 	for _, entry in ipairs(cachedList) do
 		if entry.userId == player.UserId then
@@ -64,23 +84,40 @@ local function sendToPlayer(player)
 end
 
 local function refreshAll()
-	cachedList = buildDonationList()
+	local newList = buildDonationList()
+	cachedList = newList
+	listReady = true
 	for _, player in ipairs(Players:GetPlayers()) do
-		sendToPlayer(player)
+		task.spawn(sendToPlayer, player)
 	end
 end
 
 Players.PlayerAdded:Connect(function(player)
 	task.wait(3)
-	sendToPlayer(player)
+	task.spawn(sendToPlayer, player)
 end)
 
--- Client can request a refresh (e.g. after donating)
 donationRefreshEvent.OnServerEvent:Connect(function(player)
-	sendToPlayer(player)
+	task.spawn(sendToPlayer, player)
 end)
 
-refreshAll()
-while task.wait(30) do
-	refreshAll()
+-- ProcessReceipt에서 도네이션 구매 시 즉시 갱신 신호 수신
+local donationForceRefresh = ReplicatedStorage:WaitForChild("DonationForceRefresh", 10)
+if donationForceRefresh then
+	donationForceRefresh.Event:Connect(function(player)
+		local newList = buildDonationList()
+		cachedList = newList
+		listReady = true
+		for _, p in ipairs(Players:GetPlayers()) do
+			task.spawn(sendToPlayer, p)
+		end
+	end)
 end
+
+-- 최초 빌드
+task.spawn(function()
+	refreshAll()
+	while task.wait(30) do
+		refreshAll()
+	end
+end)

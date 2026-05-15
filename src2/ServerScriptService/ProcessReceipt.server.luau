@@ -107,6 +107,14 @@ triggerRandomFish.Event:Connect(function(player)
 	processRandomFish(player, 1)
 end)
 
+local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
+local donationRefreshEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("DonationRefresh")
+
+-- DonationLeaderBoard 서버에 갱신 신호 보내는 BindableEvent
+local donationForceRefresh = Instance.new("BindableEvent")
+donationForceRefresh.Name = "DonationForceRefresh"
+donationForceRefresh.Parent = ReplicatedStorage
+
 local donationValues = {
 	[3364008117] = 2,
 	[3364050876] = 5,
@@ -137,18 +145,19 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local productId = receiptInfo.ProductId
 
 	if donationValues[productId] then
-		-- Process donation
 		local data = DataManager:GetData(player)
 		if data then
-			local newDonationAmount = (data.Donations or 0) + donationValues[productId]
-
-			-- Update via UpdateData (includes leaderboard update)
+			local amount = donationValues[productId]
+			local newDonationAmount = (data.Donations or 0) + amount
 			DataManager:UpdateData(player, "Donations", newDonationAmount)
-
-			-- Force leaderboard update
 			local userId = tostring(player.UserId)
 			pcall(function()
 				DataStoreService:GetOrderedDataStore("DonationLeaderboard"):SetAsync(userId, newDonationAmount)
+			end)
+			-- 알림 + 리더보드 갱신
+			noticeEvent:FireClient(player, "감사합니다! " .. amount .. " R$ 도네이션해주셨습니다!")
+			task.delay(1, function()
+				donationForceRefresh:Fire(player)
 			end)
 		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted

@@ -8,23 +8,23 @@ end
 
 local FISHTRAP_CONFIGS = {
 	["BasicFishTrap"] = {
-		catchInterval = 300,
-		maxCapacity = 30,
+		catchInterval = 600,
+		maxCapacity = 20,
 		rodType = "BasicRod"
 	},
 	["AdvancedFishTrap"] = {
-		catchInterval = 240,
-		maxCapacity = 40,
+		catchInterval = 600,
+		maxCapacity = 30,
 		rodType = "SteelRod"
 	},
 	["MasterFishTrap"] = {
-		catchInterval = 180,
-		maxCapacity = 50,
+		catchInterval = 600,
+		maxCapacity = 40,
 		rodType = "GoldRod"
 	},
 	["RobuxFishTrap"] = {
-		catchInterval = 150,
-		maxCapacity = 80,
+		catchInterval = 600,
+		maxCapacity = 60,
 		rodType = "RobuxRod",
 		displayName = "Robux Fish Trap"
 	}

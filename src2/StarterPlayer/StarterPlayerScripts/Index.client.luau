@@ -28,7 +28,8 @@ local mainGui       = player:WaitForChild("PlayerGui"):WaitForChild("Main")
 local notifBadge    = mainGui.Left.Index:WaitForChild("Notification")
 local notifLabel    = notifBadge:WaitForChild("TextLabel")
 
-local discoverRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
+local discoverRemote  = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
+local getClaimedRF    = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("GetDiscoveryClaimed")
 
 local slotTemplate = scrollFrame:WaitForChild("IndexSlot")
 slotTemplate.Visible = false
@@ -381,19 +382,26 @@ local function setupDiscoveryWatchers()
 	local leaderstats = player:WaitForChild("leaderstats")
 	local fishFolder  = leaderstats:WaitForChild("Fish")
 
+	-- Restore unclaimed rewards from server: discovered but not yet claimed
+	local ok, claimedData = pcall(function() return getClaimedRF:InvokeServer() end)
+	local claimed = (ok and type(claimedData) == "table") and claimedData or {}
+
 	for _, rarityData in ipairs(FishRarities) do
 		for _, fishData in ipairs(rarityData.fishes) do
 			local fishName = fishData.fishName
 			local fishBool = fishFolder:FindFirstChild(fishName)
 			if fishBool then
+				-- If discovered but not claimed → restore unclaimed badge
+				if fishBool.Value and not claimed[fishName] then
+					unclaimed[fishName] = true
+				end
+
 				if not fishBool.Value then
 					-- Not yet discovered: watch for first discovery
 					fishBool.Changed:Connect(function(newVal)
 						if newVal then
-							-- Mark as unclaimed, show badge
 							unclaimed[fishName] = true
 							updateNotifBadge()
-							-- Refresh index UI if open so pulse shows immediately
 							if isIndexOpen() then createFishIndexUI() end
 						end
 					end)
@@ -401,6 +409,8 @@ local function setupDiscoveryWatchers()
 			end
 		end
 	end
+
+	updateNotifBadge()
 end
 
 newIndexFrame.Visible = false

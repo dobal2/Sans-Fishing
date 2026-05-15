@@ -4,9 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local dataManager = require(script.Parent.leaderstats.DataManager)
 
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
+local getClaimedRF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("GetDiscoveryClaimed")
 local discoverNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("DiscoverNoticeEvent")
 
--- Server-authoritative fish → rarity mapping (client cannot spoof reward amount)
 local FISH_RARITY = {
 	["Small Carp"] = "Common", ["Gold Fish"] = "Common", ["Stone Fish"] = "Common",
 	["Crab"] = "Uncommon", ["Crystal Bass"] = "Uncommon", ["Dust Fish"] = "Uncommon",
@@ -23,15 +23,14 @@ local DISCOVER_REWARDS = {
 	Legendary = 3000, Mystic = 8000, Fantasy = 25000, Unknown = 100000,
 }
 
-local discoverCooldowns = {}
-Players.PlayerRemoving:Connect(function(p) discoverCooldowns[p] = nil end)
+-- Returns table of fishName → true for already-claimed rewards
+getClaimedRF.OnServerInvoke = function(player)
+	local data = dataManager:GetData(player)
+	if not data then return {} end
+	return data.DiscoveryClaimed or {}
+end
 
 remote.OnServerEvent:Connect(function(player, fishName)
-	-- Rate limit: once per 2 seconds
-	local now = tick()
-	if discoverCooldowns[player] and now - discoverCooldowns[player] < 2 then return end
-	discoverCooldowns[player] = now
-
 	if type(fishName) ~= "string" then
 		warn("FishDiscoverReward: invalid fishName from", player.Name)
 		return
@@ -42,6 +41,13 @@ remote.OnServerEvent:Connect(function(player, fishName)
 		warn("FishDiscoverReward: unknown fish from", player.Name, tostring(fishName))
 		return
 	end
+
+	local data = dataManager:GetData(player)
+	if not data then return end
+
+	-- Persistent duplicate prevention via DataStore
+	if not data.DiscoveryClaimed then data.DiscoveryClaimed = {} end
+	if data.DiscoveryClaimed[fishName] then return end
 
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
@@ -58,15 +64,13 @@ remote.OnServerEvent:Connect(function(player, fishName)
 	local coinsValue = leaderstats:FindFirstChild("Coins")
 	if not coinsValue then return end
 
-	-- Server calculates reward — client input ignored
 	local rewardCoins = DISCOVER_REWARDS[rarity] or 0
 	local newCoins = coinsValue.Value + rewardCoins
 	coinsValue.Value = newCoins
 
-	local data = dataManager:GetData(player)
-	if data then
-		dataManager:UpdateData(player, "Coins", newCoins)
-	end
+	-- Mark as claimed in persistent data
+	data.DiscoveryClaimed[fishName] = true
+	dataManager:UpdateData(player, "Coins", newCoins)
 
 	local message = string.format("New discovery: %s! +%d coins", fishName, rewardCoins)
 	discoverNoticeEvent:FireClient(player, message, "#00FFCC")

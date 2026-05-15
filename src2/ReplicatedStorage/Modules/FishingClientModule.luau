@@ -56,8 +56,8 @@ function FishingClient.init(tool)
 	self.isProcessing = false
 	self.inputCooldown = 0
 	self.player = game.Players.LocalPlayer
-	self.remote = tool:WaitForChild("RemoteEvent")
-	self.castEvent = tool:WaitForChild("CastRod")
+	self.remote = tool:WaitForChild("RemoteEvent", 5)
+	self.castEvent = tool:WaitForChild("CastRod", 5)
 	self.locked = false
 	self.newGUI = nil
 	self.sliderTween = nil
@@ -111,6 +111,7 @@ function FishingClient.init(tool)
 	autoCastEvent.Parent = tool
 	autoCastEvent.Event:Connect(function()
 		if not self.newGUI and not self.locked and not self.baitThrown then
+			if self:_isInventoryFull() then return end
 			local character = self.player.Character
 			if not character then return end
 			local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -158,6 +159,29 @@ function FishingClient:_hasInventoryExpansionGamepass()
 		warn("Client: Failed to check inventory expansion gamepass")
 		return false
 	end
+end
+
+-- Returns true if inventory is full (and fires notice), false if OK to cast
+function FishingClient:_isInventoryFull()
+	local backpack = self.player:FindFirstChild("Backpack")
+	if not backpack then return false end
+	local fishCount = 0
+	for _, item in ipairs(backpack:GetChildren()) do
+		if item:IsA("Tool") and item:FindFirstChild("FishValue") then
+			fishCount += 1
+		end
+	end
+	local hasExpansion = self:_hasInventoryExpansionGamepass()
+	local limit = hasExpansion and 200 or 100
+	if fishCount >= limit then
+		local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("NoticeEventForClient")
+		local message = hasExpansion and
+			"Expanded inventory full! Go sell fish (Max 200)" or
+			"Inventory full! Go sell fish or buy expansion pass (Max 100)"
+		noticeEvent:Fire(message)
+		return true
+	end
+	return false
 end
 
 -- Fast position + rotation compound shake effect
@@ -467,22 +491,24 @@ function FishingClient:_processFishingInput()
 	end)
 end
 
--- Rarity → 기본 강도 (weight로 추가 증폭)
+-- Rarity → base shake intensity
 local RARITY_BASE_INTENSITY = {
-	Common    = 0.04,
-	Uncommon  = 0.07,
-	Rare      = 0.11,
-	Epic      = 0.16,
-	Legendary = 0.22,
-	Mythical  = 0.30,
-	Fantasy   = 0.40,
+	Common    = 0.01,
+	Uncommon  = 0.04,
+	Rare      = 0.08,
+	Epic      = 0.13,
+	Legendary = 0.19,
+	Mystic    = 0.27,
+	Fantasy   = 0.36,
+	Unknown   = 0.46,
 }
 
 function FishingClient:_startCameraShake(rarity, fishWeight)
 	self:_stopCameraShake()
 
-	local base = RARITY_BASE_INTENSITY[rarity] or 0.06
-	local weightBonus = math.clamp((fishWeight or 0) / 100, 0, 1) * 0.20
+	local base = RARITY_BASE_INTENSITY[rarity] or 0.01
+	-- Weight adds up to 30% of base on top (e.g. 200kg fish = +base*0.3)
+	local weightBonus = math.clamp((fishWeight or 0) / 200, 0, 1) * base * 0.3
 	local intensity = base + weightBonus
 	self.cameraShakeIntensity = intensity
 
@@ -598,8 +624,29 @@ function FishingClient:_playHoldingAnimation(holdingFish)
 		self.holdingAnimationTrack = nil
 	end
 
-	local BIG_FISH_THRESHOLD = 40.0
-	local isBig = holdingFish and (self.lastFishWeight or 0) >= BIG_FISH_THRESHOLD
+	local BIG_FISH_THRESHOLD = 30.0
+	local isBig = false
+	if holdingFish then
+		local backpack = self.player:FindFirstChild("Backpack")
+		if backpack then
+			for _, item in ipairs(backpack:GetChildren()) do
+				local fw = item:FindFirstChild("FishWeight")
+				if fw and fw.Value >= BIG_FISH_THRESHOLD then
+					isBig = true
+					break
+				end
+			end
+		end
+	end
+
+	if isBig and not self.preloadedHoldBigFishAnimation then
+		local folder = ReplicatedStorage:FindFirstChild("Animations")
+		local anim = folder and folder:FindFirstChild("HoldBigFish")
+		if anim and anim:IsA("Animation") then
+			self.preloadedHoldBigFishAnimation = anim
+		end
+	end
+
 	local animToPlay = isBig and self.preloadedHoldBigFishAnimation or self.preloadedHoldingAnimation
 
 	if animToPlay then
@@ -805,7 +852,7 @@ function FishingClient:_playFinishAnimation()
 
 		self.finishAnimationTrack = nil
 		if self.tool and self.tool.Parent == self.player.Character then
-			self:_playHoldingAnimation(true)
+			self:_playHoldingAnimation(false)
 		end
 	end)
 end
@@ -1037,27 +1084,7 @@ function FishingClient:_bind()
 		if tick() < self.inputCooldown then return end
 		self.inputCooldown = tick() + 0.2
 
-		local backpack = self.player:FindFirstChild("Backpack")
-		if backpack then
-			local fishCount = 0
-			for _, item in ipairs(backpack:GetChildren()) do
-				if item:IsA("Tool") and item:FindFirstChild("FishValue") then
-					fishCount += 1
-				end
-			end
-
-			local hasExpansion = self:_hasInventoryExpansionGamepass()
-			local limit = hasExpansion and 200 or 100
-
-			if fishCount >= limit then
-				local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("NoticeEventForClient")
-				local message = hasExpansion and
-					"Expanded inventory full! Go sell fish (Max 200)" or
-					"Inventory full! Go sell fish or buy expansion pass (Max 100)"
-				noticeEvent:Fire(message)
-				return
-			end
-		end
+		if self:_isInventoryFull() then return end
 
 		if self.baitThrown and not self.newGUI then
 			local currentTime = tick()
@@ -1106,6 +1133,18 @@ function FishingClient:_bind()
 
 	-- Remote event handling
 	self.remote.OnClientEvent:Connect(function(data)
+		if data == "inventory_full" then
+			self:_closeGui()
+			self.baitThrown = false
+			task.spawn(function()
+				task.wait(0.5)
+				if self.tool and self.tool.Parent == self.player.Character then
+					self:_playHoldingAnimation(false)
+				end
+			end)
+			return
+		end
+
 		if data == "fail" then
 			self:_closeGui()
 			self.baitThrown = false
@@ -1184,7 +1223,7 @@ function FishingClient:_bind()
 	end)
 
 	self.tool.Equipped:Connect(function()
-		-- Wait until preload is ready before playing holding animation
+		-- Wait until holding animation is preloaded before playing
 		task.spawn(function()
 			local deadline = tick() + 5
 			while not self.preloadedHoldingAnimation and tick() < deadline do
@@ -1193,7 +1232,7 @@ function FishingClient:_bind()
 			if (not self.fishBaitEatAnimationTrack or not self.fishBaitEatAnimationTrack.IsPlaying) and
 				(not self.finishAnimationTrack or not self.finishAnimationTrack.IsPlaying) and
 				self.tool.Parent == self.player.Character then
-				self:_playHoldingAnimation(true)
+				self:_playHoldingAnimation(false)
 			end
 		end)
 	end)
@@ -1266,11 +1305,12 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 
 	tutorialEvent:Fire("minigame_started")
 
-	-- Passive drain: progress slowly decreases over time
+	-- Passive drain: progress slowly decreases over time (faster for rarer fish)
+	local drainRate = difficulty.drainRate or 4
 	self._drainFired = false
 	self._drainConn = game:GetService("RunService").Heartbeat:Connect(function(dt)
 		if not self._drainConn then return end
-		self.currentProgress = math.max(self.currentProgress - dt * 4, 0)
+		self.currentProgress = math.max(self.currentProgress - dt * drainRate, 0)
 		self:_updateProgressBar()
 		if self.currentProgress <= 0 and not self._drainFired then
 			self._drainFired = true

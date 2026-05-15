@@ -278,7 +278,7 @@ local function updateView(skipTween)
 	if not skipTween then
 		local modelPosition = rodData.position
 		local shopModel = workspace:FindFirstChild("Upgrade Shop")
-		local rodModel = shopModel and shopModel:FindFirstChild(rodName)
+		local rodModel = nil
 		if rodName == "VoidRod" then
 			rodModel = workspace:FindFirstChild("VoidRodModel")
 		end
@@ -287,20 +287,13 @@ local function updateView(skipTween)
 			local modelCFrame = rodModel:GetPrimaryPartCFrame() or rodModel:GetModelCFrame()
 			local modelSize = rodModel:GetExtentsSize()
 			local distance = math.max(8, modelSize.Magnitude * 1.5)
-			local rightDirection
-			if rodName == "VoidRod" then
-				rightDirection = (modelCFrame * CFrame.Angles(0, math.rad(180), 0)).RightVector
-			elseif rodName == "MagneticRod" then
-				-- MagneticRod Handle orientation differs; use fixed world offset
-				rightDirection = Vector3.new(1, 0, 0)
-			else
-				rightDirection = modelCFrame.RightVector
-			end
+			local rightDirection = (modelCFrame * CFrame.Angles(0, math.rad(180), 0)).RightVector
+			rightDirection = Vector3.new(rightDirection.X, 0, rightDirection.Z).Unit
 			camPos = modelPosition + (rightDirection * distance) + Vector3.new(0, 2, 0)
-			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, 1, 0))
+			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, 1, 0), Vector3.yAxis)
 		else
 			camPos = modelPosition + Vector3.new(8, 3, 0)
-			camCF = CFrame.lookAt(camPos, modelPosition)
+			camCF = CFrame.lookAt(camPos, modelPosition + Vector3.new(0, 1, 0), Vector3.yAxis)
 		end
 		ts:Create(cam, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { CFrame = camCF }):Play()
 	end

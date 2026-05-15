@@ -35,6 +35,23 @@ local toolButton = inventoryGui:WaitForChild("toolButton")
 
 local fishLockRemote = ReplicatedStorage:WaitForChild("FishLockEvent")
 
+local saveHotBarRemote = nil
+task.spawn(function()
+	local Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
+	saveHotBarRemote = Misc:WaitForChild("SaveHotBarLayout")
+end)
+
+local function saveHotBarLayout()
+	if not saveHotBarRemote then return end
+	local layout = {}
+	for slot, obj in pairs(module.OBJECTS.HotBar) do
+		if obj and obj.Tool then
+			layout[slot] = obj.Tool.Name
+		end
+	end
+	saveHotBarRemote:FireServer(layout)
+end
+
 local EnumKeys = {
 	Enum.KeyCode.One,
 	Enum.KeyCode.Two,
@@ -54,7 +71,7 @@ local function updateInventorySize()
 	end
 
 	local rows = math.max(5, math.ceil(itemCount / 10))
-	local neededHeight = rows * 70 + 50
+	local neededHeight = rows * 52 + 6
 
 	if inventoryFrame and inventoryFrame.Frame then
 		inventoryFrame.Frame.CanvasSize = UDim2.new(0, 0, 0, neededHeight)
@@ -94,6 +111,8 @@ function toolObjectMetatable:DisconnectAll()
 		if vp then vp:Destroy() end
 		self.Frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
 		self.Frame.Image = SETTINGS.DEFAULT_IMAGEID
+		local s = self.Frame:FindFirstChildOfClass("UIStroke")
+		if s then s.Color = Color3.new(0, 0, 0) end
 	else
 		self.Frame:Destroy()
 	end
@@ -118,9 +137,30 @@ local VP_YAW   = 45
 local VP_ZOOM  = 1.2
 
 local VP_OVERRIDES = {
-	["Unknown"]        = { pitch = -20, yaw = 45,  zoom = 3.5 },
-	["Electric Fish"]  = { pitch = -10, yaw = 45,  zoom = 0.9 },
-	["Nyan Cat"]       = { pitch = -10, yaw = 30,  zoom = 0.9 },
+	-- 작은 물고기: 줌 크게
+	["Unknown"]        = { pitch = -25, yaw = 45,  zoom = 4.0 },
+	["Small Carp"]     = { pitch = -20, yaw = 40,  zoom = 1.8 },
+	["Gold Fish"]      = { pitch = -20, yaw = 40,  zoom = 1.8 },
+	["Stone Fish"]     = { pitch = -20, yaw = 40,  zoom = 1.8 },
+	["Crystal Bass"]   = { pitch = -20, yaw = 40,  zoom = 1.6 },
+	-- 납작/옆으로 긴 물고기
+	["Ray"]            = { pitch = -45, yaw = 10,  zoom = 1.0 },
+	["Dust Fish"]      = { pitch = -15, yaw = 10,  zoom = 1.4 },
+	["Reggigash"]      = { pitch = -15, yaw = 10,  zoom = 1.4 },
+	["Crab"]           = { pitch = -35, yaw = 20,  zoom = 2.2 },
+	-- 세로로 긴 물고기
+	["Electric Fish"]  = { pitch = -10, yaw = 30,  zoom = 0.85 },
+	["Dragon Head Fish"]={ pitch = -15, yaw = 40,  zoom = 0.9 },
+	["Shark"]          = { pitch = -15, yaw = 35,  zoom = 0.9 },
+	["Golden Trout"]   = { pitch = -15, yaw = 35,  zoom = 0.9 },
+	["Sans"]           = { pitch = -15, yaw = 35,  zoom = 1.0 },
+	["Undyine"]        = { pitch = -20, yaw = 35,  zoom = 1.1 },
+	-- 일반
+	["Nyan Cat"]       = { pitch = -10, yaw = 30,  zoom = 0.95 },
+	["Bass"]           = { pitch = -20, yaw = 40,  zoom = 1.3 },
+	["Snow Fish"]      = { pitch = -20, yaw = 40,  zoom = 1.4 },
+	["Diri"]           = { pitch = -20, yaw = 40,  zoom = 1.3 },
+	["Armor Fish"]     = { pitch = -20, yaw = 40,  zoom = 1.2 },
 }
 
 local function getFishBaseName(toolName)
@@ -143,6 +183,81 @@ function toolObjectMetatable:updateIcon()
 		frame.toolIcon.Visible = false
 		frame.toolIcon.Image = ""
 		frame.toolName.Visible = SETTINGS.ALWAYS_SHOW_TOOL_NAME
+
+		-- 기존 ViewportFrame 제거 후 새로 생성
+		local oldVp = frame:FindFirstChild("toolViewport")
+		if oldVp then oldVp:Destroy() end
+
+		local baseName = getFishBaseName(tool.Name)
+		local ov = VP_OVERRIDES[baseName] or {}
+		local pitch = ov.pitch or VP_PITCH
+		local yaw   = ov.yaw   or VP_YAW
+		local zoom  = ov.zoom  or VP_ZOOM
+
+		local vp = Instance.new("ViewportFrame")
+		vp.Name = "toolViewport"
+		vp.Size = UDim2.new(1, 0, 1, 0)
+		vp.BackgroundTransparency = 1
+		vp.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		vp.ImageTransparency = 0
+		vp.ZIndex = 1
+		vp.Parent = frame
+
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = VP_FOV
+		vp.CurrentCamera = camera
+		camera.Parent = vp
+
+		local worldModel = Instance.new("WorldModel")
+		worldModel.Parent = vp
+
+		-- 물고기 모델 복제 후 원점 이동
+		local clone = tool:Clone()
+		for _, s in ipairs(clone:GetDescendants()) do
+			if s:IsA("Script") or s:IsA("LocalScript") or s:IsA("ModuleScript") then
+				s:Destroy()
+			end
+		end
+
+		-- 파츠 수집 및 바운딩박스 계산 (이동 전)
+		local parts = {}
+		for _, p in ipairs(clone:GetDescendants()) do
+			if p:IsA("BasePart") then table.insert(parts, p) end
+		end
+		-- Handle이 있으면 Handle 기준, 없으면 첫 파츠 기준으로 원점 이동
+		local handle = clone:FindFirstChild("Handle") or (parts[1] and parts[1].Parent == clone and parts[1])
+		if handle and handle:IsA("BasePart") then
+			local offset = handle.CFrame
+			for _, p in ipairs(parts) do
+				p.CFrame = offset:Inverse() * p.CFrame
+			end
+		end
+
+		clone.Parent = worldModel
+
+		-- 이동 후 바운딩박스 재계산
+		local minX, minY, minZ = math.huge, math.huge, math.huge
+		local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+		for _, p in ipairs(parts) do
+			local pos = p.Position
+			local half = p.Size / 2
+			minX = math.min(minX, pos.X - half.X)
+			minY = math.min(minY, pos.Y - half.Y)
+			minZ = math.min(minZ, pos.Z - half.Z)
+			maxX = math.max(maxX, pos.X + half.X)
+			maxY = math.max(maxY, pos.Y + half.Y)
+			maxZ = math.max(maxZ, pos.Z + half.Z)
+		end
+		local center = Vector3.new((minX+maxX)/2, (minY+maxY)/2, (minZ+maxZ)/2)
+		local size = Vector3.new(maxX-minX, maxY-minY, maxZ-minZ)
+		local radius = math.max(size.X, size.Y, size.Z) / 2
+
+		-- 카메라: pitch/yaw 각도에서 center 바라보기
+		local rot = CFrame.Angles(math.rad(pitch), math.rad(yaw), 0)
+		local dist = (radius * zoom) / math.tan(math.rad(VP_FOV / 2))
+		local camPos = center + (rot * Vector3.new(0, 0, dist))
+		camera.CFrame = CFrame.new(camPos, center)
+
 	elseif tool.TextureId ~= "" then
 		local vp = frame:FindFirstChild("toolViewport")
 		if vp then vp:Destroy() end
@@ -163,39 +278,84 @@ function toolObjectMetatable:getParentInstance()
 end
 
 function toolObjectMetatable:showDescription()
-	local toolDescription = self.Tool.ToolTip
 	local frame = self.Frame
-	if toolDescription == "" then
-		return
-	end
+	local toolFullName = self.Tool.Name
 
-	local descriptionFrame = Instance.new("TextLabel")
-	descriptionFrame.Name = "descriptionFrame"
-	descriptionFrame.AnchorPoint = Vector2.new(0.5, 0)
-	descriptionFrame.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
-	descriptionFrame.TextColor = BrickColor.Black()
-	descriptionFrame.TextSize = 14
-	descriptionFrame.BorderSizePixel = 0
-	descriptionFrame.BackgroundColor = BrickColor.White()
-	descriptionFrame.ZIndex = 99
-	descriptionFrame.TextWrapped = true
-	descriptionFrame.Parent = inventoryGui
+	local existing = inventoryGui:FindFirstChild("descriptionFrame")
+	if existing then existing:Destroy() end
+
+	local FONT = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
+	local TEXT_SIZE = 13
+	local PAD_X, PAD_Y = 10, 6
+
+	local bg = Instance.new("Frame")
+	bg.Name = "descriptionFrame"
+	bg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	bg.BackgroundTransparency = 0.15
+	bg.BorderSizePixel = 0
+	bg.AutomaticSize = Enum.AutomaticSize.XY
+	bg.Size = UDim2.new(0, 0, 0, 0)
+	bg.ZIndex = 200
+	bg.Parent = inventoryGui
 
 	local corner = Instance.new("UICorner")
-	corner.Parent = descriptionFrame
-	corner.CornerRadius = UDim.new(0.12, 0)
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = bg
 
-	local textBounds = TextService:GetTextSize(toolDescription, descriptionFrame.TextSize, descriptionFrame.Font, Vector2.new(400, 1000)) + Vector2.new(10, 4)
-	descriptionFrame.Size = UDim2.new(0, textBounds.X, 0, textBounds.Y)
-	descriptionFrame.Position = UDim2.new(0, frame.AbsolutePosition.X + (frame.AbsoluteSize.X / 2), 0, frame.AbsolutePosition.Y - textBounds.Y - 2 + 57)
-	descriptionFrame.Text = toolDescription
-	self.DescriptionFrame = descriptionFrame
-	game:GetService("Debris"):AddItem(descriptionFrame, 15)
+	local uipad = Instance.new("UIPadding")
+	uipad.PaddingLeft   = UDim.new(0, PAD_X)
+	uipad.PaddingRight  = UDim.new(0, PAD_X)
+	uipad.PaddingTop    = UDim.new(0, PAD_Y)
+	uipad.PaddingBottom = UDim.new(0, PAD_Y)
+	uipad.Parent = bg
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(255, 255, 255)
+	stroke.Transparency = 0.7
+	stroke.Thickness = 1
+	stroke.Parent = bg
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeTransparency = 0.6
+	label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	label.FontFace = FONT
+	label.TextSize = TEXT_SIZE
+	label.TextWrapped = false
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Text = toolFullName
+	label.ZIndex = 201
+	label.Size = UDim2.new(0, 0, 0, 0)
+	label.Position = UDim2.new(0, 0, 0, 0)
+	label.Parent = bg
+
+	-- RenderStepped 한 프레임 후 AbsoluteSize 확정되면 위치 계산
+	task.spawn(function()
+		RunService.RenderStepped:Wait()
+		if not bg.Parent then return end
+		local realW = bg.AbsoluteSize.X
+		local realH = bg.AbsoluteSize.Y
+		-- AbsolutePosition은 화면 절대좌표, bg는 inventoryGui 자식이므로 offset 필요
+		local guiOrigin = inventoryGui.AbsolutePosition
+		local frameAbsX = frame.AbsolutePosition.X
+		local frameAbsY = frame.AbsolutePosition.Y
+		local ax = (frameAbsX - guiOrigin.X) + frame.AbsoluteSize.X / 2 - realW / 2
+		local ay = (frameAbsY - guiOrigin.Y) - realH - 4
+		local vpSize = inventoryGui.AbsoluteSize
+		ax = math.clamp(ax, 4, vpSize.X - realW - 4)
+		if ay < 4 then ay = (frameAbsY - guiOrigin.Y) + frame.AbsoluteSize.Y + 4 end
+		bg.Position = UDim2.new(0, ax, 0, ay)
+	end)
+
+	self.DescriptionFrame = bg
+	game:GetService("Debris"):AddItem(bg, 10)
 end
 
 function toolObjectMetatable:removeDescription()
 	if self.DescriptionFrame then
 		self.DescriptionFrame:Destroy()
+		self.DescriptionFrame = nil
 	end
 end
 
@@ -420,17 +580,20 @@ function module:addTool(tool: Tool, parent: string, position: number)
 
 		if object:isEquipped() then
 			humanoid:UnequipTools()
-			frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Color = Color3.new(0, 0, 0) end
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			module.currentlyEquipped = nil
 		elseif tool.Enabled then
 			humanoid:EquipTool(tool)
 			if module.currentlyEquipped and module.currentlyEquipped.Parent then
-				module.currentlyEquipped.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+				local prevStroke = module.currentlyEquipped:FindFirstChildOfClass("UIStroke")
+				if prevStroke then prevStroke.Color = Color3.new(0, 0, 0) end
 				module.currentlyEquipped.Image = SETTINGS.DEFAULT_IMAGEID
 			end
 			module.currentlyEquipped = frame
-			frame.BackgroundColor3 = SETTINGS.EQUIPPED_COLOR
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Color = Color3.new(1, 1, 1) end
 			frame.Image = SETTINGS.EQUIPPED_IMAGEID
 		end
 	end
@@ -438,14 +601,17 @@ function module:addTool(tool: Tool, parent: string, position: number)
 	local function updateEquipped()
 		if object:isEquipped() and tool.Enabled then
 			if module.currentlyEquipped and module.currentlyEquipped.Parent then
-				module.currentlyEquipped.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+				local prevStroke = module.currentlyEquipped:FindFirstChildOfClass("UIStroke")
+				if prevStroke then prevStroke.Color = Color3.new(0, 0, 0) end
 				module.currentlyEquipped.Image = SETTINGS.DEFAULT_IMAGEID
 			end
 			module.currentlyEquipped = frame
-			frame.BackgroundColor3 = SETTINGS.EQUIPPED_COLOR
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Color = Color3.new(1, 1, 1) end
 			frame.Image = SETTINGS.EQUIPPED_IMAGEID
 		else
-			frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
+			local stroke = frame:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Color = Color3.new(0, 0, 0) end
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			module.currentlyEquipped = nil
 		end
@@ -491,10 +657,19 @@ function module:addTool(tool: Tool, parent: string, position: number)
 		local isLocked = lockValue and lockValue.Value or false
 
 		if fishValue then
-			local lockElement = frame:FindFirstChild("Lock") or frame:FindFirstChild("lock")
-			if lockElement then
-				lockElement.Visible = isLocked
+			local lockElement = frame:FindFirstChild("FishLockIcon")
+			if not lockElement then
+				lockElement = Instance.new("ImageLabel")
+				lockElement.Name = "FishLockIcon"
+				lockElement.Size = UDim2.new(0.35, 0, 0.35, 0)
+				lockElement.Position = UDim2.new(0.65, 0, 0, 0)
+				lockElement.BackgroundTransparency = 1
+				lockElement.Image = "rbxassetid://10333789558"
+				lockElement.ScaleType = Enum.ScaleType.Fit
+				lockElement.ZIndex = 10
+				lockElement.Parent = frame
 			end
+			lockElement.Visible = isLocked
 		end
 	end
 
@@ -562,6 +737,7 @@ function module:addTool(tool: Tool, parent: string, position: number)
 			end
 
 			lockValue.Value = not lockValue.Value
+			updateFishLockUI()
 
 			pcall(function()
 				fishLockRemote:FireServer(tool, lockValue.Value)
@@ -592,6 +768,7 @@ function module:addTool(tool: Tool, parent: string, position: number)
 					end
 
 					lockValue.Value = not lockValue.Value
+					updateFishLockUI()
 					pcall(function()
 						fishLockRemote:FireServer(tool, lockValue.Value)
 					end)
@@ -650,12 +827,14 @@ function module:addTool(tool: Tool, parent: string, position: number)
 						self:addTool(newSlotObject.Tool, parent, position)
 						self:addTool(tool, newSlotObject.Parent, newSlotObject.Position)
 						if newFrame then newFrame:Destroy() end
+						saveHotBarLayout()
 					elseif newSlot.Parent == hotbar then
 						wasSwapped = true
 						object:DisconnectAll()
 						self:addTool(tool, "HotBar", tonumber(newSlot.Name))
 						if parent == "Inventory" and newFrame then newFrame:Destroy() end
 						newSlot:Destroy()
+						saveHotBarLayout()
 					end
 
 					if newSlotObject then newSlotObject:removeDescription() end
@@ -666,6 +845,7 @@ function module:addTool(tool: Tool, parent: string, position: number)
 					self:addTool(tool, "Inventory")
 					self:searchTool()
 					updateInventorySize()
+					saveHotBarLayout()
 					break
 				end
 			end
@@ -711,7 +891,7 @@ function module:addTool(tool: Tool, parent: string, position: number)
 				newFrame.Parent = object:getParentInstance()
 
 				frame.Parent = inventoryGui
-				frame.Size = UDim2.new(0.06, 0, 0.08, 0)
+				frame.Size = UDim2.new(0, frame.AbsoluteSize.X, 0, frame.AbsoluteSize.Y)
 				frame.AnchorPoint = Vector2.new(0.5, 0.5)
 			end
 

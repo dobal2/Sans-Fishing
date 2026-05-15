@@ -31,6 +31,15 @@ local function removeNotice(frame)
 			TextTransparency = 1,
 			TextStrokeTransparency = 1,
 		}):Play()
+		local stroke = textLabel:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			TweenService:Create(stroke, TWEEN_OUT, {Transparency = 1}):Play()
+		end
+	end
+	for _, desc in ipairs(frame:GetDescendants()) do
+		if desc:IsA("UIStroke") and desc.Parent ~= textLabel then
+			TweenService:Create(desc, TWEEN_OUT, {Transparency = 1}):Play()
+		end
 	end
 	if shadow then
 		TweenService:Create(shadow, TWEEN_OUT, {ImageTransparency = 1}):Play()
@@ -61,6 +70,13 @@ local function showNotice(message, color)
 	local textLabel = frame:FindFirstChild("Text")
 	local shadow    = frame:FindFirstChild("Shadow")
 
+	-- 모든 UIStroke 초기 투명도 1로 설정
+	for _, desc in ipairs(frame:GetDescendants()) do
+		if desc:IsA("UIStroke") then
+			desc.Transparency = 1
+		end
+	end
+
 	if textLabel then
 		textLabel.Text = message
 		textLabel.TextTransparency = 1
@@ -84,6 +100,12 @@ local function showNotice(message, color)
 			BackgroundTransparency = template.BackgroundTransparency,
 			Position = UDim2.new(0, 0, 0, 0),
 		}):Play()
+		-- UIStroke fade in
+		for _, desc in ipairs(frame:GetDescendants()) do
+			if desc:IsA("UIStroke") then
+				TweenService:Create(desc, TWEEN_IN, {Transparency = 0}):Play()
+			end
+		end
 		if textLabel then
 			TweenService:Create(textLabel, TWEEN_IN, {
 				TextTransparency = 0,

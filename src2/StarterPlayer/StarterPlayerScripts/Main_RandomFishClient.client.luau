@@ -29,6 +29,10 @@ local RARITY_COLORS = {
 local player = Players.LocalPlayer
 local mainGui = player.PlayerGui:WaitForChild("Main")
 
+local Sounds       = ReplicatedStorage:WaitForChild("Sounds")
+local randomTick   = Sounds:WaitForChild("RandomTIck")
+local robuxBuySound = Sounds:WaitForChild("RobuxBuySound")
+
 local buyFrame = mainGui:WaitForChild("RandomFish")
 local button   = buyFrame:FindFirstChild("Button")
 local buyVp    = buyFrame:FindFirstChild("ViewportFrame")
@@ -194,6 +198,7 @@ local function playReveal(fishName, rarityName)
 				local randFish = allFishNames[math.random(1, #allFishNames)]
 				setVpFish(randFish, true)
 				vpPop()
+				randomTick:Play()
 				if nameLbl then nameLbl.Text = randFish; nameLbl.TextColor3 = Color3.new(1,1,1) end
 				if rarityLbl then rarityLbl.Text = "???"; rarityLbl.TextColor3 = Color3.new(1,1,1) end
 			end
@@ -206,6 +211,7 @@ local function playReveal(fishName, rarityName)
 				task.delay(0.2, function()
 					task.delay(0.15, function()
 						setVpFish(fishName, false)
+						robuxBuySound:Play()
 						if vpScale then
 							vpScale.Scale = 0.5
 							TweenService:Create(vpScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()

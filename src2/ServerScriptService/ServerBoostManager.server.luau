@@ -14,10 +14,10 @@ local PRODUCT_TO_STEP = {}
 for step, pid in pairs(STEP_PRODUCTS) do PRODUCT_TO_STEP[pid] = step end
 
 local STEP_PRICE = {
-	[1] = 49,
-	[2] = 99,
-	[3] = 199,
-	[4] = 299,
+	[1] = 99,
+	[2] = 199,
+	[3] = 299,
+	[4] = 499,
 }
 
 local boostStep    = 1

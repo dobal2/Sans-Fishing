@@ -60,7 +60,7 @@ local Permissions = {
 	}
 }
 
-local Prefix = "/"
+local Prefix = ":"
 
 -- Utility functions
 local function getPlayerRank(playerName)
@@ -187,26 +187,29 @@ local function sendAnnounceToServer(message, senderName, senderRank)
 	end
 end
 
--- Subscribe MessagingService
-MessagingService:SubscribeAsync("GlobalAnnouncement", function(data)
-	local messageData = data.Data
-	sendAnnounceToServer(messageData.message, messageData.senderName, messageData.senderRank)
-end)
+-- Subscribe MessagingService (disabled in Studio where it doesn't work)
+local RunService = game:GetService("RunService")
+if not RunService:IsStudio() then
+	MessagingService:SubscribeAsync("GlobalAnnouncement", function(data)
+		local messageData = data.Data
+		sendAnnounceToServer(messageData.message, messageData.senderName, messageData.senderRank)
+	end)
 
-MessagingService:SubscribeAsync("GlobalCoinGive", function(data)
-	local coinData = data.Data
-	giveCoinsToAllInServer(coinData.amount, coinData.senderName)
-end)
+	MessagingService:SubscribeAsync("GlobalCoinGive", function(data)
+		local coinData = data.Data
+		giveCoinsToAllInServer(coinData.amount, coinData.senderName)
+	end)
 
-MessagingService:SubscribeAsync("GlobalSlapBattleGive", function(data)
-	local slapData = data.Data
-	giveSlapBattleToAllInServer(slapData.senderName)
-end)
+	MessagingService:SubscribeAsync("GlobalSlapBattleGive", function(data)
+		local slapData = data.Data
+		giveSlapBattleToAllInServer(slapData.senderName)
+	end)
 
-MessagingService:SubscribeAsync("GlobalDevRodGive", function(data)
-	local devRodData = data.Data
-	giveDevRodToAllInServer(devRodData.senderName)
-end)
+	MessagingService:SubscribeAsync("GlobalDevRodGive", function(data)
+		local devRodData = data.Data
+		giveDevRodToAllInServer(devRodData.senderName)
+	end)
+end
 
 -- Command handler
 local function command(plr, chat)
@@ -283,16 +286,20 @@ local function command(plr, chat)
 		if hasPermission(plr.Name, "announce") then
 			local message = chat:sub(11)
 			if message and message:len() > 0 then
-				local success, errorMessage = pcall(function()
-					MessagingService:PublishAsync("GlobalAnnouncement", {
-						message = message,
-						senderName = plr.Name,
-						senderRank = getPlayerRank(plr.Name),
-						timestamp = os.time()
-					})
-				end)
-				if not success then
-					warn("MessagingService error:", errorMessage)
+				if RunService:IsStudio() then
+					sendAnnounceToServer(message, plr.Name, getPlayerRank(plr.Name))
+				else
+					local success = pcall(function()
+						MessagingService:PublishAsync("GlobalAnnouncement", {
+							message = message,
+							senderName = plr.Name,
+							senderRank = getPlayerRank(plr.Name),
+							timestamp = os.time()
+						})
+					end)
+					if not success then
+						sendAnnounceToServer(message, plr.Name, getPlayerRank(plr.Name))
+					end
 				end
 			end
 		end
@@ -304,16 +311,20 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local amount = tonumber(args[2])
 			if not amount or amount <= 0 then return end
-			local success, errorMessage = pcall(function()
-				MessagingService:PublishAsync("GlobalCoinGive", {
-					amount = amount,
-					senderName = plr.Name,
-					senderRank = getPlayerRank(plr.Name),
-					timestamp = os.time()
-				})
-			end)
-			if not success then
-				warn("MessagingService error:", errorMessage)
+			if RunService:IsStudio() then
+				giveCoinsToAllInServer(amount, plr.Name)
+			else
+				local success = pcall(function()
+					MessagingService:PublishAsync("GlobalCoinGive", {
+						amount = amount,
+						senderName = plr.Name,
+						senderRank = getPlayerRank(plr.Name),
+						timestamp = os.time()
+					})
+				end)
+				if not success then
+					giveCoinsToAllInServer(amount, plr.Name)
+				end
 			end
 		end
 	end
@@ -321,16 +332,19 @@ local function command(plr, chat)
 	-- :SlapBattleAll
 	if chat:sub(1, 14) == Prefix.."SlapBattleAll" then
 		if hasPermission(plr.Name, "SlapBattleAll") then
-			local success, errorMessage = pcall(function()
-				MessagingService:PublishAsync("GlobalSlapBattleGive", {
-					senderName = plr.Name,
-					senderRank = getPlayerRank(plr.Name),
-					timestamp = os.time()
-				})
-			end)
-			if not success then
-				warn("MessagingService error:", errorMessage)
+			if RunService:IsStudio() then
 				giveSlapBattleToAllInServer(plr.Name)
+			else
+				local success = pcall(function()
+					MessagingService:PublishAsync("GlobalSlapBattleGive", {
+						senderName = plr.Name,
+						senderRank = getPlayerRank(plr.Name),
+						timestamp = os.time()
+					})
+				end)
+				if not success then
+					giveSlapBattleToAllInServer(plr.Name)
+				end
 			end
 		end
 	end
@@ -351,16 +365,19 @@ local function command(plr, chat)
 	-- :DevRodAll
 	if chat:sub(1, 10) == Prefix.."DevRodAll" then
 		if hasPermission(plr.Name, "DevRodAll") then
-			local success, errorMessage = pcall(function()
-				MessagingService:PublishAsync("GlobalDevRodGive", {
-					senderName = plr.Name,
-					senderRank = getPlayerRank(plr.Name),
-					timestamp = os.time()
-				})
-			end)
-			if not success then
-				warn("MessagingService error:", errorMessage)
+			if RunService:IsStudio() then
 				giveDevRodToAllInServer(plr.Name)
+			else
+				local success = pcall(function()
+					MessagingService:PublishAsync("GlobalDevRodGive", {
+						senderName = plr.Name,
+						senderRank = getPlayerRank(plr.Name),
+						timestamp = os.time()
+					})
+				end)
+				if not success then
+					giveDevRodToAllInServer(plr.Name)
+				end
 			end
 		end
 	end

@@ -12,6 +12,7 @@ local DATA_TEMPLATE = {
 	CurrentFishTrap = "";
 	IsTutorialed = false;
 	Playtime = 0;
+	DiscoveryClaimed = {};
 }
 
 local sessionStartTimes = {}

@@ -27,6 +27,8 @@ inventoryIcon:bindEvent("deselected", function()
 end)
 
 -- ── Donation icon ─────────────────────────────────────────────────
+local donationRefreshEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("DonationRefresh")
+
 local donationIcon = Icon.new()
 	:setImage("rbxassetid://11560341132")
 	:setImageScale(0.8)
@@ -46,6 +48,7 @@ local function openDonation()
 		uiScale.Scale = 0
 		TweenService:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
 	end
+	donationRefreshEvent:FireServer()
 end
 
 local function closeDonation()

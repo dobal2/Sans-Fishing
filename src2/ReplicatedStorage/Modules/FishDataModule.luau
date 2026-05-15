@@ -25,68 +25,68 @@ FishData.Rarities = {
 		name = "Common",
 		chance = 46.9,
 		fishes = {
-			{ fishName = "Small Carp", value = 300, model = fishFolder:WaitForChild("small carp"), minWeight = 0.8, maxWeight = 100.0 },
-			{ fishName = "Gold Fish", value = 360, model = fishFolder:WaitForChild("Gold Fish"), minWeight = 0.8, maxWeight = 100.0 },
-			{ fishName = "Stone Fish", value = 400, model = fishFolder:WaitForChild("Stone Fish"), minWeight = 0.8, maxWeight = 100.0 }
+			{ fishName = "Small Carp", value = 144, model = fishFolder:WaitForChild("small carp"), minWeight = 0.8, maxWeight = 100.0 },
+			{ fishName = "Gold Fish", value = 173, model = fishFolder:WaitForChild("Gold Fish"), minWeight = 0.8, maxWeight = 100.0 },
+			{ fishName = "Stone Fish", value = 192, model = fishFolder:WaitForChild("Stone Fish"), minWeight = 0.8, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Uncommon",
 		chance = 25,
 		fishes = {
-			{ fishName = "Crab", value = 520, model = fishFolder:WaitForChild("Crab"), minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Crystal Bass", value = 620, model = fishFolder:WaitForChild("Crystal Bass"), minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Dust Fish", value = 680, model = fishFolder:WaitForChild("Dust Fish"), minWeight = 1.0, maxWeight = 100.0 }
+			{ fishName = "Crab", value = 250, model = fishFolder:WaitForChild("Crab"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Crystal Bass", value = 298, model = fishFolder:WaitForChild("Crystal Bass"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Dust Fish", value = 326, model = fishFolder:WaitForChild("Dust Fish"), minWeight = 1.0, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Rare",
 		chance = 15,
 		fishes = {
-			{ fishName = "Bass", value = 1300, model = fishFolder:WaitForChild("Bass"), minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Snow Fish", value = 1450, model = fishFolder:WaitForChild("Snow Fish"), minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Diri", value = 1400, model = fishFolder:WaitForChild("Diri"), minWeight = 2, maxWeight = 100.0 }
+			{ fishName = "Bass", value = 624, model = fishFolder:WaitForChild("Bass"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Snow Fish", value = 696, model = fishFolder:WaitForChild("Snow Fish"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Diri", value = 672, model = fishFolder:WaitForChild("Diri"), minWeight = 2, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Epic",
 		chance = 8,
 		fishes = {
-			{ fishName = "Dragon Head Fish", value = 1900, model = fishFolder:WaitForChild("Dragon Head Fish"), minWeight = 3.5, maxWeight = 100.0 },
-			{ fishName = "Reggigash", value = 2400, model = fishFolder:WaitForChild("Reggigash"), minWeight = 2, maxWeight = 100.0 }
+			{ fishName = "Dragon Head Fish", value = 912, model = fishFolder:WaitForChild("Dragon Head Fish"), minWeight = 3.5, maxWeight = 100.0 },
+			{ fishName = "Reggigash", value = 1152, model = fishFolder:WaitForChild("Reggigash"), minWeight = 2, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Legendary",
 		chance = 3,
 		fishes = {
-			{ fishName = "Golden Trout", value = 4300, model = fishFolder:WaitForChild("Golden Trout"), minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Armor Fish", value = 5400, model = fishFolder:WaitForChild("Armor Fish"), minWeight = 3.0, maxWeight = 100.0 }
+			{ fishName = "Golden Trout", value = 2064, model = fishFolder:WaitForChild("Golden Trout"), minWeight = 3.0, maxWeight = 100.0 },
+			{ fishName = "Armor Fish", value = 2592, model = fishFolder:WaitForChild("Armor Fish"), minWeight = 3.0, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Mystic",
 		chance = 1.5,
 		fishes = {
-			{ fishName = "Shark", value = 9300, model = fishFolder:WaitForChild("Shark"), minWeight = 5.0, maxWeight = 100.0 },
-			{ fishName = "Ray", value = 9000, model = fishFolder:WaitForChild("Ray"), minWeight = 5.0, maxWeight = 100.0 }
+			{ fishName = "Shark", value = 4464, model = fishFolder:WaitForChild("Shark"), minWeight = 5.0, maxWeight = 100.0 },
+			{ fishName = "Ray", value = 4320, model = fishFolder:WaitForChild("Ray"), minWeight = 5.0, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Fantasy",
 		chance = 0.5,
 		fishes = {
-			{ fishName = "Undyine", value = 21000, model = fishFolder:WaitForChild("Undyine"), minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Sans", value = 23000, model = fishFolder:WaitForChild("Sans"), minWeight = 3.0, maxWeight = 100.0 },
-			{ fishName = "Electric Fish", value = 28000, model = fishFolder:WaitForChild("Electric Fish"), minWeight = 3.0, maxWeight = 100.0 }
+			{ fishName = "Undyine", value = 10080, model = fishFolder:WaitForChild("Undyine"), minWeight = 3.0, maxWeight = 100.0 },
+			{ fishName = "Sans", value = 11040, model = fishFolder:WaitForChild("Sans"), minWeight = 3.0, maxWeight = 100.0 },
+			{ fishName = "Electric Fish", value = 13440, model = fishFolder:WaitForChild("Electric Fish"), minWeight = 3.0, maxWeight = 100.0 }
 		}
 	},
 	{
 		name = "Unknown",
 		chance = 0.1,
 		fishes = {
-			{ fishName = "Unknown", value = 130000, model = fishFolder:WaitForChild("Unknown"), minWeight = 1.0, maxWeight = 100.0 },
-			{ fishName = "Nyan Cat", value = 145000, model = fishFolder:WaitForChild("Nyan Cat"), minWeight = 1.0, maxWeight = 100.0 }
+			{ fishName = "Unknown", value = 62400, model = fishFolder:WaitForChild("Unknown"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Nyan Cat", value = 69600, model = fishFolder:WaitForChild("Nyan Cat"), minWeight = 1.0, maxWeight = 100.0 }
 		}
 	}
 }
@@ -420,7 +420,7 @@ function FishData.CreateFishModel(fishInfo, position)
 end
 
 -- Updated probability calculation system
-function FishData.GetRandomFish(rodName, player)
+function FishData.GetRandomFish(rodName, player, noWeather)
 	local rng = Random.new()
 
 	-- Get current weather info
@@ -586,6 +586,7 @@ function FishData.GetRandomFish(rodName, player)
 						weight = weight,
 						chance = 0
 					}
+					if noWeather then return fishInfo end
 					return WeatherSystem.ApplyWeatherEffects(fishInfo)
 				end
 			end
@@ -620,8 +621,10 @@ function FishData.GetRandomFish(rodName, player)
 				chance = entry.chance
 			}
 
-			-- Apply weather effects
-			fishInfo = WeatherSystem.ApplyWeatherEffects(fishInfo)
+			-- Apply weather effects (skip for fish trap catches)
+			if not noWeather then
+				fishInfo = WeatherSystem.ApplyWeatherEffects(fishInfo)
+			end
 
 			return fishInfo
 		end
@@ -641,6 +644,7 @@ function FishData.GetRandomFish(rodName, player)
 		chance = commonRarity.chance
 	}
 
+	if noWeather then return fishInfo end
 	return WeatherSystem.ApplyWeatherEffects(fishInfo)
 end
 

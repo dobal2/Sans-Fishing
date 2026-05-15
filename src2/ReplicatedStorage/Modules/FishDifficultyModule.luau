@@ -4,52 +4,60 @@ local FishDifficulty = {}
 -- Progress bar difficulty settings
 FishDifficulty.Settings = {
 	Common = {
-		targetProgress = 100,     -- Target progress (default 100%)
-		hitSize = { min = 0.20, max = 0.25 },     -- Hit zone size (20-25%)
-		speed = { min = 1.5, max = 1.8 },         -- Slider speed (seconds)
-		progressMultiplier = 1.0  -- Progress multiplier (default)
+		targetProgress = 100,
+		hitSize = { min = 0.20, max = 0.25 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1.0,
+		drainRate = 1,
 	},
 	Uncommon = {
-		targetProgress = 120,     -- 20% longer game
-		hitSize = { min = 0.18, max = 0.22 },     -- Slightly smaller hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Slightly faster
-		progressMultiplier =1
+		targetProgress = 120,
+		hitSize = { min = 0.18, max = 0.22 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 1.5,
 	},
 	Rare = {
-		targetProgress = 140,     -- 40% longer game
-		hitSize = { min = 0.16, max = 0.20 },     -- Smaller hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Faster
-		progressMultiplier = 1
+		targetProgress = 140,
+		hitSize = { min = 0.16, max = 0.20 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 2,
 	},
 	Epic = {
-		targetProgress = 160,     -- 60% longer game
-		hitSize = { min = 0.14, max = 0.18 },     -- Small hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Fast
-		progressMultiplier = 1
+		targetProgress = 160,
+		hitSize = { min = 0.14, max = 0.18 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 3,
 	},
 	Legendary = {
-		targetProgress = 180,     -- 80% longer game
-		hitSize = { min = 0.12, max = 0.16 },     -- Very small hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Very fast
-		progressMultiplier = 1
+		targetProgress = 180,
+		hitSize = { min = 0.12, max = 0.16 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 4,
 	},
 	Mystic = {
-		targetProgress = 200,     -- 2x longer game
-		hitSize = { min = 0.10, max = 0.14 },     -- Extremely small hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Extremely fast
-		progressMultiplier = 1
+		targetProgress = 200,
+		hitSize = { min = 0.10, max = 0.14 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 5.5,
 	},
 	Fantasy = {
-		targetProgress = 250,     -- 2.5x longer game
-		hitSize = { min = 0.08, max = 0.12 },     -- Very extremely small hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Very extremely fast
-		progressMultiplier = 1
+		targetProgress = 250,
+		hitSize = { min = 0.08, max = 0.12 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 7,
 	},
 	Unknown = {
-		targetProgress = 300,     -- 3x longer game
-		hitSize = { min = 0.06, max = 0.10 },     -- Extreme hit zone
-		speed = { min = 1.5, max = 1.8 },         -- Extreme speed
-		progressMultiplier = 1
+		targetProgress = 300,
+		hitSize = { min = 0.06, max = 0.10 },
+		speed = { min = 1.5, max = 1.8 },
+		progressMultiplier = 1,
+		drainRate = 9,
 	},
 }
 
@@ -66,14 +74,15 @@ function FishDifficulty.GetModifiedSetting(rarityName, rodPower)
 	return {
 		targetProgress = math.floor(adjustedTargetProgress),
 		hitSize = {
-			min = math.min(0.3, base.hitSize.min * (1 + (power - 1) * 0.3)), -- Larger hit zone with higher power
+			min = math.min(0.3, base.hitSize.min * (1 + (power - 1) * 0.3)),
 			max = math.min(0.35, base.hitSize.max * (1 + (power - 1) * 0.3))
 		},
 		speed = {
-			min = base.speed.min, -- Speed is constant regardless of rod
-			max = base.speed.max  -- Speed is constant regardless of rod
+			min = base.speed.min,
+			max = base.speed.max
 		},
-		progressMultiplier = math.min(3.0, adjustedProgressMultiplier) -- Max 3x
+		progressMultiplier = math.min(3.0, adjustedProgressMultiplier),
+		drainRate = base.drainRate or 4,
 	}
 end
 

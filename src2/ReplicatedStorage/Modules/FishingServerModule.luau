@@ -154,7 +154,15 @@ function FishingServer:_bindEvents()
 		if self.activated or self.isReeling then return end
 
 		if not self:_checkInventoryLimit(player) then
-			warn("Security: Cannot start fishing, inventory full for", player.Name)
+			local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent")
+			if noticeEvent then
+				local hasExpansion = self:_hasInventoryExpansionGamepass(player)
+				local message = hasExpansion and
+					"Expanded inventory full! Go sell fish (Max 200)" or
+					"Inventory full! Go sell fish or buy expansion pass (Max 100)"
+				noticeEvent:FireClient(player, message)
+			end
+			self.remote:FireClient(player, "inventory_full")
 			return
 		end
 
@@ -521,15 +529,6 @@ function FishingServer:_checkInventoryLimit(player)
 	local inventoryLimit = self:_getInventoryLimit(player)
 
 	if totalItemCount >= inventoryLimit then
-		-- Notify client
-		local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent")
-		if noticeEvent then
-			local hasExpansion = self:_hasInventoryExpansionGamepass(player)
-			local message = hasExpansion and
-				"Expanded inventory full! Go sell fish (Max 200)" or
-				"Inventory full! Go sell fish or buy expansion pass (Max 100)"
-			noticeEvent:FireClient(player, message)
-		end
 		return false
 	end
 
@@ -863,6 +862,7 @@ function FishingServer:_checkMaterial()
 				local hum = self.character and self.character:FindFirstChildOfClass("Humanoid")
 				if hum then hum.WalkSpeed = 0 end
 
+				if not self.player or not self.player:IsDescendantOf(game:GetService("Players")) then return end
 				self.remote:FireClient(self.player, "keep_waiting_animation")
 				fakeHandle.Size = fakeHandle.Size * ratio
 				self._hookedBaseSize = fakeHandle.Size
