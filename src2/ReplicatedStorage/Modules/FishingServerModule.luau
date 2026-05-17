@@ -723,18 +723,14 @@ local BOUNCE_ARC_TIME      = 0.8       -- seconds for the bounce arc to reach wa
 function FishingServer:_checkMaterial()
 	local landed = false
 	local groundCancelled = false
-	local bounced = false          -- true after first ground bounce
 	local bouncing = false         -- true while arc animation is running (pause landing checks)
 	local lastCheckTime = 0
+	local lastBounceTime = -math.huge  -- cooldown to prevent double-trigger after arc
 
 	-- Two separate raycast params: one that includes Water, one that excludes it for ground check
 	local waterParams = RaycastParams.new()
 	waterParams.FilterType = Enum.RaycastFilterType.Exclude
 	waterParams.FilterDescendantsInstances = {self.baitPart, self.character}
-
-	local groundParams = RaycastParams.new()
-	groundParams.FilterType = Enum.RaycastFilterType.Exclude
-	groundParams.FilterDescendantsInstances = {self.baitPart, self.character}
 
 	-- Pre-calculate exact water surface Y (top face of Water part) + bait radius offset
 	-- so the bait center sits flush on the surface, not half-submerged.
@@ -743,6 +739,15 @@ function FishingServer:_checkMaterial()
 	local waterSurfaceY = waterPart
 		and (waterPart.Position.Y + waterPart.Size.Y / 2 + BAIT_RADIUS)
 		or  (BAIT_REST_Y + BAIT_RADIUS)
+
+	-- groundParams excludes bait, character, and water so water surface isn't treated as ground
+	local groundParams = RaycastParams.new()
+	groundParams.FilterType = Enum.RaycastFilterType.Exclude
+	do
+		local excludeList = {self.baitPart, self.character}
+		if waterPart then table.insert(excludeList, waterPart) end
+		groundParams.FilterDescendantsInstances = excludeList
+	end
 
 	-- Returns the nearest XZ point on the Water part surface to the given position.
 	-- Used to aim the bounce arc.
@@ -768,6 +773,8 @@ function FishingServer:_checkMaterial()
 		return Vector3.new(vx, vy, vz)
 	end
 
+	local prevBaitPos = nil
+
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local now = tick()
@@ -783,65 +790,87 @@ function FishingServer:_checkMaterial()
 		local pos = bait.Position
 		local vel = bait.AssemblyLinearVelocity
 
-		-- Ground detection: above water zone, moving down, hits solid surface
-		if pos.Y > waterSurfaceY + GROUND_DETECT_ABOVE_WATER then
-			if vel.Y < -1 then
-				local hit = workspace:Raycast(pos, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), groundParams)
-				if hit and hit.Instance then
-					if bounced then
-						-- Second ground hit — give up
-						groundCancelled = true
-						conn:Disconnect()
-						self.activated = false
-						self.cancelled = true
-						if self.player then
-							self.player:SetAttribute("IsFishing", false)
-							self.remote:FireClient(self.player, false)
-							local showNotice = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
-							if showNotice then
-								showNotice:FireClient(self.player, "Bait hit the ground! Try casting into water.")
-							end
-						end
-						self:_resetPlayer()
-						self:_cleanup()
-					else
-						-- First ground hit — drive bait along a parabolic arc toward water (CFrame-based, ignores CanCollide)
-						bounced = true
-						bouncing = true
+		-- Ground detection: above water zone, continuous segment cast prevPos→pos
+		if pos.Y > waterSurfaceY + GROUND_DETECT_ABOVE_WATER or
+			(prevBaitPos and prevBaitPos.Y > waterSurfaceY + GROUND_DETECT_ABOVE_WATER) then
 
-						local arcStart = hit.Position + Vector3.new(0, BAIT_RADIUS + 0.1, 0)
-						local arcTarget = nearestWaterPoint(pos)
-						local t = BOUNCE_ARC_TIME
-						local g = workspace.Gravity or ROBLOX_GRAVITY
-						local elapsed = 0
+			local rayOrigin = prevBaitPos or pos
+			local rayDelta  = pos - rayOrigin
+			local hit
+			if rayDelta.Magnitude > 0.01 then
+				hit = workspace:Raycast(rayOrigin, rayDelta, groundParams)
+			end
+			-- Fallback short downward ray when bait is nearly stationary above ground
+			if not hit then
+				hit = workspace:Raycast(pos, Vector3.new(0, -(BAIT_RADIUS + 0.15), 0), groundParams)
+			end
 
-						bait.Anchored = true
-						bait.AssemblyLinearVelocity = Vector3.zero
-						bait.CFrame = CFrame.new(arcStart)
-
-						-- Drive bait along arc; when done, unanchor and let the main conn handle landing
-						local arcConn
-						arcConn = RunService.Heartbeat:Connect(function(dt)
-							if not bait or not bait.Parent then arcConn:Disconnect(); bouncing = false; return end
-							elapsed += dt
-							local frac = math.min(elapsed / t, 1)
-
-							-- Parabolic interpolation: lerp XZ, add upward Y arc that lands at arcTarget.Y
-							local lerpPos = arcStart:Lerp(arcTarget, frac)
-							local arcY = arcStart.Y + (arcTarget.Y - arcStart.Y) * frac
-								+ 0.5 * g * (frac * t) * (t - frac * t)
-							bait.CFrame = CFrame.new(lerpPos.X, arcY, lerpPos.Z)
-
-							if frac >= 1 then
-								arcConn:Disconnect()
-								bait.Anchored = false
-								bouncing = false  -- resume the main landing loop
-							end
-						end)
-					end
+			if hit and hit.Instance and hit.Position.Y >= waterSurfaceY - BAIT_RADIUS then
+				-- Ignore hits too soon after previous bounce to prevent double-trigger
+				if tick() - lastBounceTime < 0.3 then
+					prevBaitPos = pos
 					return
 				end
+
+				-- Every ground hit: bounce forward (player look direction) via parabolic arc
+				bouncing = true
+				lastBounceTime = tick()
+				prevBaitPos = nil
+
+				local showNotice = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
+				if showNotice and self.player then
+					showNotice:FireClient(self.player, "Bait is bouncing...")
+				end
+
+				local arcStart = hit.Position + Vector3.new(0, BAIT_RADIUS + 0.1, 0)
+
+				-- Forward direction from player's HumanoidRootPart, projected onto XZ plane
+				local char = self.player and self.player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local forward = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+				forward = Vector3.new(forward.X, 0, forward.Z)
+				if forward.Magnitude < 0.01 then forward = Vector3.new(0, 0, -1) end
+				forward = forward.Unit
+
+				local BOUNCE_DIST = 12
+				local arcTarget = Vector3.new(
+					arcStart.X + forward.X * BOUNCE_DIST,
+					arcStart.Y,
+					arcStart.Z + forward.Z * BOUNCE_DIST
+				)
+
+				local t = BOUNCE_ARC_TIME
+				local g = workspace.Gravity or ROBLOX_GRAVITY
+				local elapsed = 0
+
+				bait.Anchored = true
+				bait.AssemblyLinearVelocity = Vector3.zero
+				bait.CFrame = CFrame.new(arcStart)
+
+				local arcConn
+				arcConn = RunService.Heartbeat:Connect(function(dt)
+					if not bait or not bait.Parent then arcConn:Disconnect(); bouncing = false; return end
+					elapsed += dt
+					local frac = math.min(elapsed / t, 1)
+
+					local lerpPos = arcStart:Lerp(arcTarget, frac)
+					local arcY = arcStart.Y + (arcTarget.Y - arcStart.Y) * frac
+						+ 0.5 * g * (frac * t) * (t - frac * t)
+					bait.CFrame = CFrame.new(lerpPos.X, arcY, lerpPos.Z)
+
+					if frac >= 1 then
+						arcConn:Disconnect()
+						bait.Anchored = false
+						prevBaitPos = arcTarget
+						bouncing = false
+					end
+				end)
+
+				prevBaitPos = pos
+				return
 			end
+
+			prevBaitPos = pos
 			return
 		end
 

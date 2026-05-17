@@ -72,7 +72,11 @@ local function createQuestFrame(questData)
 
 	local rewardText = newQuestFrame:FindFirstChild("RewardText")
 	if rewardText then
-		rewardText.Text = "Reward: " .. questData.rewardCoins .. " Coins"
+		if questData.rewardFP and questData.rewardFP > 0 then
+			rewardText.Text = "Reward: " .. questData.rewardFP .. " FishingPoints"
+		else
+			rewardText.Text = "Reward: " .. questData.rewardCoins .. " Coins"
+		end
 	end
 
 	local barFrame = newQuestFrame:FindFirstChild("ProgressBar")
@@ -150,6 +154,7 @@ local function updateQuestList()
 				requiredProgress = quest:FindFirstChild("RequiredProgress") and quest.RequiredProgress.Value or 1,
 				isReceived = quest:FindFirstChild("IsReceived") and quest.IsReceived.Value or false,
 				rewardCoins = quest:FindFirstChild("RewardCoins") and quest.RewardCoins.Value or 0,
+				rewardFP = quest:FindFirstChild("RewardFP") and quest.RewardFP.Value or 0,
 				questType = quest:FindFirstChild("QuestType") and quest.QuestType.Value or "normal"
 			}
 
