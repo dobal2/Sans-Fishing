@@ -147,31 +147,14 @@ local function completeTutorial()
 	task.delay(4, hidePersistentNotice)
 end
 
-local function startSkillTreeStep()
-	currentStep = "open_skill_tree"
-	removeBeam()
-	showPersistentNotice("Almost done! Open the Skill Tree from the toolbar to upgrade your skills!")
-
-	local skillTreeGui = playerGui:WaitForChild("SkillTree")
-	local conn
-	conn = skillTreeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-		if skillTreeGui.Enabled and currentStep == "open_skill_tree" then
-			conn:Disconnect()
-			hidePersistentNotice()
-			task.wait(0.3)
-			completeTutorial()
-		end
-	end)
-end
-
 local function startUpgradeStep()
 	local ls   = player:FindFirstChild("leaderstats")
 	local rods = ls and ls:FindFirstChild("Rods")
 	local sr   = rods and rods:FindFirstChild("SliverRod")
 
-	-- Already owns Silver Rod — skip straight to skill tree
+	-- Already owns Silver Rod — tutorial complete
 	if sr and sr.Value then
-		startSkillTreeStep()
+		completeTutorial()
 		return
 	end
 
@@ -187,7 +170,7 @@ local function startUpgradeStep()
 			conn:Disconnect()
 			hidePersistentNotice()
 			task.wait(0.3)
-			startSkillTreeStep()
+			completeTutorial()
 		end
 	end)
 end

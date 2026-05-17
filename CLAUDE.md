@@ -95,6 +95,8 @@ src2/
     SkillServer.server.luau              # Skill tree purchase handler (SkillBuyEvent, GetSkillData remotes)
     SkillHelper.luau                     # ModuleScript: GetLuckBonus, GetSellBonus, GetEffect, GetExtraInventory
     Commands.server.luau                 # Admin chat commands (speed, kick, setcoins, announce, DevRod, SlapBattle, skillreset, tutorialreset)
+    DeleteFishTrap.server.luau           # Removes a placed fish trap from workspace + data
+    HotBarLayoutServer.server.luau       # Saves/loads hotbar slot layout per player (SaveHotBarLayout, GetHotBarLayout remotes)
     QuestSaver/                          # (see above)
 
   StarterPlayer/
@@ -117,12 +119,16 @@ src2/
       Main_FriendBonus.client.luau            # Friend bonus text label updater
       Main_Money.client.luau                  # CoinText label updater
       Main_WeatherInfo.client.luau            # Weather icon updater
+      Main_WeatherTimer.client.luau           # Next weather countdown timer label
       Main_StatLabels.client.luau             # LuckLabel (rod+skill+friends luck %) and CoinLabel (sell bonus %) — updates every 5s
       Main_UpdateLog.client.luau              # Shows update log once per session (scale tween, close button, attribute flag)
-      Main_ServerTime.client.luau             # Server uptime display (Studio-only, not in Rojo sync)
+      Main_SkillTree.client.luau              # Skill Tree topbar button toggle
+      Main_ServerTime.client.luau             # Server uptime display
+      Main_Invite.client.luau                 # Social invite button (SocialService:PromptGameInvite)
 
       # --- Shop / Robux ---
       ShopGui.client.luau                     # Rod shop GUI (arrow buttons, item display)
+      RodsGui.client.luau                     # Rod stats display GUI (Luck/Power/Weight labels per rod)
       RobuxShop.client.luau                   # Robux shop: listens to OpenRobuxShopLocal (BindableEvent) to open/close
       RobuxShopButtons.client.luau            # Gamepass buy buttons (Coin x2, Luck x2, Power x2)
       ServerBoostClient.client.luau           # Server boost UI inside RobuxShop
@@ -153,14 +159,25 @@ src2/
       # --- Quest ---
       QuestGui.client.luau                    # Quest list UI (reads leaderstats.Quests.ActiveQuests)
 
+      # --- Leaderboard ---
+      LeaderboardYourStats.client.luau        # Shows the local player's own rank/stats on leaderboard GUI
+
+      # --- Notice system ---
+      Notice_NoticeText.client.luau           # Routes ShowNoticeEvent / NoticeEventForClient to NoticeFrame
+      Notice_AnnounceText.client.luau         # Routes AnnounceRemote global announcements to NoticeFrame
+      Notice_DiscoverText.client.luau         # Routes DiscoverNoticeEvent (new fish discovery) to NoticeFrame
+      Notice_TutorialText_Tutorial.client.luau # Tutorial step flow (equip → cast → sell → upgrade → skill tree)
+
       # --- Topbar / UI ---
       TopbarController.client.luau            # TopbarPlus icon setup
       UIStrokeScale.client.luau               # Scales UIStroke thickness with screen size
       NpcDialogClient.client.luau             # NPC dialog system
       NpcHighLightAndDistance.client.luau     # NPC highlight and distance label (Seller, Gambler, UpdateShop, Pap, VoidQuestGiver)
+      ScreenGui_Frame_LocalScript.client.luau # Misc ScreenGui frame script (Success sound on event)
 
       # --- World / Environment ---
       ClientWeatherHandler.client.luau        # Weather effects: Rain module, lighting tweens, fireworks
+      BigFishHoldAnimation.client.luau        # Plays hold-big-fish animation when carrying a heavy fish
       HideMyFishGive.client.luau              # Controls ReceiveFishPrompt visibility
       FishTrapClientProximityManager.client.luau
       FishTrapBeam.client.luau                # Beam visual for placed fish trap
@@ -177,6 +194,7 @@ src2/
       HeadFollow.client.luau         # Head tracking toward cursor
       PreLoadAnimatins.client.luau   # Preloads character animations
       PromptFavorite.client.luau     # Shows favorite prompt on equip
+      NameTag.server.luau            # Clones NameTag BillboardGui from ReplicatedStorage into character Head
 
   ReplicatedStorage/
     Modules/
@@ -189,6 +207,7 @@ src2/
       WeatherSystemModule.luau   # Server-authoritative weather state machine
       RodDataModule.luau         # Rod definitions (price, storageName, optional displayName); includes FishingRod (free starter); "RealisticRod" key has storageName="BlockyRod" displayName="BlockyRod"
       BoatDataModule.luau        # Boat definitions (price, storageName)
+      DialogModule.luau          # Reusable NPC dialog module (prompt/response flow)
       Rain.luau                  # Third-party rain particle module (excluded from refactoring)
     TopbarPlus/                  # Third-party topbar icon library (excluded from refactoring)
     DistanceFade.luau            # Third-party distance-fade effect module

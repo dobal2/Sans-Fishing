@@ -164,7 +164,11 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	elseif SERVER_BOOST_PRODUCTS[productId] then
 		if not boostPurchaseBE then return Enum.ProductPurchaseDecision.NotProcessedYet end
-		boostPurchaseBE:Fire(productId)
+		local ok, err = pcall(function() boostPurchaseBE:Fire(productId) end)
+		if not ok then
+			warn("ServerBoost fire failed:", err)
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	elseif productId == FISH_TRAP_HARVEST_PRODUCT_ID then
@@ -202,7 +206,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 end
 
 local function waitForDataAndReset(player)
-	while true do
+	while player:IsDescendantOf(Players) do
 		local data = DataManager:GetData(player)
 		if data then
 			data.Donations = 0
@@ -214,7 +218,7 @@ local function waitForDataAndReset(player)
 end
 
 Players.PlayerAdded:Connect(function(player)
-	if player.Name == "tallmo_bim" then
+	if player.UserId == 1853104124 then
 		task.spawn(function() waitForDataAndReset(player) end)
 	end
 end)

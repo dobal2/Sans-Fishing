@@ -441,7 +441,13 @@ function FishingServer:_validateBasicSecurity(player, action)
 		return false
 	end
 
-	-- Flexible tool presence check
+	-- Confirm correct player
+	if player ~= self.player then
+		warn("Security: Wrong player:", player.Name, "Expected:", self.player and self.player.Name)
+		return false
+	end
+
+	-- Tool must be equipped in character for fishing actions
 	local hasTool = false
 	for _, obj in pairs(player.Character:GetChildren()) do
 		if obj:IsA("Tool") and obj.Name == self.tool.Name then
@@ -449,22 +455,15 @@ function FishingServer:_validateBasicSecurity(player, action)
 			break
 		end
 	end
-
-	-- Allow even without tool (not too strict)
-
-	-- Fishing state check (lenient)
-	-- Allow even if not in fishing state
-
-	-- Confirm correct player
-	if player ~= self.player then
-		warn("Security: Wrong player:", player.Name, "Expected:", self.player and self.player.Name)
+	if not hasTool then
+		warn("Security: Tool not equipped for action", action, "by", player.Name)
 		return false
 	end
 
-	-- Spam prevention (lenient)
+	-- Spam prevention
 	local now = tick()
 	self.lastAction = self.lastAction or 0
-	if now - self.lastAction < 0.01 then
+	if now - self.lastAction < 0.3 then
 		warn("Security: Too fast action from", player.Name)
 		return false
 	end

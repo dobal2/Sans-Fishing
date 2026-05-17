@@ -29,6 +29,22 @@ pcall(function()
 	if fishDataModule then FishData = require(fishDataModule) end
 end)
 
+local function getOriginalBaseFromFishData(toolName, oldWeight, wasFrozen, wasFestival)
+	if not FishData then return nil end
+	local fishPart = toolName:match("(.+) %[.+%] %- .+kg")
+	if not fishPart then return nil end
+	local cleanName = fishPart
+	cleanName = cleanName:gsub("^Frozen Festival ", "")
+	cleanName = cleanName:gsub("^Festival Frozen ", "")
+	cleanName = cleanName:gsub("^Frozen ", "")
+	cleanName = cleanName:gsub("^Festival ", "")
+	local fishData = FishData.GetFishByName(cleanName)
+	if not fishData then return nil end
+	local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
+	local ratio = (minW == maxW) and 0 or math.clamp((oldWeight - minW) / (maxW - minW), 0, 1)
+	return math.floor(fishData.value * (1.2 + math.pow(ratio, 0.8) * 7.0))
+end
+
 local GAMBLE_COST          = 4000
 local FROZEN_CHANCE        = 0.025
 local FESTIVAL_CHANCE      = 0.04
@@ -192,18 +208,23 @@ local function calculateWeightChange(current)
 	end
 end
 
-local function calculateUnifiedPrice(fishValue, oldWeight, newWeight, wasFrozen, wasFestival, willBeFrozen, willBeFestival)
+local function calculateUnifiedPrice(fishValue, oldWeight, newWeight, wasFrozen, wasFestival, willBeFrozen, willBeFestival, toolName)
 	local originalBase = fishValue:GetAttribute("OriginalBaseValue")
 	if not originalBase then
-		local currentPrice = fishValue.Value
-		local oldRatio = math.clamp((oldWeight - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT), 0, 1)
-		local oldWeightMult = 1.2 + math.pow(oldRatio, 0.8) * 7.0
-		local frozenMult, festivalMult = getWeatherMultipliers()
-		local oldMutMult = 1.0
-		if wasFrozen and wasFestival then oldMutMult = frozenMult * festivalMult
-		elseif wasFrozen then oldMutMult = frozenMult
-		elseif wasFestival then oldMutMult = festivalMult end
-		originalBase = math.floor(currentPrice / (oldWeightMult * oldMutMult))
+		-- Prefer FishDataModule lookup over trusting the potentially-manipulated FishValue
+		originalBase = getOriginalBaseFromFishData(toolName, oldWeight, wasFrozen, wasFestival)
+		if not originalBase then
+			-- Fallback: reverse-engineer from current value (less safe but still works for legitimate fish)
+			local currentPrice = fishValue.Value
+			local oldRatio = math.clamp((oldWeight - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT), 0, 1)
+			local oldWeightMult = 1.2 + math.pow(oldRatio, 0.8) * 7.0
+			local frozenMult, festivalMult = getWeatherMultipliers()
+			local oldMutMult = 1.0
+			if wasFrozen and wasFestival then oldMutMult = frozenMult * festivalMult
+			elseif wasFrozen then oldMutMult = frozenMult
+			elseif wasFestival then oldMutMult = festivalMult end
+			originalBase = math.floor(currentPrice / (oldWeightMult * oldMutMult))
+		end
 		fishValue:SetAttribute("OriginalBaseValue", originalBase)
 	end
 	local newRatio = math.clamp((newWeight - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT), 0, 1)
@@ -271,7 +292,7 @@ local function performGamble(player, tool)
 	local wasFestival = hasFestivalPrefix(fishName)
 	local newWeight = calculateWeightChange(weight)
 	local newName, willBeFrozen, willBeFestival = applyMutations(fishName, tool, newWeight)
-	local newPrice = calculateUnifiedPrice(fishValue, weight, newWeight, wasFrozen, wasFestival, willBeFrozen, willBeFestival)
+	local newPrice = calculateUnifiedPrice(fishValue, weight, newWeight, wasFrozen, wasFestival, willBeFrozen, willBeFestival, tool.Name)
 	fishValue.Value = newPrice
 	fishWeight.Value = newWeight
 	tool.Name = string.format("%s [%s] - %.1fkg", newName, rarity, newWeight)

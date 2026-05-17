@@ -20,9 +20,9 @@ if not announceRemote then
 	announceRemote.Parent = ReplicatedStorage
 end
 
--- Permission setup
+-- Permission setup (UserId-based — immune to username changes)
 local Ranks = {
-	Developer = {"tallmo_bim", "mkdoingsu"},
+	Developer = {1853104124, 1330397992},
 	Moderator = {},
 }
 
@@ -71,10 +71,11 @@ local Permissions = {
 local Prefix = ":"
 
 -- Utility functions
-local function getPlayerRank(playerName)
-	for rank, players in pairs(Ranks) do
-		for _, name in pairs(players) do
-			if name == playerName then
+local function getPlayerRank(player)
+	local userId = player.UserId
+	for rank, ids in pairs(Ranks) do
+		for _, id in pairs(ids) do
+			if id == userId then
 				return rank
 			end
 		end
@@ -82,8 +83,8 @@ local function getPlayerRank(playerName)
 	return nil
 end
 
-local function hasPermission(playerName, command)
-	local rank = getPlayerRank(playerName)
+local function hasPermission(player, command)
+	local rank = getPlayerRank(player)
 	if not rank then return false end
 	return Permissions[rank] and Permissions[rank][command] == true
 end
@@ -184,6 +185,7 @@ local function giveCoinsToAllInServer(amount, senderName)
 		local stats = player:FindFirstChild("leaderstats")
 		if stats and stats:FindFirstChild("Coins") then
 			stats.Coins.Value = stats.Coins.Value + amount
+			LeaderstatsDataManager:UpdateData(player, "Coins", stats.Coins.Value)
 			announceRemote:FireClient(player, string.format("Received %s coins from developer %s", amount, senderName), "SYSTEM")
 		end
 	end
@@ -225,7 +227,7 @@ local function command(plr, chat)
 
 	-- :speed
 	if chat:sub(1, 6) == Prefix.."speed" then
-		if hasPermission(plr.Name, "speed") then
+		if hasPermission(plr, "speed") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local speed = tonumber(args[3]) or 16
@@ -241,7 +243,7 @@ local function command(plr, chat)
 
 	-- :ang
 	if chat:sub(1, 4) == Prefix.."ang" then
-		if hasPermission(plr.Name, "ang") then
+		if hasPermission(plr, "ang") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			if not targetName then return end
@@ -260,7 +262,7 @@ local function command(plr, chat)
 
 	-- :kick
 	if chat:sub(1, 5) == Prefix.."kick" then
-		if hasPermission(plr.Name, "kick") then
+		if hasPermission(plr, "kick") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local reason = table.concat(args, " ", 3) or "No reason provided"
@@ -274,7 +276,7 @@ local function command(plr, chat)
 
 	-- :setcoins
 	if chat:sub(1, 9) == Prefix.."setcoins" then
-		if hasPermission(plr.Name, "setcoins") then
+		if hasPermission(plr, "setcoins") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local amount = tonumber(args[3])
@@ -292,7 +294,7 @@ local function command(plr, chat)
 
 	-- :setfp
 	if chat:sub(1, 6) == Prefix.."setfp" then
-		if hasPermission(plr.Name, "setcoins") then
+		if hasPermission(plr, "setcoins") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			local amount = tonumber(args[3])
@@ -310,7 +312,7 @@ local function command(plr, chat)
 
 	-- :announce
 	if chat:sub(1, 9) == Prefix.."announce" then
-		if hasPermission(plr.Name, "announce") then
+		if hasPermission(plr, "announce") then
 			local message = chat:sub(11)
 			if message and message:len() > 0 then
 				if RunService:IsStudio() then
@@ -334,7 +336,7 @@ local function command(plr, chat)
 
 	-- :GlobalGiveCoins
 	if chat:find("^"..Prefix.."GlobalGiveCoins") then
-		if hasPermission(plr.Name, "GlobalGiveCoins") then
+		if hasPermission(plr, "GlobalGiveCoins") then
 			local args = string.split(chat, " ")
 			local amount = tonumber(args[2])
 			if not amount or amount <= 0 then return end
@@ -358,7 +360,7 @@ local function command(plr, chat)
 
 	-- :SlapBattleAll
 	if chat:sub(1, 14) == Prefix.."SlapBattleAll" then
-		if hasPermission(plr.Name, "SlapBattleAll") then
+		if hasPermission(plr, "SlapBattleAll") then
 			if RunService:IsStudio() then
 				giveSlapBattleToAllInServer(plr.Name)
 			else
@@ -378,7 +380,7 @@ local function command(plr, chat)
 
 	-- :SlapBattle
 	if chat:sub(1, 11) == Prefix.."SlapBattle" and not chat:find("SlapBattleAll") then
-		if hasPermission(plr.Name, "SlapBattle") then
+		if hasPermission(plr, "SlapBattle") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			if not targetName then return end
@@ -391,7 +393,7 @@ local function command(plr, chat)
 
 	-- :DevRodAll
 	if chat:sub(1, 10) == Prefix.."DevRodAll" then
-		if hasPermission(plr.Name, "DevRodAll") then
+		if hasPermission(plr, "DevRodAll") then
 			if RunService:IsStudio() then
 				giveDevRodToAllInServer(plr.Name)
 			else
@@ -411,7 +413,7 @@ local function command(plr, chat)
 
 	-- :DevRod
 	if chat:sub(1, 7) == Prefix.."DevRod" and not chat:find("DevRodAll") then
-		if hasPermission(plr.Name, "DevRod") then
+		if hasPermission(plr, "DevRod") then
 			local args = string.split(chat, " ")
 			local targetName = args[2]
 			if not targetName then return end
@@ -433,7 +435,7 @@ local function command(plr, chat)
 		local lowerChat = chat:lower()
 		for cmdKey, rarityName in pairs(VALID_RARITIES) do
 			if lowerChat:sub(1, #Prefix + #cmdKey) == Prefix .. cmdKey then
-				if hasPermission(plr.Name, "forcefish") then
+				if hasPermission(plr, "forcefish") then
 					local args = string.split(chat, " ")
 					local targetName = args[2] or plr.Name
 					local foundPlayers = findPlayers(plr, targetName)
@@ -449,7 +451,7 @@ local function command(plr, chat)
 	-- :rf <epic|legendary|mystic|fantasy|unknown> [target]
 	-- Forces next RandomFish gacha pull to that rarity (one-time)
 	if chat:lower():sub(1, #Prefix + 2) == Prefix .. "rf" then
-		if hasPermission(plr.Name, "forcerandomfish") then
+		if hasPermission(plr, "forcerandomfish") then
 			local args = string.split(chat, " ")
 			local rarityArg = args[2] and args[2]:lower()
 			local targetName = args[3] or plr.Name
@@ -469,7 +471,7 @@ local function command(plr, chat)
 
 	-- :odds [target] — show current fish probabilities with luck applied
 	if chat:lower():sub(1, #Prefix + 4) == Prefix .. "odds" then
-		if hasPermission(plr.Name, "forcefish") then
+		if hasPermission(plr, "forcefish") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -553,7 +555,7 @@ local function command(plr, chat)
 
 	-- :skillreset [target] — 스킬 데이터만 초기화 + SkillPoints 0
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "skillreset" then
-		if hasPermission(plr.Name, "skillreset") then
+		if hasPermission(plr, "skillreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -569,11 +571,8 @@ local function command(plr, chat)
 				local sp = v:FindFirstChild("SkillPoints")
 				if sp then sp.Value = 0 end
 				-- ProfileService 데이터 반영
-				local data = LeaderstatsDataManager:GetData(v)
-				if data then
-					data.Skills = {}
-					data.SkillPoints = 0
-				end
+				LeaderstatsDataManager:UpdateData(v, "Skills", {})
+				LeaderstatsDataManager:UpdateData(v, "SkillPoints", 0)
 				announceRemote:FireClient(plr, "Skill reset: " .. v.Name, "SYSTEM")
 			end
 		end
@@ -581,7 +580,7 @@ local function command(plr, chat)
 
 	-- :reset [target] — full data reset (leaderstats + inventory)
 	if chat:lower():sub(1, #Prefix + 5) == Prefix .. "reset" and not chat:lower():find("coinreset") and not chat:lower():find("invenreset") and not chat:lower():find("indexreset") then
-		if hasPermission(plr.Name, "reset") then
+		if hasPermission(plr, "reset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -627,7 +626,7 @@ local function command(plr, chat)
 
 	-- :coinreset [target] — reset coins to 0
 	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "coinreset" then
-		if hasPermission(plr.Name, "coinreset") then
+		if hasPermission(plr, "coinreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -645,7 +644,7 @@ local function command(plr, chat)
 
 	-- :invenreset [target] — reset fish inventory (ItemSave)
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "invenreset" then
-		if hasPermission(plr.Name, "invenreset") then
+		if hasPermission(plr, "invenreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -672,7 +671,7 @@ local function command(plr, chat)
 
 	-- :rodreset [target] — reset rods to FishingRod only (VoidRod kept)
 	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "rodreset" then
-		if hasPermission(plr.Name, "rodreset") then
+		if hasPermission(plr, "rodreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -724,7 +723,7 @@ local function command(plr, chat)
 
 	-- :indexreset [target] — reset fish discovery catalog
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "indexreset" then
-		if hasPermission(plr.Name, "indexreset") then
+		if hasPermission(plr, "indexreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -750,7 +749,7 @@ local function command(plr, chat)
 
 	-- :tutorialreset [target] — reset tutorial flag so tutorial plays again
 	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "tutorialreset" then
-		if hasPermission(plr.Name, "tutorialreset") then
+		if hasPermission(plr, "tutorialreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -768,7 +767,7 @@ local function command(plr, chat)
 
 	-- :questreset [target] — wipe all quest data (active + completed + sequential index)
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "questreset" then
-		if hasPermission(plr.Name, "questreset") then
+		if hasPermission(plr, "questreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -798,7 +797,7 @@ local function command(plr, chat)
 
 	-- :dailyquestreset [target] — reset daily quest so a new one is assigned
 	if chat:lower():sub(1, #Prefix + 15) == Prefix .. "dailyquestreset" then
-		if hasPermission(plr.Name, "dailyquestreset") then
+		if hasPermission(plr, "dailyquestreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
@@ -828,7 +827,7 @@ local function command(plr, chat)
 
 	-- :updatelogreset [target] — reset SeenUpdateLog so update log shows again
 	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "updatelogreset" then
-		if hasPermission(plr.Name, "updatelogreset") then
+		if hasPermission(plr, "updatelogreset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)

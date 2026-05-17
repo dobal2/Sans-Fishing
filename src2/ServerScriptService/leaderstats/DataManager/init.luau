@@ -107,6 +107,11 @@ function DataManager:UpdateData(player, key, data)
 	local profile = Profiles[player]
 
 	if not profile then
+		-- Don't start a new session for a player who has already left
+		if not player:IsDescendantOf(Players) then
+			warn("UpdateData skipped: player has left", player.Name, key)
+			return
+		end
 		profile = ProfileStore:StartSessionAsync("Player_" .. player.UserId, {Steal = true})
 		if profile then
 			profile:Reconcile()

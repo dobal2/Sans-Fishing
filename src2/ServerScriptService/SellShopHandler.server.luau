@@ -9,6 +9,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local SkillServer = require(script.Parent.SkillHelper)
 local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 
 local DOUBLE_SELL_GAMEPASS_ID = 1293430515
 local GROUP_ID = 9744474
@@ -22,6 +23,47 @@ local sellGuiEvent          = ReplicatedStorage:WaitForChild("Remotes"):WaitForC
 local sellChoiceEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellChoiceEvent")
 local greetEvent            = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("TalkEvent")
 local enablePromptEvent     = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SetPromptEvent")
+
+local MIN_WEIGHT = 1.0
+local MAX_WEIGHT = 200
+
+local function stripFishPrefixes(name)
+	name = name:gsub("^Frozen Festival ", "")
+	name = name:gsub("^Festival Frozen ", "")
+	name = name:gsub("^Frozen ", "")
+	name = name:gsub("^Festival ", "")
+	return name
+end
+
+-- Recalculate fish value server-side from the tool name (ignores potentially-manipulated FishValue IntValue)
+local function calcTrueFishValue(tool)
+	local nameStr = tool.Name
+	local _, _, fishPart, weight = nameStr:find("(.+) %[.+%] %- (%.?%d+%.?%d*)kg")
+	if not fishPart or not weight then return 0 end
+	weight = tonumber(weight)
+	if not weight then return 0 end
+
+	local hasFrozen   = nameStr:find("^Frozen ") or nameStr:find("Frozen Festival") or nameStr:find("Festival Frozen")
+	local hasFestival = nameStr:find("^Festival ") or nameStr:find("Frozen Festival") or nameStr:find("Festival Frozen")
+
+	local baseFishName = stripFishPrefixes(fishPart)
+	local fishData = FishDataModule.GetFishByName(baseFishName)
+	if not fishData then return 0 end
+
+	local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
+	local valueRatio = (minW == maxW) and 0 or math.clamp((weight - minW) / (maxW - minW), 0, 1)
+	local adjusted = math.floor(fishData.value * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+	if hasFrozen and hasFestival then
+		adjusted = math.floor(adjusted * 2.0 * 1.5)
+	elseif hasFrozen then
+		adjusted = math.floor(adjusted * 2.0)
+	elseif hasFestival then
+		adjusted = math.floor(adjusted * 1.5)
+	end
+
+	return adjusted
+end
 
 local function isFishLocked(tool)
 	local fishLock = tool:FindFirstChild("FishLock")
@@ -136,12 +178,15 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
 				if isFishLocked(tool) then
 					lockedCount += 1
-				elseif tool.FishValue.Value <= 0 then
-					zeroValueCount += 1
 				else
-					totalEarned += tool.FishValue.Value
-					table.insert(tools, tool)
-					itemSold = true
+					local trueVal = calcTrueFishValue(tool)
+					if trueVal <= 0 then
+						zeroValueCount += 1
+					else
+						totalEarned += trueVal
+						table.insert(tools, tool)
+						itemSold = true
+					end
 				end
 			end
 		end
@@ -150,12 +195,15 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
 				if isFishLocked(tool) then
 					lockedCount += 1
-				elseif tool.FishValue.Value <= 0 then
-					zeroValueCount += 1
 				else
-					totalEarned += tool.FishValue.Value
-					table.insert(tools, tool)
-					itemSold = true
+					local trueVal = calcTrueFishValue(tool)
+					if trueVal <= 0 then
+						zeroValueCount += 1
+					else
+						totalEarned += trueVal
+						table.insert(tools, tool)
+						itemSold = true
+					end
 				end
 			end
 		end
@@ -182,7 +230,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 		local toolSold = false
 		for _, tool in ipairs(character:GetChildren()) do
 			if isSellableFish(tool) then
-				totalEarned += tool.FishValue.Value
+				totalEarned += calcTrueFishValue(tool)
 				tool:Destroy()
 				itemSold = true
 				toolSold = true
@@ -207,7 +255,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 	elseif choice == "Option3" then
 		for _, tool in ipairs(character:GetChildren()) do
 			if isPreviewableFish(tool) then
-				local previewValue = calculateFinalValue(tool.FishValue.Value, player, hasDoubleGamepass)
+				local previewValue = calculateFinalValue(calcTrueFishValue(tool), player, hasDoubleGamepass)
 				soldNotificationEvent:FireClient(player, previewValue, true)
 				enablePromptEvent:FireClient(player, true)
 				return

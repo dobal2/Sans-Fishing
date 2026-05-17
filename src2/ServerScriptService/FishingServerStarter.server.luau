@@ -7,7 +7,8 @@ local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):Wait
 local function waitForData(player)
 	local data = datamanager:GetData(player)
 	while not data do
-		task.wait()
+		if not player:IsDescendantOf(Players) then return nil end
+		task.wait(0.5)
 		data = datamanager:GetData(player)
 	end
 	return data
@@ -52,6 +53,7 @@ end
 -- Handle player join
 Players.PlayerAdded:Connect(function(player)
 	local data = waitForData(player)
+	if not data then return end
 	local backpack = player:WaitForChild("Backpack")
 	connectToolWatcher(backpack)
 	watchFishingTools(backpack)
