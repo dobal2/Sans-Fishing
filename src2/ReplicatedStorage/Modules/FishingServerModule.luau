@@ -829,7 +829,7 @@ function FishingServer:_checkMaterial()
 							-- Parabolic interpolation: lerp XZ, add upward Y arc that lands at arcTarget.Y
 							local lerpPos = arcStart:Lerp(arcTarget, frac)
 							local arcY = arcStart.Y + (arcTarget.Y - arcStart.Y) * frac
-								+ 0.5 * g * (frac * t) * (frac * t - t)
+								+ 0.5 * g * (frac * t) * (t - frac * t)
 							bait.CFrame = CFrame.new(lerpPos.X, arcY, lerpPos.Z)
 
 							if frac >= 1 then

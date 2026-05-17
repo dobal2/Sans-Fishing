@@ -1229,6 +1229,7 @@ function FishingClient:_bind()
 
 		if not data or typeof(data) ~= "table" or not data.rarity then
 			self:_closeGui()
+			self.locked = false
 			self.baitThrown = false
 			return
 		end
