@@ -717,10 +717,13 @@ local GROUND_DETECT_ABOVE_WATER = 2.0  -- studs above WATER_SURFACE_Y to conside
 local GROUND_RAYCAST_DIST = 0.6        -- downward ray length for ground detection
 local BAIT_CHECK_INTERVAL = 0.05       -- seconds between bait position checks (20Hz)
 local WATER_DETECT_DIST   = 2.0        -- how far below bait to raycast for water surface
+local ROBLOX_GRAVITY       = 196.2     -- workspace.Gravity default
+local BOUNCE_ARC_TIME      = 0.8       -- seconds for the bounce arc to reach water
 
 function FishingServer:_checkMaterial()
 	local landed = false
 	local groundCancelled = false
+	local bounced = false          -- true after first ground bounce
 	local lastCheckTime = 0
 
 	-- Two separate raycast params: one that includes Water, one that excludes it for ground check
@@ -739,6 +742,30 @@ function FishingServer:_checkMaterial()
 	local waterSurfaceY = waterPart
 		and (waterPart.Position.Y + waterPart.Size.Y / 2 + BAIT_RADIUS)
 		or  (BAIT_REST_Y + BAIT_RADIUS)
+
+	-- Returns the nearest XZ point on the Water part surface to the given position.
+	-- Used to aim the bounce arc.
+	local function nearestWaterPoint(fromPos)
+		if not waterPart then
+			return Vector3.new(fromPos.X, waterSurfaceY, fromPos.Z)
+		end
+		local wp = waterPart.Position
+		local ws = waterPart.Size
+		local clampedX = math.clamp(fromPos.X, wp.X - ws.X / 2, wp.X + ws.X / 2)
+		local clampedZ = math.clamp(fromPos.Z, wp.Z - ws.Z / 2, wp.Z + ws.Z / 2)
+		-- If already inside the water XZ bounds, keep XZ and just target the surface
+		return Vector3.new(clampedX, waterSurfaceY, clampedZ)
+	end
+
+	-- Calculates initial velocity for a parabolic arc from `from` to `to` in `arcTime` seconds.
+	local function calcBounceVelocity(from, to)
+		local t = BOUNCE_ARC_TIME
+		local g = workspace.Gravity or ROBLOX_GRAVITY
+		local vx = (to.X - from.X) / t
+		local vy = (to.Y - from.Y) / t + 0.5 * g * t
+		local vz = (to.Z - from.Z) / t
+		return Vector3.new(vx, vy, vz)
+	end
 
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
@@ -759,20 +786,31 @@ function FishingServer:_checkMaterial()
 			if vel.Y < -1 then
 				local hit = workspace:Raycast(pos, Vector3.new(0, -GROUND_RAYCAST_DIST, 0), groundParams)
 				if hit and hit.Instance then
-					groundCancelled = true
-					conn:Disconnect()
-					self.activated = false
-					self.cancelled = true
-					if self.player then
-						self.player:SetAttribute("IsFishing", false)
-						self.remote:FireClient(self.player, false)
-						local showNotice = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
-						if showNotice then
-							showNotice:FireClient(self.player, "Bait hit the ground! Try casting into water.")
+					if bounced then
+						-- Second ground hit — give up
+						groundCancelled = true
+						conn:Disconnect()
+						self.activated = false
+						self.cancelled = true
+						if self.player then
+							self.player:SetAttribute("IsFishing", false)
+							self.remote:FireClient(self.player, false)
+							local showNotice = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
+							if showNotice then
+								showNotice:FireClient(self.player, "Bait hit the ground! Try casting into water.")
+							end
 						end
+						self:_resetPlayer()
+						self:_cleanup()
+					else
+						-- First ground hit — bounce toward nearest water point
+						bounced = true
+						local target = nearestWaterPoint(pos)
+						-- Nudge bait slightly off the surface before applying velocity
+						-- so the next Heartbeat check doesn't re-trigger ground detection
+						bait.CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0))
+						bait.AssemblyLinearVelocity = calcBounceVelocity(bait.Position, target)
 					end
-					self:_resetPlayer()
-					self:_cleanup()
 					return
 				end
 			end
