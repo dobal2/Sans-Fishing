@@ -724,6 +724,7 @@ function FishingServer:_checkMaterial()
 	local landed = false
 	local groundCancelled = false
 	local bounced = false          -- true after first ground bounce
+	local bouncing = false         -- true while arc animation is running (pause landing checks)
 	local lastCheckTime = 0
 
 	-- Two separate raycast params: one that includes Water, one that excludes it for ground check
@@ -776,6 +777,7 @@ function FishingServer:_checkMaterial()
 		local bait = self.baitPart
 		if not bait or not bait.Parent then conn:Disconnect(); return end
 		if landed or groundCancelled then return end
+		if bouncing then return end
 		if not self.activated then conn:Disconnect(); return end
 
 		local pos = bait.Position
@@ -803,13 +805,39 @@ function FishingServer:_checkMaterial()
 						self:_resetPlayer()
 						self:_cleanup()
 					else
-						-- First ground hit — bounce toward nearest water point
+						-- First ground hit — drive bait along a parabolic arc toward water (CFrame-based, ignores CanCollide)
 						bounced = true
-						local target = nearestWaterPoint(pos)
-						-- Nudge bait slightly off the surface before applying velocity
-						-- so the next Heartbeat check doesn't re-trigger ground detection
-						bait.CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0))
-						bait.AssemblyLinearVelocity = calcBounceVelocity(bait.Position, target)
+						bouncing = true
+
+						local arcStart = hit.Position + Vector3.new(0, BAIT_RADIUS + 0.1, 0)
+						local arcTarget = nearestWaterPoint(pos)
+						local t = BOUNCE_ARC_TIME
+						local g = workspace.Gravity or ROBLOX_GRAVITY
+						local elapsed = 0
+
+						bait.Anchored = true
+						bait.AssemblyLinearVelocity = Vector3.zero
+						bait.CFrame = CFrame.new(arcStart)
+
+						-- Drive bait along arc; when done, unanchor and let the main conn handle landing
+						local arcConn
+						arcConn = RunService.Heartbeat:Connect(function(dt)
+							if not bait or not bait.Parent then arcConn:Disconnect(); bouncing = false; return end
+							elapsed += dt
+							local frac = math.min(elapsed / t, 1)
+
+							-- Parabolic interpolation: lerp XZ, add upward Y arc that lands at arcTarget.Y
+							local lerpPos = arcStart:Lerp(arcTarget, frac)
+							local arcY = arcStart.Y + (arcTarget.Y - arcStart.Y) * frac
+								+ 0.5 * g * (frac * t) * (frac * t - t)
+							bait.CFrame = CFrame.new(lerpPos.X, arcY, lerpPos.Z)
+
+							if frac >= 1 then
+								arcConn:Disconnect()
+								bait.Anchored = false
+								bouncing = false  -- resume the main landing loop
+							end
+						end)
 					end
 					return
 				end
