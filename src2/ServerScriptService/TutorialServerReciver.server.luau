@@ -2,6 +2,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local AnalyticsService = game:GetService("AnalyticsService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 -- Create tutorial complete remote event if not found
 local tutorialCompleteRemote = ReplicatedStorage:FindFirstChild("TutorialCompleteRemote")
@@ -20,13 +23,14 @@ end)
 
 -- Handle tutorial completion
 tutorialCompleteRemote.OnServerEvent:Connect(function(player)
-	-- Set IsTutorialed to true
 	local isTutorialed = player:FindFirstChild("IsTutorialed")
 	if isTutorialed then
 		isTutorialed.Value = true
 	end
 
-	-- Funnel step 2: tutorial completed
+	-- ProfileService에도 즉시 저장
+	datamanager:UpdateData(player, "IsTutorialed", true)
+
 	pcall(function()
 		AnalyticsService:LogFunnelStepEvent(player, "Tutorial", nil, 2, "Completed")
 	end)

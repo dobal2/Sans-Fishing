@@ -200,7 +200,7 @@ checkSequentialQuestComplete = function(plr, questFolder, questData)
 	end
 end
 
-giveSequentialQuest = function(plr, index)
+giveSequentialQuest = function(plr, index, savedProgress)
 	local questData = SEQUENTIAL_QUESTS[index]
 	if not questData then return end
 
@@ -238,7 +238,7 @@ giveSequentialQuest = function(plr, index)
 	sv("QuestName",        questData.name)
 	sv("QuestDescription", questData.description)
 	sv("TargetFish",       "")
-	iv("CurrentProgress",  0)
+	iv("CurrentProgress",  savedProgress or 0)
 	iv("RequiredProgress", questData.requiredProgress)
 	iv("RewardCoins",      questData.rewardCoins)
 	bv("IsReceived",       true)
@@ -396,12 +396,10 @@ local function createQuest(questData, questId)
 	questType.Value = questData.questType or "normal"
 	questType.Parent = questFolder
 
-	if questData.rewardFP and questData.rewardFP > 0 then
-		local rewardFP = Instance.new("IntValue")
-		rewardFP.Name = "RewardFP"
-		rewardFP.Value = questData.rewardFP
-		rewardFP.Parent = questFolder
-	end
+	local rewardFP = Instance.new("IntValue")
+	rewardFP.Name = "RewardFP"
+	rewardFP.Value = questData.rewardFP or 0
+	rewardFP.Parent = questFolder
 
 	if questData.subType and questData.subType ~= "" then
 		local subType = Instance.new("StringValue")
@@ -519,7 +517,8 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
-	-- Daily quest fallback (if somehow missing)
+	-- Daily quest fallback: 오늘 날짜인데 퀘스트가 없을 때만 생성
+	-- (이미 오늘 완료해서 ActiveQuests에서 지워진 경우는 생성하지 않음)
 	local hasDailyQuest = false
 	for _, quest in pairs(ActiveQuests:GetChildren()) do
 		if quest:IsA("Folder") then
@@ -531,7 +530,11 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
-	if not hasDailyQuest then
+	-- lastQuestDate == currentDate이고 Data에도 daily_random_quest가 없으면 오늘 이미 완료한 것
+	local dailyAlreadyCompleted = (lastQuestDate == currentDate)
+		and (not Data.Quests.ActiveQuests or not Data.Quests.ActiveQuests["daily_random_quest"])
+
+	if not hasDailyQuest and not dailyAlreadyCompleted then
 		local dateSeed = tonumber(currentDate:gsub("-", "")) or os.time()
 		local dailyQuest = pickDailyQuest(dateSeed)
 		local questFolder = createQuest(dailyQuest, dailyQuest.id)
@@ -548,9 +551,15 @@ Players.PlayerAdded:Connect(function(plr)
 		datamanager:UpdateData(plr, "SequentialQuestIndex", 1)
 	end
 	if seqIndex <= #SEQUENTIAL_QUESTS then
+		-- 저장된 진행도 복원
+		local savedSeqProgress = 0
+		local savedSeqData = Data.Quests and Data.Quests.ActiveQuests and Data.Quests.ActiveQuests["sequential_current"]
+		if savedSeqData and savedSeqData.currentProgress then
+			savedSeqProgress = savedSeqData.currentProgress
+		end
 		task.spawn(function()
-			task.wait(0.5) -- ensure Quests folder is fully parented
-			giveSequentialQuest(plr, seqIndex)
+			task.wait(0.5)
+			giveSequentialQuest(plr, seqIndex, savedSeqProgress)
 		end)
 	end
 

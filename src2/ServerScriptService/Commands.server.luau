@@ -44,6 +44,7 @@ local Permissions = {
 		coinreset = true,
 		invenreset = true,
 		indexreset = true,
+		indexfill = true,
 		skillreset = true,
 		rodreset = true,
 		tutorialreset = true,
@@ -65,6 +66,7 @@ local Permissions = {
 		coinreset = true,
 		invenreset = true,
 		indexreset = true,
+		indexfill = true,
 	}
 }
 
@@ -721,7 +723,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :indexreset [target] — reset fish discovery catalog
+	-- :indexreset [target] — reset fish discovery catalog + claimed
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "indexreset" then
 		if hasPermission(plr, "indexreset") then
 			local args = string.split(chat, " ")
@@ -731,7 +733,9 @@ local function command(plr, chat)
 				local data = LeaderstatsDataManager:GetData(v)
 				if data then
 					data.Fish = {}
+					data.DiscoveryClaimed = {}
 					LeaderstatsDataManager:UpdateData(v, "Fish", {})
+					LeaderstatsDataManager:UpdateData(v, "DiscoveryClaimed", {})
 				end
 				local leaderstats = v:FindFirstChild("leaderstats")
 				if leaderstats then
@@ -743,6 +747,35 @@ local function command(plr, chat)
 					end
 				end
 				announceRemote:FireClient(v, "Your fish catalog has been reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :indexfill [target] — fill entire fish catalog (all fish discovered, not claimed)
+	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "indexfill" then
+		if hasPermission(plr, "indexfill") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local data = LeaderstatsDataManager:GetData(v)
+				local leaderstats = v:FindFirstChild("leaderstats")
+				local fishFolder = leaderstats and leaderstats:FindFirstChild("Fish")
+				if fishFolder then
+					local fishData = {}
+					for _, fishBool in ipairs(fishFolder:GetChildren()) do
+						if fishBool:IsA("BoolValue") then
+							fishBool.Value = true
+							fishData[fishBool.Name] = true
+						end
+					end
+					if data then
+						data.DiscoveryClaimed = {}
+						LeaderstatsDataManager:UpdateData(v, "Fish", fishData)
+						LeaderstatsDataManager:UpdateData(v, "DiscoveryClaimed", {})
+					end
+				end
+				announceRemote:FireClient(v, "All fish have been added to your catalog.", "SYSTEM")
 			end
 		end
 	end
@@ -847,7 +880,7 @@ end
 
 -- Connect player events
 Players.PlayerAdded:Connect(function(plr)
-	local rank = getPlayerRank(plr.Name)
+	local rank = getPlayerRank(plr)
 	if rank then
 		plr.Chatted:Connect(function(msg)
 			command(plr, msg)

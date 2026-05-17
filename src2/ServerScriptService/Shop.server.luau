@@ -2,6 +2,29 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local AnalyticsService = game:GetService("AnalyticsService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local ROD_PURCHASE_WEBHOOK = "https://discord.com/api/webhooks/1505558036843069541/vKgtfZIbv0BXYdx9m1kg3t9xSo3jfCBuVAdMKIcYg-pFEtUdz93M4WbwCCO8XH5FhLML"
+
+local function sendRodPurchaseWebhook(playerName, rodName, price)
+	local data = {
+		username = "Shop Logger",
+		embeds = {{
+			title = "Rod Purchased",
+			description = string.format("**%s** bought **%s**%s",
+				playerName,
+				rodName,
+				price > 0 and string.format(" for **%d coins**", price) or " (Robux/Free)"
+			),
+			color = 3447003,
+			timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+		}}
+	}
+	pcall(function()
+		HttpService:PostAsync(ROD_PURCHASE_WEBHOOK, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+	end)
+end
 
 -- RodProgression funnel: each rod = one milestone step
 local ROD_FUNNEL_STEP = {
@@ -142,6 +165,9 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 		if defaultRod then
 			defaultRod.Value = false
 		end
+		local displayName = item.displayName or itemname
+		local price = item.price or 0
+		task.spawn(sendRodPurchaseWebhook, plr.Name, displayName, price)
 	end
 
 	-- storageName 기준 rod 이름 set (FriendRod 포함)

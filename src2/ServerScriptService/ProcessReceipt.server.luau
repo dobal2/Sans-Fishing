@@ -3,7 +3,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
-local DataManager = require(game:GetService("ServerScriptService"):WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local ServerScriptService = game:GetService("ServerScriptService")
+local DataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 
 local RANDOM_FISH_1  = 3591644219
 local RANDOM_FISH_3  = 0
@@ -23,17 +25,17 @@ local boostPurchaseBE = (function()
 end)()
 
 local FISH_POOL = {
-	{ name="Dragon Head Fish",rarity="Epic",      chance=28.5, value=700   },
-	{ name="Reggigash",       rarity="Epic",      chance=28.5, value=680   },
-	{ name="Golden Trout",    rarity="Legendary", chance=10,   value=1800  },
-	{ name="Armor Fish",      rarity="Legendary", chance=10,   value=2500  },
-	{ name="Shark",           rarity="Mystic",    chance=6,    value=4500  },
-	{ name="Ray",             rarity="Mystic",    chance=6,    value=4200  },
-	{ name="Undyine",         rarity="Fantasy",   chance=2,    value=9000  },
-	{ name="Sans",            rarity="Fantasy",   chance=2,    value=11111 },
-	{ name="Electric Fish",   rarity="Fantasy",   chance=2,    value=13333 },
-	{ name="Unknown",         rarity="Unknown",   chance=1,    value=50000 },
-	{ name="Nyan Cat",        rarity="Unknown",   chance=1,    value=56000 },
+	{ name="Dragon Head Fish",rarity="Epic",      chance=28.5, value=490   },
+	{ name="Reggigash",       rarity="Epic",      chance=28.5, value=476   },
+	{ name="Golden Trout",    rarity="Legendary", chance=10,   value=1260  },
+	{ name="Armor Fish",      rarity="Legendary", chance=10,   value=1750  },
+	{ name="Shark",           rarity="Mystic",    chance=6,    value=3150  },
+	{ name="Ray",             rarity="Mystic",    chance=6,    value=2940  },
+	{ name="Undyine",         rarity="Fantasy",   chance=2,    value=6300  },
+	{ name="Sans",            rarity="Fantasy",   chance=2,    value=7778  },
+	{ name="Electric Fish",   rarity="Fantasy",   chance=2,    value=9333  },
+	{ name="Unknown",         rarity="Unknown",   chance=1,    value=35000 },
+	{ name="Nyan Cat",        rarity="Unknown",   chance=1,    value=39200 },
 }
 
 local GACHA_RARITY_SCALE = {
@@ -67,7 +69,69 @@ end
 local function grantFish(player, fish)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
-	local fishFolder = leaderstats:FindFirstChild("Fish")
+
+	-- Find fish data from FishDataModule for weight/model info
+	local fishModuleData = nil
+	for _, rarityGroup in ipairs(FishDataModule.Rarities) do
+		for _, f in ipairs(rarityGroup.fishes) do
+			if f.fishName == fish.name then
+				fishModuleData = f
+				break
+			end
+		end
+		if fishModuleData then break end
+	end
+
+	-- Calculate weight
+	local minW = fishModuleData and fishModuleData.minWeight or 1
+	local maxW = fishModuleData and fishModuleData.maxWeight or 10
+	local weight = math.floor((minW + math.random() * (maxW - minW)) * 10) / 10
+
+	-- Calculate value based on weight
+	local baseValue = fish.value
+	local valueRatio = math.clamp((weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
+	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+	-- Grant fish tool to backpack
+	local model = fishModuleData and fishModuleData.model
+	if model then
+		local toolClone = model:Clone()
+		toolClone.Name = string.format("%s [%s] - %.1fkg", fish.name, fish.rarity, weight)
+
+		local valueObj = toolClone:FindFirstChild("FishValue") or Instance.new("IntValue")
+		valueObj.Name = "FishValue"
+		valueObj.Value = adjustedValue
+		valueObj.Parent = toolClone
+
+		local weightObj = toolClone:FindFirstChild("FishWeight") or Instance.new("NumberValue")
+		weightObj.Name = "FishWeight"
+		weightObj.Value = weight
+		weightObj.Parent = toolClone
+
+		local rarityObj = toolClone:FindFirstChild("FishRarity") or Instance.new("StringValue")
+		rarityObj.Name = "FishRarity"
+		rarityObj.Value = fish.rarity
+		rarityObj.Parent = toolClone
+
+		-- Apply weight-based size scaling (same as FishingServerModule, maxScale=5)
+		local handle = toolClone:FindFirstChild("Handle")
+		if handle and handle:IsA("BasePart") then
+			local t = math.clamp((weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
+			local ratio = 1 + (5 - 1) * t
+			if ratio ~= 1 then
+				handle.Size = handle.Size * ratio
+			end
+		end
+
+		local backpack = player:FindFirstChild("Backpack")
+		if backpack then
+			toolClone.Parent = backpack
+		end
+	end
+
+	-- Update fish discovery catalog (claim은 Index UI에서 별도로)
+	local leaderstatsInner = player:FindFirstChild("leaderstats")
+	local fishFolder = leaderstatsInner and leaderstatsInner:FindFirstChild("Fish")
 	if fishFolder then
 		local fishBool = fishFolder:FindFirstChild(fish.name)
 		if fishBool and not fishBool.Value then
@@ -79,10 +143,13 @@ local function grantFish(player, fish)
 			DataManager:UpdateData(player, "Fish", fishData)
 		end
 	end
-	local coins = leaderstats:FindFirstChild("Coins")
-	if coins then
-		coins.Value = coins.Value + fish.value
-		DataManager:UpdateData(player, "Coins", coins.Value)
+
+	-- Notify player
+	local noticeRemote = ReplicatedStorage:FindFirstChild("Remotes")
+		and ReplicatedStorage.Remotes:FindFirstChild("Notice")
+		and ReplicatedStorage.Remotes.Notice:FindFirstChild("ShowNoticeEvent")
+	if noticeRemote then
+		noticeRemote:FireClient(player, string.format("You got %s [%s] - %.1fkg!", fish.name, fish.rarity, weight))
 	end
 end
 
@@ -114,6 +181,8 @@ local function processRandomFish(player, count)
 		end)
 	end
 end
+
+local purchaseLogEvent = ServerScriptService:WaitForChild("PurchaseLogEvent", 10)
 
 local triggerRandomFish = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("TriggerRandomFish")
 triggerRandomFish.Event:Connect(function(player)
@@ -147,6 +216,12 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	local productId = receiptInfo.ProductId
 
+	local function logPurchase()
+		if purchaseLogEvent then
+			purchaseLogEvent:Fire(player.Name, productId)
+		end
+	end
+
 	if donationValues[productId] then
 		local data = DataManager:GetData(player)
 		if not data then return Enum.ProductPurchaseDecision.NotProcessedYet end
@@ -160,6 +235,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		if donationForceRefresh then
 			task.delay(1, function() donationForceRefresh:Fire(player) end)
 		end
+		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	elseif SERVER_BOOST_PRODUCTS[productId] then
@@ -169,6 +245,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 			warn("ServerBoost fire failed:", err)
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
+		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	elseif productId == FISH_TRAP_HARVEST_PRODUCT_ID then
@@ -189,14 +266,17 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 				end
 			end
 		end
+		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	elseif productId == RANDOM_FISH_1 and RANDOM_FISH_1 ~= 0 then
 		processRandomFish(player, 1)
+		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	elseif productId == RANDOM_FISH_3 and RANDOM_FISH_3 ~= 0 then
 		processRandomFish(player, 3)
+		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 
 	else

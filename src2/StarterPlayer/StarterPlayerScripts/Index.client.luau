@@ -339,6 +339,39 @@ end
 
 local playerGui = player.PlayerGui
 
+local function refreshUnclaimed()
+	-- claimed 목록을 서버에서 가져옴 (구버전/신버전 모두 처리)
+	local claimed = {}
+	local ok, result = pcall(function() return getClaimedRF:InvokeServer() end)
+	if ok and type(result) == "table" then
+		if type(result.claimed) == "table" then
+			claimed = result.claimed
+		else
+			claimed = result
+		end
+	end
+
+	-- discovered는 항상 클라이언트 BoolValue 기준 (서버 응답 무관)
+	local ls = player:FindFirstChild("leaderstats")
+	local fishFolder = ls and ls:FindFirstChild("Fish")
+	if not fishFolder then return end  -- fishFolder 없으면 기존 unclaimed 유지
+
+	for _, rarityData in ipairs(FishRarities) do
+		for _, fishData in ipairs(rarityData.fishes) do
+			local fishName = fishData.fishName
+			local fishBool = fishFolder:FindFirstChild(fishName)
+			if fishBool then  -- fishBool 존재할 때만 처리 (없으면 기존 값 유지)
+				if fishBool.Value and not claimed[fishName] then
+					unclaimed[fishName] = true
+				else
+					unclaimed[fishName] = nil
+				end
+			end
+		end
+	end
+	updateNotifBadge()
+end
+
 local function openIndex()
 	playerGui:SetAttribute("ActiveLargeUI", "Index")
 	newIndexFrame.Visible = true
@@ -346,10 +379,15 @@ local function openIndex()
 	TweenService:Create(uiScale, OPEN_TWEEN, {Scale = 1}):Play()
 	blur.Enabled = true
 	tweenFOV(60)
-	createFishIndexUI()
+	task.spawn(function()
+		task.wait(0.3)
+		refreshUnclaimed()
+		createFishIndexUI()
+	end)
 end
 
 local function closeIndex()
+	playerGui:SetAttribute("ActiveLargeUI", nil)
 	TweenService:Create(uiScale, CLOSE_TWEEN, {Scale = 0}):Play()
 	task.delay(0.2, function() newIndexFrame.Visible = false end)
 	blur.Enabled = false
@@ -391,30 +429,39 @@ local function setupDiscoveryWatchers()
 	local leaderstats = player:WaitForChild("leaderstats")
 	local fishFolder  = leaderstats:WaitForChild("Fish")
 
-	-- Restore unclaimed rewards from server: discovered but not yet claimed
-	local ok, claimedData = pcall(function() return getClaimedRF:InvokeServer() end)
-	local claimed = (ok and type(claimedData) == "table") and claimedData or {}
+	-- 데이터 로드 완료 대기
+	local dataReady = player:WaitForChild("DataReady", 30)
+	if dataReady then
+		repeat task.wait() until dataReady.Value == true
+	end
+
+	-- claimed 목록 서버에서 가져옴
+	local claimed = {}
+	local ok, result = pcall(function() return getClaimedRF:InvokeServer() end)
+	if ok and type(result) == "table" then
+		if type(result.claimed) == "table" then
+			claimed = result.claimed
+		else
+			claimed = result
+		end
+	end
 
 	for _, rarityData in ipairs(FishRarities) do
 		for _, fishData in ipairs(rarityData.fishes) do
 			local fishName = fishData.fishName
 			local fishBool = fishFolder:FindFirstChild(fishName)
 			if fishBool then
-				-- If discovered but not claimed → restore unclaimed badge
 				if fishBool.Value and not claimed[fishName] then
 					unclaimed[fishName] = true
 				end
-
-				if not fishBool.Value then
-					-- Not yet discovered: watch for first discovery
-					fishBool.Changed:Connect(function(newVal)
-						if newVal then
-							unclaimed[fishName] = true
-							updateNotifBadge()
-							if isIndexOpen() then createFishIndexUI() end
-						end
-					end)
-				end
+				-- 아직 미발견: 발견 시 unclaimed에 추가
+				fishBool.Changed:Connect(function(newVal)
+					if newVal and not claimed[fishName] then
+						unclaimed[fishName] = true
+						updateNotifBadge()
+						if isIndexOpen() then createFishIndexUI() end
+					end
+				end)
 			end
 		end
 	end

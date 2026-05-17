@@ -23,11 +23,23 @@ local DISCOVER_REWARDS = {
 	Legendary = 3000, Mystic = 8000, Fantasy = 25000, Unknown = 100000,
 }
 
--- Returns table of fishName → true for already-claimed rewards
+-- Returns { claimed = {fishName→true}, discovered = {fishName→true} }
 getClaimedRF.OnServerInvoke = function(player)
 	local data = dataManager:GetData(player)
-	if not data then return {} end
-	return data.DiscoveryClaimed or {}
+	local claimed = (data and data.DiscoveryClaimed) or {}
+
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local fishFolder = leaderstats and leaderstats:FindFirstChild("Fish")
+	local discovered = {}
+	if fishFolder then
+		for _, b in ipairs(fishFolder:GetChildren()) do
+			if b:IsA("BoolValue") and b.Value then
+				discovered[b.Name] = true
+			end
+		end
+	end
+
+	return { claimed = claimed, discovered = discovered }
 end
 
 remote.OnServerEvent:Connect(function(player, fishName)
@@ -71,6 +83,7 @@ remote.OnServerEvent:Connect(function(player, fishName)
 	-- Mark as claimed in persistent data
 	data.DiscoveryClaimed[fishName] = true
 	dataManager:UpdateData(player, "Coins", newCoins)
+	dataManager:UpdateData(player, "DiscoveryClaimed", data.DiscoveryClaimed)
 
 	local message = string.format("New discovery: %s! +%d coins", fishName, rewardCoins)
 	discoverNoticeEvent:FireClient(player, message, "#00FFCC")

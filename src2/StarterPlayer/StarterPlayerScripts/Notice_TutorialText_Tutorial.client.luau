@@ -196,7 +196,6 @@ end
 local function startCastStep()
 	currentStep = "cast_rod"
 	showPersistentNotice("Great! Now go to the water and click to cast your bait!")
-	createBeam(fishingPoint)
 end
 
 local function startEquipStep()
@@ -268,12 +267,15 @@ tutorialEvent.Event:Connect(function(eventType)
 		and (currentStep == "cast_rod" or currentStep == "wait_for_bite" or currentStep == "minigame_active") then
 		currentStep = "cast_rod"
 		showPersistentNotice("Try again! Click to cast your bait in the water!")
-		createBeam(fishingPoint)
 	end
 end)
 
 -- ── 진입점 ────────────────────────────────────────────────────────────────────
 task.spawn(function()
+	local dataReady = player:WaitForChild("DataReady", 30)
+	if dataReady then
+		repeat task.wait() until dataReady.Value == true
+	end
 	local isTutorialed = player:WaitForChild("IsTutorialed", 30)
 	if not isTutorialed or isTutorialed.Value then return end
 	task.wait(2)

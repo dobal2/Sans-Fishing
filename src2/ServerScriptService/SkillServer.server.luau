@@ -204,6 +204,12 @@ skillBuyEvent.OnServerEvent:Connect(function(player, skillName, targetStage)
 		return
 	end
 
+	-- PointBoost는 SellBonus Lv1 이상 필요
+	if skillName == "PointBoost" and getSkillLevel(player, "SellBonus") < 1 then
+		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)
+		return
+	end
+
 	-- 반드시 다음 단계만 구매 가능 (건너뛰기 방지)
 	if targetStage ~= currentLevel + 1 then
 		skillBuyEvent:FireClient(player, "fail", "WRONG_STAGE", skillName)

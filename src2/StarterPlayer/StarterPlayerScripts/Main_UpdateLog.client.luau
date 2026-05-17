@@ -5,13 +5,15 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- DataReady 대기 후에 SeenUpdateLog를 읽어야 정확한 저장값을 확인할 수 있음
+player:WaitForChild("DataReady", 30)
+
 local seenFlag = player:WaitForChild("SeenUpdateLog", 30)
 if not seenFlag or seenFlag.Value then return end
 
 local setSeenRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("SetSeenUpdateLog")
 setSeenRemote:FireServer()
 
-player:WaitForChild("DataReady", 30)
 task.wait(1.5)
 
 local main = playerGui:WaitForChild("Main")

@@ -2,6 +2,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
 
 local player = game.Players.LocalPlayer
 local mainGui = player.PlayerGui:WaitForChild("Main")
@@ -12,8 +13,13 @@ local shopShadowFrame = mainGui:FindFirstChild("ShadowFrame")
 local clickSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("click")
 local lighting = game:GetService("Lighting")
 local blur = lighting:WaitForChild("ShopBlur")
-local xButton = shopFrame:WaitForChild("XButton")
+local closeFrame = shopFrame:WaitForChild("Close")
+local xButton = closeFrame:FindFirstChildOfClass("ImageButton") or closeFrame:FindFirstChildOfClass("TextButton")
+local joinGroupFrame = shopFrame:WaitForChild("JoinGroup")
+local joinGroupButton = joinGroupFrame:FindFirstChildOfClass("ImageButton") or joinGroupFrame:FindFirstChildOfClass("TextButton")
 local camera = workspace.CurrentCamera
+
+local GROUP_ID = 9744474
 
 local originalFOV = camera.FieldOfView or 70
 local expandedFOV = 60
@@ -43,9 +49,16 @@ local function toggleShop()
 end
 
 shopButton.MouseButton1Click:Connect(toggleShop)
-xButton.MouseButton1Click:Connect(function()
-	if isShopOpen then toggleShop() end
-end)
+if xButton then
+	xButton.MouseButton1Click:Connect(function()
+		if isShopOpen then toggleShop() end
+	end)
+end
+if joinGroupButton then
+	joinGroupButton.MouseButton1Click:Connect(function()
+		GuiService:OpenBrowserWindow("https://www.roblox.com/communities/9744474/Sans-Fishing#!/about")
+	end)
+end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end

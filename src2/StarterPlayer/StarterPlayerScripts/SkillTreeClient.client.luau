@@ -77,13 +77,16 @@ local function refreshUI()
 
 		local function setAllVisible(visible)
 			for _, desc in ipairs(btn:GetDescendants()) do
-				pcall(function() desc.Visible = visible end)
+				if desc:IsA("GuiObject") then
+					desc.Visible = visible
+				end
 			end
 		end
 
 		local function lockNode()
 			btn.Image = "rbxassetid://102739874658337"
 			btn.Active = false
+			btn.ImageTransparency = 0
 			setAllVisible(false)
 		end
 
@@ -119,6 +122,12 @@ local function refreshUI()
 
 		-- WeightUp은 InvenUp Lv1 필요
 		if skillName == "WeightUp" and (data.levels["InvenUp"] or 0) < 1 then
+			lockNode()
+			continue
+		end
+
+		-- PointBoost는 SellBonus Lv1 필요
+		if skillName == "PointBoost" and (data.levels["SellBonus"] or 0) < 1 then
 			lockNode()
 			continue
 		end
@@ -463,6 +472,8 @@ if not isMobile then
 end
 
 -- ── 열릴 때 Canvas 초기 스케일 설정 ────────────────────────────────────────
+local CANVAS_DEFAULT_POSITION = UDim2.new(0.5, 0, 0.5, 0)
+
 local function applyInitialCanvasScale()
 	local c = getCanvas()
 	if not c then return end
@@ -475,13 +486,12 @@ local function applyInitialCanvasScale()
 	local shortSide = math.min(vp.X, vp.Y)
 	local scale
 	if isMobile then
-		-- 모바일: 짧은 쪽 기준, 작은 화면일수록 더 축소
 		scale = math.clamp(shortSide / 900, 0.25, 0.55)
 	else
-		-- PC: 짧은 쪽 기준
 		scale = math.clamp(shortSide / 800, 0.45, 1.0)
 	end
 	us.Scale = scale
+	c.Position = CANVAS_DEFAULT_POSITION
 end
 
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()

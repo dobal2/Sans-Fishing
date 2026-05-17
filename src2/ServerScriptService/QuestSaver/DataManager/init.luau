@@ -156,6 +156,9 @@ function DataManager:SafeSavePlayer(player)
 					local questType       = quest:FindFirstChild("QuestType")
 
 					if questName and currentProgress and requiredProgress and rewardCoins and isReceived then
+						local rewardFP    = quest:FindFirstChild("RewardFP")
+						local subType     = quest:FindFirstChild("SubType")
+						local targetRarity = quest:FindFirstChild("TargetRarity")
 						questsData.ActiveQuests[quest.Name] = {
 							id = quest.Name,
 							name = questName.Value,
@@ -164,8 +167,11 @@ function DataManager:SafeSavePlayer(player)
 							currentProgress = currentProgress.Value,
 							requiredProgress = requiredProgress.Value,
 							rewardCoins = rewardCoins.Value,
+							rewardFP = rewardFP and rewardFP.Value or 0,
 							isReceived = isReceived.Value,
-							questType = questType and questType.Value or "normal"
+							questType = questType and questType.Value or "normal",
+							subType = subType and subType.Value or "",
+							targetRarity = targetRarity and targetRarity.Value or "",
 						}
 					end
 				end

@@ -169,24 +169,48 @@ local function removeEmptySlots()
 	end
 end
 
-local function toggleInventory()
-	Inventory.Visible = not Inventory.Visible
-	local currentState = Inventory.Visible
-
+local function closeInventory()
+	Inventory.Visible = false
+	player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
 	inventoryHandler:removeCurrentDescription()
+	if not inventoryHandler.SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR then
+		removeEmptySlots()
+	end
+end
 
-	if currentState then
-		showSlots()
-		task.spawn(function()
-			task.wait(0.1)
-			updateAllFishLockUI()
-		end)
-	else
+local function toggleInventory()
+	if Inventory.Visible then
+		closeInventory()
+		return
+	end
+
+	-- 다른 큰 UI가 열려있으면 닫기
+	local active = player.PlayerGui:GetAttribute("ActiveLargeUI")
+	if active then
+		player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
+		task.wait(0.1)
+	end
+
+	Inventory.Visible = true
+	player.PlayerGui:SetAttribute("ActiveLargeUI", "Inventory")
+	inventoryHandler:removeCurrentDescription()
+	showSlots()
+	task.spawn(function()
+		task.wait(0.1)
+		updateAllFishLockUI()
+	end)
+end
+
+-- 다른 UI가 열리면 인벤토리 자동 닫기
+player.PlayerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
+	if player.PlayerGui:GetAttribute("ActiveLargeUI") ~= "Inventory" and Inventory.Visible then
+		Inventory.Visible = false
+		inventoryHandler:removeCurrentDescription()
 		if not inventoryHandler.SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR then
 			removeEmptySlots()
 		end
 	end
-end
+end)
 
 local function manageInventory(_, inputState)
 	if inputState == Enum.UserInputState.Begin then

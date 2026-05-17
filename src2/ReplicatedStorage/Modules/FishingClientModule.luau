@@ -1074,13 +1074,15 @@ end
 
 -- Immediate input handler
 function FishingClient:_handleUserInput(inputObject, gameProcessed)
-	if gameProcessed then return end
+	-- 모바일 터치는 카메라 조작과 겹쳐 gameProcessed=true가 되므로
+	-- 미니게임 중 Touch 입력은 gameProcessed 무시
+	local isTouch = inputObject.UserInputType == Enum.UserInputType.Touch
+	if gameProcessed and not (isTouch and self.newGUI) then return end
 	if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
 
 	if not self.newGUI then return end
 
-	if inputObject.UserInputType == Enum.UserInputType.Touch or
-		inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
+	if isTouch or inputObject.UserInputType == Enum.UserInputType.MouseButton1 then
 		self:_processFishingInput()
 		return
 	end
