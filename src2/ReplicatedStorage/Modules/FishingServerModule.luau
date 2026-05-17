@@ -391,7 +391,7 @@ function FishingServer:_validateAttempt(player, payload)
 
 		-- Get DifficultyMod from Config
 		local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
-		local toolConfig = Config[self.tool.Name]
+		local toolConfig = Config[self.originalToolName or self.tool.Name]
 		local difficultyMod = 1  -- Default
 
 		if toolConfig and toolConfig.DifficultyMod then
@@ -492,13 +492,20 @@ end
 
 function FishingServer:_getInventoryLimit(player)
 	local baseLimit = 100
-	local expandedLimit = 200  -- +100 slots
 
 	if self:_hasInventoryExpansionGamepass(player) then
-		return expandedLimit
-	else
-		return baseLimit
+		baseLimit = 200
 	end
+
+	-- InvenUp 스킬 추가 슬롯
+	local ok, SkillHelper = pcall(function()
+		return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
+	end)
+	if ok and SkillHelper then
+		baseLimit = baseLimit + SkillHelper.GetExtraInventory(player)
+	end
+
+	return baseLimit
 end
 
 
@@ -516,12 +523,17 @@ function FishingServer:_checkInventoryLimit(player)
 			itemName:match("trap") ~= nil
 	end
 
-	-- Count all tools (excluding rods and fish traps)
-	for _, item in pairs(backpack:GetChildren()) do
-		if item:IsA("Tool") then
-			if not IsRod(item.Name) then
-				totalItemCount = totalItemCount + 1
-			end
+	-- Count all tools (excluding rods and fish traps) in backpack and character
+	local character = player.Character
+	local items = backpack:GetChildren()
+	if character then
+		for _, item in ipairs(character:GetChildren()) do
+			table.insert(items, item)
+		end
+	end
+	for _, item in ipairs(items) do
+		if item:IsA("Tool") and not IsRod(item.Name) then
+			totalItemCount = totalItemCount + 1
 		end
 	end
 
@@ -539,10 +551,11 @@ function FishingServer:_setupRope()
 	-- Tip attachment on the rod handle.
 	-- Preference order: pre-existing "RodTip", then rod-specific known attachments, then fallback.
 	local handle = self.tool.Handle
-	local tipAtt = handle:FindFirstChild("RodTip")
+	-- Search entire tool recursively so tip attachments in non-Handle parts (e.g. VoidRod) are found
+	local tipAtt = self.tool:FindFirstChild("RodTip", true)
 	if not tipAtt then
-		-- LinePos part: convert to Attachment at its position
-		local linePosP = handle:FindFirstChild("LinePos", true)
+		-- LinePos part anywhere in the tool: convert to Attachment on handle at its world position
+		local linePosP = self.tool:FindFirstChild("LinePos", true)
 		if linePosP and linePosP:IsA("BasePart") then
 			tipAtt = Instance.new("Attachment")
 			tipAtt.Name = "RodTip"
@@ -551,22 +564,16 @@ function FishingServer:_setupRope()
 		end
 	end
 	if not tipAtt then
-		local rodName = self.tool.Name
-		if rodName == "RealisticRod" or rodName == "BlockyRod" or rodName == "VoidRod" or rodName == "Error Rod" then
-			tipAtt = handle:FindFirstChild("up")
-		end
-		if not tipAtt then
-			tipAtt = handle:FindFirstChild("Att0")
-		end
-		if not tipAtt then
-			tipAtt = handle:FindFirstChildOfClass("Attachment")
-		end
-		if not tipAtt then
-			tipAtt = Instance.new("Attachment")
-			tipAtt.Name = "RodTip"
-			tipAtt.Position = Vector3.new(-handle.Size.X / 2, 0, 0)
-			tipAtt.Parent = handle
-		end
+		tipAtt = handle:FindFirstChild("Att0")
+	end
+	if not tipAtt then
+		tipAtt = handle:FindFirstChildOfClass("Attachment")
+	end
+	if not tipAtt then
+		tipAtt = Instance.new("Attachment")
+		tipAtt.Name = "RodTip"
+		tipAtt.Position = Vector3.new(-handle.Size.X / 2, 0, 0)
+		tipAtt.Parent = handle
 	end
 
 	-- End attachment on the bait
@@ -826,7 +833,19 @@ function FishingServer:_checkMaterial()
 			self.sessionId = sessionId
 			self.successCount = 0
 
-			task.wait(math.random(2, 3))
+			-- QuickBite skill reduces bite wait time
+			local quickBiteReduction = 0
+			do
+				local ok_qb, SkillHelper_qb = pcall(function()
+					return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
+				end)
+				if ok_qb and SkillHelper_qb then
+					quickBiteReduction = SkillHelper_qb.GetEffect(self.player, "QuickBite")
+				end
+			end
+			local minWait = math.max(0.5, 3 - quickBiteReduction)
+			local maxWait = math.max(minWait + 0.5, 5 - quickBiteReduction)
+			task.wait(minWait + math.random() * (maxWait - minWait))
 
 			if self.cancelled then return end
 			if self.sessionId ~= sessionId then return end
@@ -1182,7 +1201,7 @@ function FishingServer:_resolveFishing(player, result)
 		-- Calculate price
 		local minW, maxW = fishInfo.minWeight or 1, fishInfo.maxWeight or 1
 		local baseValue = fishInfo.value or 0
-		local valueRatio = (fishInfo.weight - minW) / (maxW - minW)
+		local valueRatio = math.clamp((fishInfo.weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
 		local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
 		toolClone.Name = string.format("%s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
@@ -1276,6 +1295,16 @@ function FishingServer:_resolveFishing(player, result)
 			local backpackTool = createFishTool(fishInfo)
 			backpackTool.Parent = player:FindFirstChild("Backpack")
 
+			-- Award SkillPoints per successful catch (base 1 + PointBoost bonus)
+			local skillPointsVal = player:FindFirstChild("SkillPoints")
+			if skillPointsVal then
+				local ok_p, SkillHelper_p = pcall(function()
+					return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
+				end)
+				local bonus = (ok_p and SkillHelper_p) and SkillHelper_p.GetEffect(player, "PointBoost") or 0
+				skillPointsVal.Value = skillPointsVal.Value + 1 + bonus
+			end
+
 			-- Economy: fish caught (sink — player receives item worth adjustedValue coins)
 			local minW2, maxW2 = fishInfo.minWeight or 1, fishInfo.maxWeight or 1
 			local vRatio2 = math.clamp((fishInfo.weight - minW2) / math.max(maxW2 - minW2, 0.001), 0, 1)
@@ -1285,7 +1314,8 @@ function FishingServer:_resolveFishing(player, result)
 					caughtValue, 0, "FishCaught", fishInfo.name or "Unknown")
 			end)
 
-			-- 5% chance to trigger free random fish gacha
+			-- 5% chance to trigger free random fish gacha (disabled)
+			--[[
 			local didTriggerGacha = math.random() < 0.05
 			if didTriggerGacha then
 				local triggerEvt = game.ReplicatedStorage:FindFirstChild("Remotes") and
@@ -1294,7 +1324,6 @@ function FishingServer:_resolveFishing(player, result)
 				if triggerEvt then
 					triggerEvt:Fire(player)
 				end
-				-- Pulse the hooked fish visual to signal gacha triggered
 				if self.hookedFishHandle then
 					local pulsePart = self.hookedFishHandle
 					local baseSize = self._hookedBaseSize or pulsePart.Size
@@ -1311,6 +1340,7 @@ function FishingServer:_resolveFishing(player, result)
 					end)
 				end
 			end
+			--]]
 
 			-- Handle hooked fish
 			if self.hookedFishHandle then

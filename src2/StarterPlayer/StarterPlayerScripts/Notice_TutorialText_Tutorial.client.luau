@@ -1,497 +1,298 @@
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
--- script.Parent was a TextLabel inside Notice > TutorialText ScreenGui
-local tutorialGui = player.PlayerGui:WaitForChild("Notice"):WaitForChild("TutorialText")
-local textLabel = tutorialGui:WaitForChild("TextLabel")
+local playerGui = player:WaitForChild("PlayerGui")
+local mainGui = playerGui:WaitForChild("Main")
+local noticeFrame = mainGui:WaitForChild("NoticeFrame")
+local template = noticeFrame:WaitForChild("ItemFrame")
 
-local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("TutorialEvent")
-local sound = tutorialGui:WaitForChild("Sound")
-
+local tutorialEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("TutorialEvent")
 local tutorialCompleteRemote = ReplicatedStorage:WaitForChild("TutorialCompleteRemote")
-
 local tutorialBeam = ReplicatedStorage:WaitForChild("TutorialBeam")
-local fishingPoint = game.Workspace:WaitForChild("TutorialWaterPoint")
-local Seller = game.Workspace:WaitForChild("Sell Shop"):WaitForChild("Seller"):WaitForChild("HumanoidRootPart")
-local upgradeNpc = game.Workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller"):WaitForChild("HumanoidRootPart")
 
-local currentTween = nil
-local currentTask = nil
+local fishingPoint = workspace:WaitForChild("TutorialWaterPoint")
+local sellerPart   = workspace:WaitForChild("Sell Shop"):WaitForChild("Seller"):WaitForChild("HumanoidRootPart")
+local upgradeNpc   = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller"):WaitForChild("HumanoidRootPart")
+
+local TUTORIAL_COLOR = Color3.fromRGB(255, 220, 80)
+local TWEEN_IN  = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TWEEN_OUT = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
 local currentStep = ""
-local stepCompleted = false
-local tutorialStarted = false
-
-local currentBeam = nil
-local playerAttachment = nil
-local targetAttachment = nil
-
-local initialMoney = 0
-local currentMoney = 0
 local tutorialCompleted = false
+local persistentFrame = nil
+local currentBeam = nil
+local playerAttach = nil
+local targetAttach = nil
+local initialMoney = 0
 
--- Forward declarations
-local showText, checkStepCompletion, removeTutorialBeam, createTutorialBeam
-
-local function createTween(object, targetProps, duration)
-	return TweenService:Create(object, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), targetProps)
+-- ── 빔 ────────────────────────────────────────────────────────────────────────
+local function removeBeam()
+	if currentBeam   then currentBeam:Destroy();   currentBeam   = nil end
+	if playerAttach  then playerAttach:Destroy();  playerAttach  = nil end
+	if targetAttach  then targetAttach:Destroy();  targetAttach  = nil end
 end
 
-local function getPlayerMoney()
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local coins = leaderstats:FindFirstChild("Coins")
-		if coins then
-			return coins.Value
-		end
-	end
-	return 0
-end
+local function createBeam(target)
+	removeBeam()
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-local function checkUpgradedRod()
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local rods = leaderstats:FindFirstChild("Rods")
-		if rods then
-			local silverRod = rods:FindFirstChild("SliverRod")
+	playerAttach = Instance.new("Attachment")
+	playerAttach.Parent = root
 
-			print("Checking SliverRod:")
-			if silverRod then
-				print("  SliverRod value:", silverRod.Value)
-				if silverRod.Value == true then
-					print("SliverRod detected!")
-					return true
-				end
-			else
-				print("  SliverRod not found")
-			end
-		else
-			print("Rods not found")
-		end
-	else
-		print("leaderstats not found")
-	end
-	print("SliverRod not owned")
-	return false
-end
-
-
-
-removeTutorialBeam = function()
-	if currentBeam then
-		currentBeam:Destroy()
-		currentBeam = nil
-		print("Tutorial beam removed")
-	end
-	if playerAttachment then
-		playerAttachment:Destroy()
-		playerAttachment = nil
-	end
-	if targetAttachment then
-		targetAttachment:Destroy()
-		targetAttachment = nil
-	end
-end
-
-local function hideText()
-	if currentTween then
-		currentTween:Cancel()
-	end
-	if currentTask then
-		local success = pcall(function()
-			task.cancel(currentTask)
-		end)
-		currentTask = nil
-	end
-
-	currentTween = createTween(textLabel, {TextTransparency = 1, TextStrokeTransparency = 1}, 0.3)
-	currentTween:Play()
-	currentTween.Completed:Wait()
-	textLabel.Visible = false
-	currentStep = ""
-	stepCompleted = false
-end
-
-local function checkMoneyIncrease()
-	if tutorialCompleted then return false end
-
-	local newMoney = getPlayerMoney()
-	if newMoney > initialMoney then
-		print("Coins increased:", initialMoney, "->", newMoney)
-
-		removeTutorialBeam()
-		if checkUpgradedRod() then
-			tutorialCompleted = true
-
-			task.spawn(function()
-				task.wait(0.1)
-				hideText()
-				task.wait(0.5)
-				showText("Congratulations! You've completed the tutorial!")
-
-				tutorialCompleteRemote:FireServer()
-
-				local isTutorialed = player:FindFirstChild("IsTutorialed")
-				if isTutorialed then
-					isTutorialed.Value = true
-				end
-			end)
-		else
-			task.spawn(function()
-				task.wait(0.1)
-				hideText()
-				task.wait(0.5)
-				showText("Great! Now go to the upgrade shop and buy the Silver Rod!")
-				createTutorialBeam(upgradeNpc)
-				currentStep = "visit_upgrade"
-			end)
-		end
-		return true
-	end
-	return false
-end
-
-local function checkUpgradeStepCompletion()
-	print("Upgrade step check:", "currentStep =", currentStep, "tutorialCompleted =", tutorialCompleted)
-
-	if currentStep == "visit_upgrade" and not tutorialCompleted then
-		local hasUpgradedRod = checkUpgradedRod()
-		if hasUpgradedRod then
-			print("SliverRod upgrade complete! Starting tutorial end sequence")
-			stepCompleted = true
-
-			tutorialCompleted = true
-
-			removeTutorialBeam()
-
-			task.spawn(function()
-				hideText()
-				task.wait(0.5)
-				showText("Congratulations! You've completed the tutorial!")
-
-				tutorialCompleteRemote:FireServer()
-
-				local isTutorialed = player:FindFirstChild("IsTutorialed")
-				if isTutorialed then
-					isTutorialed.Value = true
-				end
-			end)
-			return true
-		end
-	end
-	return false
-end
-
-local function setupRodTracking()
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local rods = leaderstats:FindFirstChild("Rods")
-		if rods then
-			local silverRod = rods:FindFirstChild("SliverRod")
-
-			if silverRod then
-				print("SliverRod change detection set up")
-				silverRod.Changed:Connect(function()
-					print("SliverRod value changed:", silverRod.Value)
-					if currentStep == "visit_upgrade" and not tutorialCompleted then
-						checkUpgradeStepCompletion()
-					end
-				end)
-			else
-				print("SliverRod not found, cannot set up detection")
-			end
-		else
-			print("Rods folder not found")
-		end
-	else
-		print("leaderstats not found")
-	end
-end
-
-createTutorialBeam = function(target)
-	target = target or fishingPoint
-
-	if currentBeam then
-		currentBeam:Destroy()
-		currentBeam = nil
-	end
-	if playerAttachment then
-		playerAttachment:Destroy()
-		playerAttachment = nil
-	end
-	if targetAttachment then
-		targetAttachment:Destroy()
-		targetAttachment = nil
-	end
-
-	local character = player.Character
-	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
-
-	playerAttachment = Instance.new("Attachment")
-	playerAttachment.Name = "TutorialPlayerAttachment"
-	playerAttachment.Parent = rootPart
-
-	targetAttachment = Instance.new("Attachment")
-	targetAttachment.Name = "TutorialTargetAttachment"
-	targetAttachment.Parent = target
+	targetAttach = Instance.new("Attachment")
+	targetAttach.Parent = target
 
 	currentBeam = tutorialBeam:Clone()
-	currentBeam.Attachment0 = targetAttachment
-	currentBeam.Attachment1 = playerAttachment
-	currentBeam.Parent = rootPart
-
-	print("Tutorial beam created! Target:", target.Name)
+	currentBeam.Attachment0 = targetAttach
+	currentBeam.Attachment1 = playerAttach
+	currentBeam.Parent = root
 end
 
-local function checkRodEquipped()
-	local character = player.Character
-	if not character then return false end
+-- ── 고정 알림 ─────────────────────────────────────────────────────────────────
+local function hidePersistentNotice()
+	if not (persistentFrame and persistentFrame.Parent) then return end
+	local frame = persistentFrame
+	persistentFrame = nil
 
-	for _, tool in pairs(character:GetChildren()) do
-		if tool:IsA("Tool") and string.sub(tool.Name, -3) == "Rod" then
-			return true
+	local textLabel = frame:FindFirstChild("Text")
+	local shadow    = frame:FindFirstChild("Shadow")
+
+	TweenService:Create(frame, TWEEN_OUT, {BackgroundTransparency = 1}):Play()
+	if textLabel then
+		TweenService:Create(textLabel, TWEEN_OUT, {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+	end
+	for _, desc in ipairs(frame:GetDescendants()) do
+		if desc:IsA("UIStroke") then
+			TweenService:Create(desc, TWEEN_OUT, {Transparency = 1}):Play()
 		end
+	end
+	if shadow then TweenService:Create(shadow, TWEEN_OUT, {ImageTransparency = 1}):Play() end
+	task.delay(TWEEN_OUT.Time, function()
+		if frame.Parent then frame:Destroy() end
+	end)
+end
+
+local function showPersistentNotice(message)
+	hidePersistentNotice()
+
+	local frame = template:Clone()
+	frame.Visible = true
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.new(template.Size.X.Scale, 0, 0, 0)
+	frame.Position = UDim2.new(1.1, 0, 0, 0)
+	frame.LayoutOrder = -999
+	frame.Parent = noticeFrame
+	persistentFrame = frame
+
+	local textLabel = frame:FindFirstChild("Text")
+	local shadow    = frame:FindFirstChild("Shadow")
+
+	for _, desc in ipairs(frame:GetDescendants()) do
+		if desc:IsA("UIStroke") then desc.Transparency = 1 end
+	end
+	if textLabel then
+		textLabel.Text = message
+		textLabel.TextTransparency = 1
+		textLabel.TextStrokeTransparency = 1
+		textLabel.TextColor3 = TUTORIAL_COLOR
+	end
+	if shadow then shadow.ImageTransparency = 1 end
+
+	local expand = TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = template.Size})
+	expand:Play()
+	expand.Completed:Connect(function()
+		if not frame.Parent then return end
+		TweenService:Create(frame, TWEEN_IN, {BackgroundTransparency = template.BackgroundTransparency, Position = UDim2.new(0,0,0,0)}):Play()
+		for _, desc in ipairs(frame:GetDescendants()) do
+			if desc:IsA("UIStroke") then TweenService:Create(desc, TWEEN_IN, {Transparency = 0}):Play() end
+		end
+		if textLabel then
+			TweenService:Create(textLabel, TWEEN_IN, {TextTransparency = 0, TextStrokeTransparency = 0}):Play()
+		end
+		if shadow then TweenService:Create(shadow, TWEEN_IN, {ImageTransparency = 0.5}):Play() end
+	end)
+end
+
+-- ── 헬퍼 ──────────────────────────────────────────────────────────────────────
+local function getCoins()
+	local ls = player:FindFirstChild("leaderstats")
+	local c  = ls and ls:FindFirstChild("Coins")
+	return c and c.Value or 0
+end
+
+local function hasRodEquipped()
+	local char = player.Character
+	if not char then return false end
+	for _, tool in ipairs(char:GetChildren()) do
+		if tool:IsA("Tool") and tool.Name:sub(-3) == "Rod" then return true end
 	end
 	return false
 end
 
-local function checkFishCaught()
-	return false
+-- ── 튜토리얼 단계 ─────────────────────────────────────────────────────────────
+local function completeTutorial()
+	if tutorialCompleted then return end
+	tutorialCompleted = true
+	removeBeam()
+	hidePersistentNotice()
+	task.wait(0.2)
+	showPersistentNotice("Congratulations! You have completed the tutorial!")
+	tutorialCompleteRemote:FireServer()
+	task.delay(4, hidePersistentNotice)
 end
 
-showText = function(message)
-	sound:Play()
-	if currentTween then
-		currentTween:Cancel()
-		currentTween = nil
-	end
-	if currentTask then
-		local success = pcall(function()
-			task.cancel(currentTask)
-		end)
-		currentTask = nil
-	end
+local function startSkillTreeStep()
+	currentStep = "open_skill_tree"
+	removeBeam()
+	showPersistentNotice("Almost done! Open the Skill Tree from the toolbar to upgrade your skills!")
 
-	if string.find(message, "Welcome") then
-		currentStep = "welcome"
-	elseif string.find(message, "fishing rod") then
-		currentStep = "equip_rod"
-	elseif string.find(message, "Great") and string.find(message, "cast") then
-		currentStep = "start_fishing"
-		createTutorialBeam(fishingPoint)
-	elseif string.find(message, "sell") then
-		currentStep = "sell_fish"
-		createTutorialBeam(Seller)
-		initialMoney = getPlayerMoney()
-		print("Initial coins:", initialMoney)
-	elseif string.find(message, "upgrade") then
-		currentStep = "visit_upgrade"
-	elseif string.find(message, "Wait for a fish") then
-		-- currentStep = "wait_for_bite" already set by event
-	elseif string.find(message, "Hit the zones") then
-		-- currentStep = "minigame_active" already set by event
-	elseif string.find(message, "Try again") then
-		currentStep = "start_fishing"
-	elseif string.find(message, "Congratulations") then
-		currentStep = "tutorial_complete"
-	elseif string.find(message, "fishing") and not string.find(message, "Great") then
-		currentStep = "start_fishing"
-	elseif string.find(message, "Great") or string.find(message, "Nice") or string.find(message, "Well done") then
-		-- praise message, no step change
-	else
-		-- other messages, no step change
-	end
-
-	stepCompleted = false
-
-	textLabel.Text = message
-	textLabel.Visible = true
-	textLabel.TextTransparency = 1
-	textLabel.TextStrokeTransparency = 1
-	createTween(textLabel, {TextTransparency = 0, TextStrokeTransparency = 0}, 0.2):Play()
-
-	if currentStep == "welcome" then
-		currentTask = task.spawn(function()
-			task.wait(2)
-			hideText()
-			task.wait(0.5)
-			showText("Equip your fishing rod from your backpack")
-		end)
-	elseif currentStep == "tutorial_complete" then
-		currentTask = task.spawn(function()
-			task.wait(3)
-			hideText()
-		end)
-	end
-
-	if currentStep == "equip_rod" then
-		task.spawn(function()
-			task.wait(0.1)
-			if checkStepCompletion then
-				checkStepCompletion()
-			end
-		end)
-	end
-end
-
-checkStepCompletion = function()
-	if stepCompleted then return end
-
-	if currentStep == "equip_rod" and checkRodEquipped() then
-		stepCompleted = true
-		hideText()
-		task.wait(0.5)
-		showText("Great! Now go to the water and click to cast your bait!")
-	end
-end
-
-player.CharacterAdded:Connect(function(character)
-	character.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") and string.sub(child.Name, -3) == "Rod" then
-			task.wait(0.1)
-			if checkStepCompletion then
-				checkStepCompletion()
-			end
-		end
-	end)
-
-	character.ChildRemoved:Connect(function(child)
-		if child:IsA("Tool") and string.sub(child.Name, -3) == "Rod" then
-			task.wait(0.1)
-			if checkStepCompletion then
-				checkStepCompletion()
-			end
-		end
-	end)
-end)
-
-if player:FindFirstChild("Backpack") then
-	player.Backpack.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") and string.sub(child.Name, -3) == "Rod" then
-			task.wait(0.1)
-			if checkStepCompletion then
-				checkStepCompletion()
-			end
-		end
-	end)
-
-	player.Backpack.ChildRemoved:Connect(function(child)
-		if child:IsA("Tool") and string.sub(child.Name, -3) == "Rod" then
-			task.wait(0.1)
-			if checkStepCompletion then
-				checkStepCompletion()
-			end
+	local skillTreeGui = playerGui:WaitForChild("SkillTree")
+	local conn
+	conn = skillTreeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if skillTreeGui.Enabled and currentStep == "open_skill_tree" then
+			conn:Disconnect()
+			hidePersistentNotice()
+			task.wait(0.3)
+			completeTutorial()
 		end
 	end)
 end
 
-player.ChildAdded:Connect(function(child)
-	if child.Name == "Backpack" then
-		child.ChildAdded:Connect(function(item)
-			if item:IsA("Tool") and string.sub(item.Name, -3) == "Rod" then
-				task.wait(0.1)
-				if checkStepCompletion then
-					checkStepCompletion()
-				end
-			end
-		end)
+local function startUpgradeStep()
+	local ls   = player:FindFirstChild("leaderstats")
+	local rods = ls and ls:FindFirstChild("Rods")
+	local sr   = rods and rods:FindFirstChild("SliverRod")
 
-		child.ChildRemoved:Connect(function(item)
-			if item:IsA("Tool") and string.sub(item.Name, -3) == "Rod" then
-				task.wait(0.1)
-				if checkStepCompletion then
-					checkStepCompletion()
-				end
-			end
-		end)
+	-- Already owns Silver Rod — skip straight to skill tree
+	if sr and sr.Value then
+		startSkillTreeStep()
+		return
 	end
-end)
 
-game:GetService("RunService").Heartbeat:Connect(function()
-	if currentStep == "equip_rod" then
-		if checkStepCompletion then
-			checkStepCompletion()
-		end
-	end
-	if currentStep == "sell_fish" and not tutorialCompleted then
-		checkMoneyIncrease()
-	end
-	if currentStep == "visit_upgrade" and not tutorialCompleted then
-		checkUpgradeStepCompletion()
-	end
-end)
+	currentStep = "buy_silver_rod"
+	showPersistentNotice("Great! Now go to the Upgrade Shop and buy the Silver Rod!")
+	createBeam(upgradeNpc)
 
-local function setupMoneyTracking()
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local coins = leaderstats:FindFirstChild("Coins")
-		if coins then
-			coins.Changed:Connect(function()
-				if currentStep == "sell_fish" and not tutorialCompleted then
-					checkMoneyIncrease()
-				end
-			end)
-		end
-	end
-end
+	if not sr then return end
 
-if player:FindFirstChild("leaderstats") then
-	setupMoneyTracking()
-	setupRodTracking()
-else
-	player.ChildAdded:Connect(function(child)
-		if child.Name == "leaderstats" then
-			setupMoneyTracking()
-			setupRodTracking()
+	local conn
+	conn = sr.Changed:Connect(function()
+		if sr.Value and currentStep == "buy_silver_rod" then
+			conn:Disconnect()
+			hidePersistentNotice()
+			task.wait(0.3)
+			startSkillTreeStep()
 		end
 	end)
 end
 
-noticeEvent.Event:Connect(function(eventType)
-	if not eventType and not tutorialStarted then
-		tutorialStarted = true
-		print("Tutorial auto-started!")
-		if showText then
-			showText("Welcome to Sans Fishing!")
-		end
-	end
+local function startSellStep()
+	currentStep = "sell_fish"
+	removeBeam()
+	showPersistentNotice("Great catch! Now go to the shop and sell your fish!")
+	createBeam(sellerPart)
 
-	if eventType == "baitThrow_success" and currentStep == "start_fishing" then
-		print("Bait cast successful!")
-		removeTutorialBeam()
-		hideText()
-		task.wait(0.5)
-		showText("Wait for a fish to bite your bait!")
-		currentStep = "wait_for_bite"
-	end
+	local soldNotification = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
 
-	if eventType == "minigame_started" and currentStep == "wait_for_bite" then
-		print("Minigame started!")
-		hideText()
+	local conn
+	conn = soldNotification.OnClientEvent:Connect(function()
+		if currentStep ~= "sell_fish" then return end
+		conn:Disconnect()
+		hidePersistentNotice()
 		task.wait(0.3)
-		showText("Hit the zones to catch the fish!")
+		startUpgradeStep()
+	end)
+end
+
+local function startCastStep()
+	currentStep = "cast_rod"
+	showPersistentNotice("Great! Now go to the water and click to cast your bait!")
+	createBeam(fishingPoint)
+end
+
+local function startEquipStep()
+	currentStep = "equip_rod"
+	showPersistentNotice("Equip your fishing rod from your backpack!")
+
+	if hasRodEquipped() then
+		hidePersistentNotice()
+		task.wait(0.3)
+		startCastStep()
+		return
+	end
+
+	local function onToolAdded(tool)
+		if tool:IsA("Tool") and tool.Name:sub(-3) == "Rod" and currentStep == "equip_rod" then
+			hidePersistentNotice()
+			task.wait(0.3)
+			startCastStep()
+		end
+	end
+
+	local function setupChar(char)
+		char.ChildAdded:Connect(onToolAdded)
+	end
+
+	if player.Character then setupChar(player.Character) end
+	player.CharacterAdded:Connect(setupChar)
+
+	if player:FindFirstChild("Backpack") then
+		player.Backpack.ChildAdded:Connect(function(item)
+			if item:IsA("Tool") and item.Name:sub(-3) == "Rod" and currentStep == "equip_rod" then
+				hidePersistentNotice()
+				task.wait(0.3)
+				startCastStep()
+			end
+		end)
+	end
+end
+
+local function startTutorial()
+	currentStep = "welcome"
+	showPersistentNotice("Welcome to Sans Fishing!")
+	task.wait(2.5)
+	hidePersistentNotice()
+	task.wait(0.4)
+	startEquipStep()
+end
+
+-- ── 낚시 이벤트 수신 ──────────────────────────────────────────────────────────
+tutorialEvent.Event:Connect(function(eventType)
+	if tutorialCompleted then return end
+
+	if eventType == "baitThrow_success" and currentStep == "cast_rod" then
+		currentStep = "wait_for_bite"
+		removeBeam()
+		showPersistentNotice("Wait for a fish to bite your bait!")
+
+	elseif eventType == "minigame_started" and currentStep == "wait_for_bite" then
 		currentStep = "minigame_active"
-	end
+		showPersistentNotice("Hit the zones to catch the fish!")
 
-	if eventType == "fishing_success" and (currentStep == "start_fishing" or currentStep == "wait_for_bite" or currentStep == "minigame_active") then
-		print("Fishing success detected!")
-		stepCompleted = true
-		removeTutorialBeam()
-		hideText()
-		task.wait(0.5)
-		showText("Great! Now go to the shop and sell your fish!")
-	end
+	elseif eventType == "fishing_success"
+		and (currentStep == "cast_rod" or currentStep == "wait_for_bite" or currentStep == "minigame_active") then
+		hidePersistentNotice()
+		task.wait(0.3)
+		startSellStep()
 
-	if eventType == "fishing_failed" and (currentStep == "start_fishing" or currentStep == "wait_for_bite" or currentStep == "minigame_active") then
-		print("Fishing failed detected!")
-		removeTutorialBeam()
-		hideText()
-		task.wait(0.5)
-		showText("Try again! Click to cast your bait in the water")
-		createTutorialBeam(fishingPoint)
-		currentStep = "start_fishing"
+	elseif eventType == "fishing_failed"
+		and (currentStep == "cast_rod" or currentStep == "wait_for_bite" or currentStep == "minigame_active") then
+		currentStep = "cast_rod"
+		showPersistentNotice("Try again! Click to cast your bait in the water!")
+		createBeam(fishingPoint)
 	end
+end)
+
+-- ── 진입점 ────────────────────────────────────────────────────────────────────
+task.spawn(function()
+	local isTutorialed = player:WaitForChild("IsTutorialed", 30)
+	if not isTutorialed or isTutorialed.Value then return end
+	task.wait(2)
+	startTutorial()
 end)

@@ -1,6 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 -- Bubble data (prices in coins)
 local BUBBLE_DATA = {
@@ -18,7 +21,7 @@ local showNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("
 -- Check if item is a rod or trap
 local function IsRod(itemName)
 	itemName = itemName:lower()
-	return itemName:match("rod$") ~= nil or itemName:match("trap$") ~= nil
+	return itemName:match("rod$") ~= nil or itemName:match("trap$") ~= nil or itemName:match("bubble$") ~= nil
 end
 
 -- Check inventory expansion gamepass
@@ -140,6 +143,7 @@ buyBubbleBindable.Event:Connect(function(plr, bubbleName)
 
 	-- Process purchase
 	coins.Value = coins.Value - bubblePrice
+	datamanager:UpdateData(plr, "Coins", coins.Value)
 
 	-- Add bubble tool to backpack
 	local playerBackpack = plr:FindFirstChild("Backpack")

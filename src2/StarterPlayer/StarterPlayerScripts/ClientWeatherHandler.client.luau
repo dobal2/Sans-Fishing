@@ -136,6 +136,19 @@ local function cleanupTweens()
 	activeTweens = {}
 end
 
+local clouds = workspace:FindFirstChildOfClass("Terrain") and workspace:FindFirstChildOfClass("Terrain"):FindFirstChildOfClass("Clouds")
+
+local function applyClouds(cover, density, color)
+	if not clouds then return end
+	local cloudTween = TweenService:Create(clouds, TWEEN_INFO, {
+		Cover = cover,
+		Density = density,
+		Color = color,
+	})
+	activeTweens[#activeTweens + 1] = cloudTween
+	cloudTween:Play()
+end
+
 -- Smooth rain lighting
 local function applyRainLighting()
 	cleanupTweens()
@@ -279,21 +292,40 @@ local function createClientFireworkEffect()
 		fireworkClone.Position = fireworkPos
 		fireworkClone.Parent = workspace
 
-		-- Set all ParticleEmitters to same color
+		-- Color each emitter: CoreEmitter stays white, others get the firework color
+		local brightColor = Color3.new(
+			math.min(1, fireworkColor.R + 0.4),
+			math.min(1, fireworkColor.G + 0.4),
+			math.min(1, fireworkColor.B + 0.4)
+		)
 		for _, child in pairs(fireworkClone:GetDescendants()) do
 			if child:IsA("ParticleEmitter") then
-				child.Color = ColorSequence.new(fireworkColor)
 				child.Enabled = false
+				if child.Name == "CoreEmitter" then
+					child.Color = ColorSequence.new(Color3.new(1, 1, 1))
+				elseif child.Name == "TrailEmitter" then
+					child.Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+						ColorSequenceKeypoint.new(1, fireworkColor),
+					})
+				else
+					child.Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+						ColorSequenceKeypoint.new(0.3, brightColor),
+						ColorSequenceKeypoint.new(1, fireworkColor),
+					})
+				end
 			end
 		end
 
 		task.spawn(function()
-			task.wait(0.1)
-			for _, child in pairs(fireworkClone:GetDescendants()) do
-				if child:IsA("ParticleEmitter") then
-					child:Emit(pattern.emitCount / 2)
-				end
-			end
+			task.wait(0.05)
+			local burst = fireworkClone:FindFirstChild("BurstEmitter")
+			local core  = fireworkClone:FindFirstChild("CoreEmitter")
+			local trail = fireworkClone:FindFirstChild("TrailEmitter")
+			if core  then core:Emit(80)  end
+			if burst then burst:Emit(pattern.emitCount // 2) end
+			if trail then trail:Emit(pattern.emitCount // 3) end
 		end)
 	end
 
@@ -362,6 +394,7 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyRainLighting()
+		applyClouds(1, 1, Color3.fromRGB(130, 130, 140))
 
 	elseif newWeather == "Snow" then
 		local success, err = pcall(function()
@@ -372,6 +405,7 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyRainLighting()
+		applyClouds(1, 0.9, Color3.fromRGB(210, 215, 225))
 
 	elseif newWeather == "Firework" then
 		local success, err = pcall(function()
@@ -382,6 +416,7 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyRainLighting()  -- Night atmosphere
+		applyClouds(0.3, 0.4, Color3.fromRGB(255, 255, 255))
 
 		-- Start firework loop
 		isFireworkActive = true
@@ -396,13 +431,22 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyClearLighting()
+		applyClouds(0.5, 0.7, Color3.fromRGB(255, 255, 255))
 
-		StarterGui:SetCore("ChatMakeSystemMessage", {
-			Text = "The weather has cleared up",
-			Color = Color3.fromRGB(255, 255, 255),
-			Font = Enum.Font.Cartoon,
-			FontSize = Enum.FontSize.Size18
-		})
+		task.spawn(function()
+			local ok
+			repeat
+				ok = pcall(function()
+					StarterGui:SetCore("ChatMakeSystemMessage", {
+						Text = "The weather has cleared up",
+						Color = Color3.fromRGB(255, 255, 255),
+						Font = Enum.Font.Cartoon,
+						FontSize = Enum.FontSize.Size18,
+					})
+				end)
+				if not ok then task.wait(0.5) end
+			until ok
+		end)
 	end
 end
 

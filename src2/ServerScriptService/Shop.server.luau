@@ -21,6 +21,9 @@ local ROD_FUNNEL_STEP = {
 	["VoidRod"]     = 14,
 }
 
+local ServerScriptService = game:GetService("ServerScriptService")
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishingRod")
 local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
 local setFavoriteRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("SetFavoriteRemote")
@@ -44,20 +47,24 @@ local function hasCompletedVoidQuest(player)
 end
 
 remote.OnServerEvent:Connect(function(plr, itemname)
+	-- FriendRod: special rod not in RodData, given directly from backpack
+	if itemname == "FriendRod" then
+		-- FriendRod는 Rods 폴더에 BoolValue가 있는 special user만 장착 가능
+		local ls = plr:FindFirstChild("leaderstats")
+		if not ls then return end
+		local rodsFolder = ls:FindFirstChild("Rods")
+		local friendBool = rodsFolder and rodsFolder:FindFirstChild("FriendRod")
+		if not (friendBool and friendBool.Value) then return end
+		-- 이후 일반 로드와 동일한 로직으로 처리
+		-- (itemname이 RodData에 있으므로 아래 일반 흐름으로 fall-through)
+	end
+
 	local item = RodData.Rods[itemname]
 	if not item then
 		warn("Unauthorized item purchase attempt: " .. tostring(itemname))
 		return
 	end
 
-	-- Void rod quest check
-	if itemname == "VoidRod" then
-		if not hasCompletedVoidQuest(plr) then
-			warn("VoidRod purchase attempted without completing void quest: " .. plr.Name)
-			plr:Kick("Unauthorized access attempt")
-			return
-		end
-	end
 
 	local leaderstats = plr:FindFirstChild("leaderstats")
 	if not leaderstats then
@@ -111,6 +118,7 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 				return
 			end
 			coins.Value -= item.price
+			datamanager:UpdateData(plr, "Coins", coins.Value)
 			if rodBool then
 				rodBool.Value = true
 			end
@@ -136,12 +144,20 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 		end
 	end
 
+	-- storageName 기준 rod 이름 set (FriendRod 포함)
+	local rodStorageNames = { ["FishingRod"] = true, ["FriendRod"] = true }
+	for _, data in pairs(RodData.Rods) do
+		if data.storageName then
+			rodStorageNames[data.storageName] = true
+		end
+	end
+
 	-- Remove existing equipped rods
 	local function removeExistingRods(plr)
 		for _, container in ipairs({ plr:FindFirstChild("Backpack"), plr:FindFirstChild("StarterGear"), plr.Character }) do
 			if container then
 				for _, tool in ipairs(container:GetChildren()) do
-					if tool:IsA("Tool") and (RodData.Rods[tool.Name] or tool.Name == "FishingRod") then
+					if tool:IsA("Tool") and (RodData.Rods[tool.Name] or rodStorageNames[tool.Name]) then
 						tool:Destroy()
 					end
 				end
@@ -160,6 +176,16 @@ remote.OnServerEvent:Connect(function(plr, itemname)
 	elseif not storageItem then
 		warn("Item '" .. item.storageName .. "' not found in ServerStorage.")
 	end
+
+	-- profile.Data 즉시 반영
+	datamanager:UpdateData(plr, "CurrentRod", currentRod.Value)
+	local rodsData = {}
+	if rodsFolder then
+		for _, rod in ipairs(rodsFolder:GetChildren()) do
+			if rod:IsA("BoolValue") then rodsData[rod.Name] = rod.Value end
+		end
+	end
+	datamanager:UpdateData(plr, "Rods", rodsData)
 
 	if itemname == "GoldRod" then
 		setFavoriteRemote:FireClient(plr)

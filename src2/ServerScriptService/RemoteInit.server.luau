@@ -46,6 +46,7 @@ ensureRemote(Shop, "ShopSellerDialog")
 ensureRemote(Shop, "OpenGearShop")
 ensureRemote(Shop, "codeEvent")
 ensureRemote(Shop, "OpenShopLocal", "BindableEvent")
+ensureRemote(Shop, "OpenRobuxShopLocal", "BindableEvent")
 ensureRemote(Shop, "BuyFishTrapBindable", "BindableEvent")
 ensureRemote(Shop, "BuyBubbleBindable", "BindableEvent")
 
@@ -81,6 +82,12 @@ ensureRemote(Quest, "Quest Giver")
 local Weather = ensureFolder(Remotes, "Weather")
 ensureRemote(Weather, "WeatherChangedEvent")
 ensureRemote(Weather, "FireworkEffectEvent")
+ensureRemote(Weather, "GetWeatherState", "RemoteFunction")
+
+-- Leaderboard (YourStats client update)
+local Leaderboard = ensureFolder(Remotes, "Leaderboard")
+ensureRemote(Leaderboard, "CoinYourStats")
+ensureRemote(Leaderboard, "PlaytimeYourStats")
 
 -- Misc
 local Misc = ensureFolder(Remotes, "Misc")
@@ -90,6 +97,28 @@ ensureRemote(Misc, "ClaimDailyReward")
 ensureRemote(Misc, "CheckDailyReward")
 ensureRemote(Misc, "SaveHotBarLayout")
 ensureRemote(Misc, "GetHotBarLayout", "RemoteFunction")
+ensureRemote(Misc, "GetServerAge", "RemoteFunction")
+ensureRemote(Misc, "SetSeenUpdateLog")
+
+local _serverStartClock = os.clock()
+local _getServerAge = Misc:FindFirstChild("GetServerAge")
+if _getServerAge then
+	_getServerAge.OnServerInvoke = function()
+		return math.floor(os.clock() - _serverStartClock)
+	end
+end
+
+local _setSeenUpdateLog = Misc:FindFirstChild("SetSeenUpdateLog")
+if _setSeenUpdateLog then
+	_setSeenUpdateLog.OnServerEvent:Connect(function(player)
+		local v = player:FindFirstChild("SeenUpdateLog")
+		if v then v.Value = true end
+	end)
+end
+
+-- RS root shortcuts (some legacy scripts reference these directly on RS)
+ensureRemote(ReplicatedStorage, "TutorialEvent", "BindableEvent")
+ensureRemote(ReplicatedStorage, "DonationForceRefresh", "BindableEvent")
 
 -- VoidQuestEvents (RS root — referenced by client scripts)
 local voidQuestEvents = ensureFolder(ReplicatedStorage, "VoidQuestEvents")

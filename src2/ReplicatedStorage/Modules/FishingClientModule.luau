@@ -389,6 +389,13 @@ function FishingClient:_startSlider(speedRange)
 		tweenTime = RandomGen:NextNumber(1.2, 1.8)
 	end
 
+	local rodName = self.tool and self.tool.Name
+	if rodName == "FishingRod" then
+		tweenTime = tweenTime * 1.25
+	elseif rodName == "SliverRod" then
+		tweenTime = tweenTime * 1.111
+	end
+
 	local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 	local goal = { Position = UDim2.new(rightEdge, 0, 0.5, 0) }
 
@@ -952,8 +959,12 @@ function FishingClient:_playFishBaitEatAnimation()
 			self.fishBaitEatAnimationTrack.Priority = Enum.AnimationPriority.Action
 			self.fishBaitEatAnimationTrack.Looped = false
 			self.fishBaitEatAnimationTrack:Play()
-			-- After FishBaitEat finishes, transition to Reeling loop
-			self.fishBaitEatAnimationTrack.Ended:Connect(function()
+			-- After FishBaitEat finishes naturally, transition to Reeling loop.
+			-- If fishBaitEatAnimationTrack is nil here it was stopped externally (e.g. success/fail),
+			-- so don't start Reeling.
+			local capturedTrack = self.fishBaitEatAnimationTrack
+			capturedTrack.Ended:Connect(function()
+				if self.fishBaitEatAnimationTrack ~= capturedTrack then return end
 				if self.reelingAnimationTrack then return end
 				self:_playReelingAnimation()
 			end)
@@ -1064,6 +1075,7 @@ end
 -- Immediate input handler
 function FishingClient:_handleUserInput(inputObject, gameProcessed)
 	if gameProcessed then return end
+	if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
 
 	if not self.newGUI then return end
 
@@ -1076,6 +1088,7 @@ end
 
 function FishingClient:_bind()
 	self.tool.Activated:Connect(function()
+		if self.player:GetAttribute("AutoFishing") == true then return end
 		if self.gameEndCooldown and tick() < self.gameEndCooldown then
 			return
 		end
@@ -1091,7 +1104,7 @@ function FishingClient:_bind()
 			local timeSinceThrow = currentTime - self.baitThrowTime
 
 			if timeSinceThrow >= self.cancelDelay then
-				self.remote:FireServer("cancel")
+				if self.remote then self.remote:FireServer("cancel") end
 				self:_closeGui()
 				self.baitThrown = false
 				self.baitThrowTime = 0
@@ -1198,8 +1211,10 @@ function FishingClient:_bind()
 		end
 
 		if data == "keep_waiting_animation" then
-			-- Play FishBaitEat animation when fish bites the bait
-			self:_playFishBaitEatAnimation()
+			if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(); self.waitingAnimationTrack = nil end
+			if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(); self.fishingAnimationTrack = nil end
+			self:_stopHoldingAnimation()
+			self:_playReelingAnimation()
 			return
 		end
 
@@ -1249,8 +1264,7 @@ function FishingClient:_bind()
 end
 
 function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
-	-- Check if FishBaitEat animation is playing
-	local wasFishBaitEatPlaying = self.fishBaitEatAnimationTrack and self.fishBaitEatAnimationTrack.IsPlaying
+	local wasReelingPlaying = self.reelingAnimationTrack and self.reelingAnimationTrack.IsPlaying
 
 	self:_closeGui() -- Remove existing GUI
 
@@ -1265,6 +1279,14 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	else
 		self.rodPower = 1.0
 	end
+
+	-- Apply PowerUp skill bonus
+	local skillsFolder = self.player:FindFirstChild("Skills")
+	local powerUpVal = skillsFolder and skillsFolder:FindFirstChild("PowerUp")
+	local powerUpLevel = powerUpVal and powerUpVal.Value or 0
+	local POWER_UP_EFFECTS = { 0.05, 0.10, 0.20 }
+	local powerBonus = (powerUpLevel > 0 and POWER_UP_EFFECTS[powerUpLevel]) or 0
+	self.rodPower = self.rodPower * (1 + powerBonus)
 
 	local difficulty = FishDifficulty.GetModifiedSetting(rarity, self.rodPower)
 
@@ -1299,7 +1321,12 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 		end
 	end
 
-	self:_resetHitZone(difficulty.hitSize)
+	local hitSizeBonus = toolConfig and toolConfig.HitZoneBonus or 1
+	local bonusHitSize = {
+		min = math.min(0.35, difficulty.hitSize.min * hitSizeBonus),
+		max = math.min(0.40, difficulty.hitSize.max * hitSizeBonus),
+	}
+	self:_resetHitZone(bonusHitSize)
 	self:_startSlider(difficulty.speed)
 	self:_startCameraShake(rarity, self.lastFishWeight)
 
@@ -1310,6 +1337,7 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	self._drainFired = false
 	self._drainConn = game:GetService("RunService").Heartbeat:Connect(function(dt)
 		if not self._drainConn then return end
+		if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
 		self.currentProgress = math.max(self.currentProgress - dt * drainRate, 0)
 		self:_updateProgressBar()
 		if self.currentProgress <= 0 and not self._drainFired then
@@ -1321,13 +1349,19 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 		end
 	end)
 
-	-- Keep FishBaitEat animation if it was playing
-	if wasFishBaitEatPlaying then
-		self:_playFishBaitEatAnimation()
+	if wasReelingPlaying then
+		self:_playReelingAnimation()
 	end
 
 	self.inputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject, gameProcessed)
 		self:_handleUserInput(inputObject, gameProcessed)
+	end)
+
+	-- When a large UI (e.g. skill tree) closes, re-show the minigame GUI if it was hidden behind it
+	self._largeUIConn = self.player.PlayerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
+		if not self.player.PlayerGui:GetAttribute("ActiveLargeUI") and self.newGUI then
+			self.newGUI.Enabled = true
+		end
 	end)
 end
 
@@ -1342,6 +1376,11 @@ function FishingClient:_closeGui()
 	if self._baitTrackConn then
 		self._baitTrackConn:Disconnect()
 		self._baitTrackConn = nil
+	end
+
+	if self._largeUIConn then
+		self._largeUIConn:Disconnect()
+		self._largeUIConn = nil
 	end
 
 	if self.inputBeganConnection then

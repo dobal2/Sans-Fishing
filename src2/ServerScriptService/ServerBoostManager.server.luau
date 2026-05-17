@@ -86,7 +86,7 @@ local function applyBoost(step)
 	local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 	local showNoticeEvent = remotes and remotes:FindFirstChild("Notice") and remotes.Notice:FindFirstChild("ShowNoticeEvent")
 	if showNoticeEvent then
-		showNoticeEvent:FireAllClients("Server Luck boosted to " .. mult .. "x!", false)
+		showNoticeEvent:FireAllClients("Server Luck x" .. mult .. " boost is now active!", false)
 	end
 end
 
@@ -97,10 +97,7 @@ boostPurchaseBE.Parent = boostApiFolder
 boostPurchaseBE.Event:Connect(function(productId)
 	local step = PRODUCT_TO_STEP[productId]
 	if not step then return end
-	local expectedStep = (os.clock() < boostExpires) and boostStep or 1
-	if step == expectedStep then
-		applyBoost(step)
-	end
+	applyBoost(step)
 end)
 
 Players.PlayerAdded:Connect(function(player)

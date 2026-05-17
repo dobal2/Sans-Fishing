@@ -1,6 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 local ROBUX_FISHTRAP_GAMEPASS_ID = 1423175879
 
@@ -153,6 +156,7 @@ buyFishTrapBindable.Event:Connect(function(plr, fishTrapName)
 
 	-- Purchase
 	coins.Value = coins.Value - fishTrapPrice
+	datamanager:UpdateData(plr, "Coins", coins.Value)
 	fishTrapBool.Value = true
 
 	local msg = equipFishTrap(plr, fishTrapName) and "Fish Trap purchased successfully!" or "Fish Trap purchased but failed to equip!"

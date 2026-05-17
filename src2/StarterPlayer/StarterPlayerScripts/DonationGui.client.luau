@@ -61,7 +61,7 @@ local function showLoading()
 	local label = Instance.new("TextLabel", frame)
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
-	label.Text = "로딩중..."
+	label.Text = "Loading..."
 	label.TextColor3 = Color3.fromRGB(200, 200, 200)
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold

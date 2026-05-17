@@ -9,6 +9,7 @@ local DATA_TEMPLATE = {
 	};
 	LastQuestDate = nil;
 	VoidQuestInitialized = false;
+	SequentialQuestIndex = 0;
 }
 
 local function getCurrentDateString()
@@ -53,7 +54,13 @@ local ProfileStore = ProfileService.New("QuestData4", DATA_TEMPLATE)
 local Profiles = {}
 
 local function OnPlayerAdded(player)
-	local profile = ProfileStore:StartSessionAsync("QuestPlayer_" .. player.UserId, {Steal = true})
+	local profile
+	for attempt = 1, 3 do
+		profile = ProfileStore:StartSessionAsync("QuestPlayer_" .. player.UserId, {Steal = true})
+		if profile then break end
+		if not player:IsDescendantOf(Players) then return end
+		task.wait(3)
+	end
 
 	if profile then
 		profile:AddUserId(player.UserId)

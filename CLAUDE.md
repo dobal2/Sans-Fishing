@@ -1,5 +1,24 @@
 # Sans Fishing — Project Guide
 
+## 필수 규칙
+
+새 스크립트 파일을 만들 때는 **반드시** `default.project.json`에도 등록해야 한다. 등록하지 않으면 Rojo가 Studio에 싱크하지 않아 스크립트가 동작하지 않는다. 파일 생성과 `default.project.json` 수정은 항상 같이 한다.
+
+## 스크립트 편집 규칙 (필수)
+
+Rojo sync 범위 안의 스크립트를 수정할 때는 **파일시스템(Edit)과 스튜디오(multi_edit) 반드시 동시에** 수정한다. 한쪽만 고치면 다음번 Rojo 싱크나 재시작 때 버전이 어긋난다. 이 실수가 반복된 이력이 있으므로 절대 한쪽만 수정하지 말 것.
+
+- 파일시스템만 수정 → Rojo 싱크 후 스튜디오에 반영되긴 하나, 싱크 전까지 스튜디오가 구버전
+- 스튜디오만 수정 → Rojo 싱크 시 파일 버전으로 **덮어씌워져 소실**
+
+**예외**: Studio-only 스크립트 (`RodsGui`가 StarterGui 안에 있던 경우처럼 Rojo sync 범위 밖인 것)는 MCP로만 수정.
+
+## MCP / Studio 편집 주의사항
+
+- **Source gsub 편집 위험**: `execute_luau`로 스크립트 Source를 gsub 패턴으로 수정할 때 패턴이 예상보다 일찍 매칭되면 함수 정의가 통째로 잘릴 수 있음. 복잡한 gsub 대신 Source 전체를 새로 쓰는 방식이 안전함. 편집 후 반드시 핵심 함수명 포함 여부 확인.
+- **`require()` 캐시**: `execute_luau`로 ModuleScript Source를 수정해도 이미 `require()`된 모듈은 캐시된 결과를 반환함 — 플레이 테스트 재시작 전까지 미반영. Studio-only 스크립트가 stale 캐시를 물고 있을 경우 해당 스크립트에 직접 fallback 코드를 추가하거나 재시작 안내.
+- **Studio-only 스크립트**: `RodsGui`, `Main_ServerTime` 등 Rojo sync 범위 밖 스크립트는 파일시스템에 없으므로 MCP로만 편집 가능. 변경사항이 Rojo 싱크에 의해 덮어써지지 않음.
+
 ## Rojo Sync Scope
 
 This project uses **Rojo** (`default.project.json`) to sync `src2/` into Roblox Studio.
@@ -53,7 +72,6 @@ src2/
     PlayTimeLeaderBoard.server.luau      # Playtime leaderboard (real-time + stored, top 10)
     CoinLeaderboardServer.server.luau    # Coin leaderboard server handler
     PlayTimeLeaderboardServer.server.luau
-    Commands.server.luau                 # Admin chat commands (speed, kick, setcoins, announce, DevRod, SlapBattle)
     Ban.server.luau                      # DataStore-based permanent ban system
     plrCodes.server.luau                 # Redeem codes (stored in DataStore)
     Webhook.server.luau                  # Discord webhook on player join/leave
@@ -66,14 +84,17 @@ src2/
     teleport.server.luau                 # Teleports players to fixed CFrame positions (void areas)
     ServerBoostManager.server.luau       # Server boost product handler (creates ServerBoostRemote, GetBoostState at RS root)
     GamblerHandler.server.luau           # Gamble sell handler
-    SellShopHandler.server.luau          # Sell shop handler
+    SellShopHandler.server.luau          # Sell shop handler (uses SkillHelper for SellBonus)
     UpgradeShopHandler.server.luau       # Upgrade shop handler
-    PapHandler.server.luau               # PAP handler
+    PapHandler.server.luau               # Pap NPC: fires OpenRobuxShop → NpcDialogClient shows dialog → OpenRobuxShopLocal opens shop
     ChairHandler.server.luau             # Chair sit handler
     LikeCounterHandler.server.luau       # Like counter
     FishDiscoverReward.server.luau       # Fish discovery reward
     BubbleProximityHandler.server.luau   # Bubble proximity prompt
     FishTrapProximityHandler.server.luau # Fish trap proximity prompt
+    SkillServer.server.luau              # Skill tree purchase handler (SkillBuyEvent, GetSkillData remotes)
+    SkillHelper.luau                     # ModuleScript: GetLuckBonus, GetSellBonus, GetEffect, GetExtraInventory
+    Commands.server.luau                 # Admin chat commands (speed, kick, setcoins, announce, DevRod, SlapBattle, skillreset, tutorialreset)
     QuestSaver/                          # (see above)
 
   StarterPlayer/
@@ -96,10 +117,13 @@ src2/
       Main_FriendBonus.client.luau            # Friend bonus text label updater
       Main_Money.client.luau                  # CoinText label updater
       Main_WeatherInfo.client.luau            # Weather icon updater
+      Main_StatLabels.client.luau             # LuckLabel (rod+skill+friends luck %) and CoinLabel (sell bonus %) — updates every 5s
+      Main_UpdateLog.client.luau              # Shows update log once per session (scale tween, close button, attribute flag)
+      Main_ServerTime.client.luau             # Server uptime display (Studio-only, not in Rojo sync)
 
       # --- Shop / Robux ---
       ShopGui.client.luau                     # Rod shop GUI (arrow buttons, item display)
-      RobuxShop.client.luau                   # Robux shop open handler
+      RobuxShop.client.luau                   # Robux shop: listens to OpenRobuxShopLocal (BindableEvent) to open/close
       RobuxShopButtons.client.luau            # Gamepass buy buttons (Coin x2, Luck x2, Power x2)
       ServerBoostClient.client.luau           # Server boost UI inside RobuxShop
 
@@ -119,6 +143,10 @@ src2/
         init.client.luau                      # Custom hotbar + inventory system
         SETTINGS.luau                         # Inventory module (tool slots, drag, lock)
 
+      # --- Skill Tree ---
+      SkillTreeClient.client.luau             # Skill tree UI: node state refresh, buy tween, GUI hide/restore
+      SkillTreeHover.client.luau              # Skill node hover scale tween
+
       # --- Index (fish catalog) ---
       Index.client.luau                       # Fish catalog UI
 
@@ -129,7 +157,7 @@ src2/
       TopbarController.client.luau            # TopbarPlus icon setup
       UIStrokeScale.client.luau               # Scales UIStroke thickness with screen size
       NpcDialogClient.client.luau             # NPC dialog system
-      NpcHighLightAndDistance.client.luau     # NPC highlight and distance label
+      NpcHighLightAndDistance.client.luau     # NPC highlight and distance label (Seller, Gambler, UpdateShop, Pap, VoidQuestGiver)
 
       # --- World / Environment ---
       ClientWeatherHandler.client.luau        # Weather effects: Rain module, lighting tweens, fireworks
@@ -159,7 +187,7 @@ src2/
       FishingConfigModule.luau   # Per-rod config (RodPower, DifficultyMod)
       FishIceEffectModule.luau   # Applies/removes ice block overlay on frozen fish models
       WeatherSystemModule.luau   # Server-authoritative weather state machine
-      RodDataModule.luau         # Rod definitions (price, storageName)
+      RodDataModule.luau         # Rod definitions (price, storageName, optional displayName); includes FishingRod (free starter); "RealisticRod" key has storageName="BlockyRod" displayName="BlockyRod"
       BoatDataModule.luau        # Boat definitions (price, storageName)
       Rain.luau                  # Third-party rain particle module (excluded from refactoring)
     TopbarPlus/                  # Third-party topbar icon library (excluded from refactoring)
@@ -175,12 +203,12 @@ All Remotes live under `ReplicatedStorage.Remotes.[Category]`:
 | Category | Remotes |
 |---|---|
 | `Fishing` | ShowBeamEvent, BaitLandedEvent, BaitSplashEvent, RandomFishResult, FishDiscoverReward, TriggerRandomFish (Bindable), SetFavoriteRemote |
-| `Shop` | BuyFishingRod, OpenShop, OpenBoatShop, OpenRobuxShop, BuyBoat, SpawnBoat, ShopSellerDialog, OpenGearShop, codeEvent, OpenShopLocal (Bindable), BuyFishTrapBindable (Bindable), BuyBubbleBindable (Bindable) |
+| `Shop` | BuyFishingRod, OpenShop, OpenBoatShop, OpenRobuxShop, BuyBoat, SpawnBoat, ShopSellerDialog, OpenGearShop, codeEvent, OpenShopLocal (Bindable), OpenRobuxShopLocal (Bindable), BuyFishTrapBindable (Bindable), BuyBubbleBindable (Bindable) |
 | `Sell` | SellChoiceEvent, SellGuiEvent, SetPromptEvent, SoldNotification, TalkEvent, GambleChoiceEvent, GambleGuiEvent, GambleNotification |
 | `Notice` | ShowNoticeEvent, FishNoticeEvent, NoticeEventForClient (Bindable), TutorialEvent (Bindable), DiscoverNoticeEvent |
 | `Quest` | QuestGuiEvent, QuestReceiveEvent, QuestCompleteEvent, QuestNotification, QuestChoiceEvent, Quest Giver |
 | `Weather` | WeatherChangedEvent, FireworkEffectEvent |
-| `Misc` | EscapeTheWorld, DonationRefresh, ClaimDailyReward, CheckDailyReward |
+| `Misc` | EscapeTheWorld, DonationRefresh, ClaimDailyReward, CheckDailyReward, SaveHotBarLayout, GetHotBarLayout (RemoteFunction), GetServerAge (RemoteFunction) |
 
 **RS root (created at runtime by server scripts, not in Remotes folder)**:
 - `FishLockEvent` — fish lock toggle (Lock.server.luau)
@@ -211,6 +239,7 @@ All Remotes live under `ReplicatedStorage.Remotes.[Category]`:
 - `QuestGui` — quest list (Frame/ScrollingFrame, Template at root)
 - `DailyRewards` — daily reward UI (disabled, not in use)
 - `RandomFish` — random fish reveal UI
+- `SkillTree` — skill tree UI (BackGround > Viewport > Canvas contains `SkillNode_SkillName_Stage` ImageButtons)
 
 **Custom Inventory note**: `toolButton` (slot template) lives at `Custom Inventory` root with `Visible = false`. It is cloned for each inventory/hotbar slot and `Visible = true` is set on each clone.
 
@@ -277,7 +306,7 @@ All persistent data uses ProfileService. Each system has its own `DataManager` m
 
 | DataManager | Store key | Data |
 |---|---|---|
-| `leaderstats/DataManager` | `"PlayerData7"` | Coins, Rods, Fish catalog, Boats, FishTraps, Playtime, Donations |
+| `leaderstats/DataManager` | `"PlayerData7"` | Coins, Rods, Fish catalog, Boats, FishTraps, Playtime, Donations, SkillPoints, Skills |
 | `ItemSave/DataManager` | `"PlayerItems3"` | Fish inventory (tool name, value, weight, rarity, lock state) |
 | `FishTrapManager/DataManager` | `"FishTrapData2"` | Trap position (TrapId, CFrame), stored fish list |
 | `QuestSaver/DataManager` | `"QuestData4"` | Active quests, completed quests, daily playtime quest |
@@ -300,7 +329,7 @@ All shops communicate via BindableEvent or RemoteEvent from GUI scripts to serve
 
 | Shop | Script | Mechanism |
 |---|---|---|
-| Rod shop | `Shop.server.luau` | `BuyFishingRod` RemoteEvent; validates coin balance and gamepass for RobuxRod |
+| Rod shop | `Shop.server.luau` | `BuyFishingRod` RemoteEvent; validates coin balance and gamepass for RobuxRod; immediately calls `datamanager:UpdateData` for CurrentRod and Rods after purchase |
 | Fish trap shop | `FishTrapShopSever.server.luau` | `BuyFishTrapBindable` BindableEvent; validates coins or `ROBUX_FISHTRAP_GAMEPASS_ID = 1423175879` |
 | Bubble shop | `BubbleShopSever.server.luau` | `BuyBubbleBindable` BindableEvent; validates coins and inventory space |
 | Robux shop | `RobuxShopButtons.client.luau` | GamePass buttons: Coin x2 (1293430515), Luck x2 (1289569606), Power x2 (1290056221) |
@@ -312,6 +341,45 @@ All shops communicate via BindableEvent or RemoteEvent from GUI scripts to serve
 - **Normal quests**: catch N of a specific fish; progress updated by `FishingServerModule` on catch.
 - **Daily playtime quest**: earn coins based on minutes played that day; tracked via `Playtime` value.
 - **Void quest**: one-time challenge to unlock the VoidRod.
+
+### Skill Tree System
+
+Skills are split into two currencies: **Coins** and **FishingPoints** (earned 1 per successful catch, stored as `SkillPoints` IntValue on player).
+
+**Server** (`SkillServer.server.luau`):
+- Creates `SkillBuyEvent` (RemoteEvent) and `GetSkillData` (RemoteFunction) at RS root.
+- Validates purchase: Root must be unlocked first; FriendBonus requires LuckUp Lv2; must buy stages sequentially (no skipping); currency balance check.
+- On success: deducts currency, increments `player.Skills.[SkillName]` IntValue, fires `"success"` to client.
+
+**Shared helper** (`SkillHelper.luau` — ModuleScript, required by FishDataModule and SellShopHandler):
+- `GetLuckBonus(player)` — returns total LuckUp effect value
+- `GetEffect(player, skillName)` — returns current effect value for any skill
+- `GetSellBonus(player)` — returns SellBonus effect value
+- `GetExtraInventory(player)` — returns InvenUp extra slot count
+
+**Skills table**:
+| Skill | Currency | Max Lv | Costs | Effect | Requires |
+|---|---|---|---|---|---|
+| Root | Coins | 1 | 1,000 | unlocks all other skills | — |
+| AutoFish | Coins | 1 | 10,000 | shows AutoFish button | Root |
+| LuckUp | Coins | 7 | 2K/10K/100K/500K/2.5M/7.5M/22.5M | +10/30/60/100/150/200/250% luck | Root |
+| SellBonus | Coins | 6 | 10K/80K/500K/2.5M/5M/15M | +10/20/30/40/50/65% sell value | Root |
+| FriendBonus | Coins | 3 | 10K/50K/200K | +15/30/50% luck per online friend | LuckUp Lv2 |
+| QuickBite | Coins | 3 | 50K/300K/1.5M | fish bite wait -0.5/1.5/2.5s | AutoFish |
+| AutoUp (Rapid Auto) | Coins | 3 | 100K/1M/5M | auto click cooldown -0.1/0.4/0.8s | AutoFish |
+| PointBoost | Coins | 3 | 5M/20M/100M | +1/2/3 FishingPoints per catch | — |
+| HitZoneUp | FishingPoints | 5 | 10/25/50/100/200 | hit zone size +6/10/15/21/28% | PowerUp Lv1 |
+| InvenUp | FishingPoints | 4 | 10/40/80/200 | +10/20/35/55 inventory slots | — |
+| WeightUp | FishingPoints | 4 | 20/80/200/500 | heavy fish chance +4/10/18/28% | InvenUp Lv1 |
+| PowerUp | FishingPoints | 3 | 20/80/200 | rod power +5/10/20% | InvenUp Lv1 |
+
+**Client** (`SkillTreeClient.client.luau`):
+- Node naming: `SkillNode_SkillName_Stage` (e.g. `SkillNode_LuckUp_2`) inside `SkillTree > BackGround > Viewport > Canvas`
+- Purchased node image: `rbxassetid://125922144537144`; locked (not yet reachable) node image: `rbxassetid://102739874658337` + all children `Visible = false`
+- On open: hides all other ScreenGuis; restores on close; blocks other GUIs from enabling while open
+- On buy success: plays `RobuxBuySound`, scale tween 1→1.3→1, refreshUI
+
+**Admin command**: `:skillreset [player]` — zeros all Skills IntValues and SkillPoints, clears ProfileService data.
 
 ### Admin System
 
@@ -328,14 +396,8 @@ All shops communicate via BindableEvent or RemoteEvent from GUI scripts to serve
 - **Constants**: magic numbers go in named constants at the top of the file (e.g. `RETRY_GAMEPASS_ID`, `WEATHER_CYCLE_TIME`).
 - **Security**: all purchases and fishing events are server-validated; client input is never trusted for economy changes.
 - **OOP pattern**: `FishingServerModule` and `FishingClientModule` use `setmetatable({}, Class)` instances with `__index`, one instance per tool.
-- **ProfileService**: data is accessed via `DataManager:GetData(player)` and modified via `DataManager:UpdateData(player, key, value)`.
+- **ProfileService**: data is accessed via `DataManager:GetData(player)` and modified via `DataManager:UpdateData(player, key, value)`. Economy-changing purchases (rods, skills) must call `UpdateData` immediately — not just at `PlayerRemoving`.
 - **File naming**: server scripts end in `.server.luau`, client scripts in `.client.luau`, module scripts in `.luau`.
 - **No LocalScripts inside StarterGui**: all client logic lives in StarterPlayerScripts; ScreenGuis contain UI elements only.
-
-  local POS=Vector3.new(0,0,0);local ROT=Vector3.new(0,0,0);local
-  char=workspace:FindFirstChildOfClass("Model");local torso=char
-  and(char:FindFirstChild("UpperTorso")or char:FindFirstChild("Torso"));local
-  existing=char and char:FindFirstChild("BackRodVisual");if existing and torso then
-  local weld=existing:FindFirstChild("BackRodWeld");if weld then weld.C0=CFrame.new(POS
-  )*CFrame.Angles(math.rad(ROT.X),math.rad(ROT.Y),math.rad(ROT.Z));print("Applied!     
-  POS="..tostring(POS).." ROT="..tostring(ROT))end end
+- **Rod storageName vs key**: RodData table keys are the canonical names (e.g. `"RealisticRod"`), but `storageName` is the actual tool/BoolValue name (e.g. `"BlockyRod"`). Always use `rodData.storageName` for inventory/backpack lookups, never the key. `ShopGui.hasRod()` already resolves storageName.
+- **Rod display name**: use `rodData.displayName or rodName` when showing the rod name in UI.

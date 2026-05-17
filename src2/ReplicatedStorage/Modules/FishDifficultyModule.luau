@@ -48,14 +48,14 @@ FishDifficulty.Settings = {
 	Fantasy = {
 		targetProgress = 250,
 		hitSize = { min = 0.08, max = 0.12 },
-		speed = { min = 1.5, max = 1.8 },
+		speed = { min = 1.1, max = 1.4 },
 		progressMultiplier = 1,
 		drainRate = 7,
 	},
 	Unknown = {
 		targetProgress = 300,
 		hitSize = { min = 0.06, max = 0.10 },
-		speed = { min = 1.5, max = 1.8 },
+		speed = { min = 0.9, max = 1.2 },
 		progressMultiplier = 1,
 		drainRate = 9,
 	},

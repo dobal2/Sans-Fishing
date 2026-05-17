@@ -45,9 +45,16 @@ button.MouseButton1Click:Connect(function()
 	setAutoState(not isAuto)
 end)
 
+local function hasAutoFishSkill()
+	local skillsFolder = player:FindFirstChild("Skills")
+	local sv = skillsFolder and skillsFolder:FindFirstChild("AutoFish")
+	return sv and sv.Value >= 1
+end
+
 local function updateVisibility()
 	local char = player.Character
 	if not char then frame.Visible = false; return end
+	if not hasAutoFishSkill() then frame.Visible = false; return end
 	local hasFishingRod = false
 	for _, obj in ipairs(char:GetChildren()) do
 		if obj:IsA("Tool") and obj:FindFirstChild("CastRod") then
@@ -66,6 +73,30 @@ end
 
 player.CharacterAdded:Connect(watchCharacter)
 if player.Character then watchCharacter(player.Character) end
+
+-- AutoFish 스킬 해금 시 즉시 반영
+local function watchSkills(skillsFolder)
+	local sv = skillsFolder:FindFirstChild("AutoFish")
+	if sv then
+		sv:GetPropertyChangedSignal("Value"):Connect(updateVisibility)
+	else
+		skillsFolder.ChildAdded:Connect(function(child)
+			if child.Name == "AutoFish" then
+				child:GetPropertyChangedSignal("Value"):Connect(updateVisibility)
+				updateVisibility()
+			end
+		end)
+	end
+end
+
+local skillsFolder = player:FindFirstChild("Skills")
+if skillsFolder then
+	watchSkills(skillsFolder)
+else
+	player.ChildAdded:Connect(function(child)
+		if child.Name == "Skills" then watchSkills(child) end
+	end)
+end
 
 setAutoState(false)
 frame.Visible = false

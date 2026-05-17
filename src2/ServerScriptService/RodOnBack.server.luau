@@ -5,6 +5,7 @@ local ROD_SET = {
 	FishingRod=true, SliverRod=true, GoldRod=true, CrystalRod=true, MagneticRod=true,
 	BoneRod=true, CloverRod=true, RainbowRod=true, UnknownRod=true, RobuxRod=true,
 	ElectricRod=true, RealisticRod=true, BlockyRod=true, ArcaneRod=true, VoidRod=true,
+	FriendRod=true,
 }
 
 local function removeBackRod(character)
@@ -38,12 +39,16 @@ local function showBackRod(character, toolName)
 
 	clone.Parent = character
 
+	local ROD_OFFSETS = {
+		FishingRod = CFrame.new(1, 1.5, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)),
+		FriendRod  = CFrame.new(0, 0.5, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)),
+	}
+
 	local weld = Instance.new("Weld")
 	weld.Name = "BackRodWeld"
 	weld.Part0 = torso
 	weld.Part1 = clone
-	weld.C0 = CFrame.new(-1, -1.5, 0.55)
-		* CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30))
+	weld.C0 = ROD_OFFSETS[toolName] or (CFrame.new(-1, -1.5, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)))
 	weld.C1 = CFrame.new(0, 0, 0)
 	weld.Parent = clone
 end

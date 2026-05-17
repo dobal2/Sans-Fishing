@@ -22,6 +22,7 @@ local function isOpen()
 end
 
 local function openShop()
+	player.PlayerGui:SetAttribute("ActiveLargeUI", "RobuxShop")
 	shopFrame.Visible = true
 	uiScale.Scale = 0
 	TweenService:Create(uiScale, OPEN_TWEEN, {Scale = 1}):Play()
@@ -36,6 +37,12 @@ local function closeShop()
 	TweenService:Create(camera, FOV_TWEEN, {FieldOfView = 70}):Play()
 end
 
+player.PlayerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
+	if player.PlayerGui:GetAttribute("ActiveLargeUI") ~= "RobuxShop" and isOpen() then
+		closeShop()
+	end
+end)
+
 closeBtn.MouseButton1Click:Connect(function()
 	if isOpen() then closeShop() end
 end)
@@ -45,12 +52,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if input.KeyCode == Enum.KeyCode.Escape and isOpen() then closeShop() end
 end)
 
-local remote = ReplicatedStorage:FindFirstChild("OpenRobuxShop")
-if remote then
-	remote.OnClientEvent:Connect(function()
-		if isOpen() then closeShop() else openShop() end
-	end)
-end
+local openRobuxShopLocal = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenRobuxShopLocal")
+openRobuxShopLocal.Event:Connect(function()
+	if isOpen() then closeShop() else openShop() end
+end)
 
 shopFrame.Visible = false
 uiScale.Scale = 0

@@ -66,7 +66,7 @@ end
 
 local function IsRod(itemName)
 	itemName = itemName:lower()
-	return itemName:match("rod$") ~= nil or itemName:match("trap$") ~= nil
+	return itemName:match("rods?$") ~= nil or itemName:match("trap$") ~= nil or itemName:match("bubble$") ~= nil
 end
 
 
@@ -305,7 +305,7 @@ local function saveCurrentInventory(player)
 				-- Check if already added
 				local alreadyAdded = false
 				for _, existingName in ipairs(newItemsData) do
-					if StripSuffixes(existingName):lower() == StripSuffixes(descendant.Name):lower() then
+					if existingName == descendant.Name then
 						alreadyAdded = true
 						break
 					end
@@ -632,9 +632,29 @@ end
 
 -- Load items on player join (excluding rods)
 game.Players.PlayerAdded:Connect(function(player)
-	repeat task.wait() until player:FindFirstChild("DataReady") and player:FindFirstChild("DataReady").Value == true
+	local timeout = 60
+	local elapsed = 0
+	repeat
+		task.wait(1)
+		elapsed += 1
+		if not player:IsDescendantOf(Players) then return end
+		if elapsed >= timeout then
+			warn("ItemSave: DataReady timeout for", player.Name)
+			return
+		end
+	until player:FindFirstChild("DataReady") and player:FindFirstChild("DataReady").Value == true
 
-	repeat task.wait() until DataManager:GetData(player)
+	elapsed = 0
+	repeat
+		task.wait(1)
+		elapsed += 1
+		if not player:IsDescendantOf(Players) then return end
+		if elapsed >= timeout then
+			warn("ItemSave: DataManager timeout for", player.Name)
+			return
+		end
+	until DataManager:GetData(player)
+
 	local Data = DataManager:GetData(player)
 
 	-- Ensure fishLocks compatibility with existing data
@@ -852,9 +872,9 @@ game.Players.PlayerAdded:Connect(function(player)
 	local function onCharacterAdded(character)
 		local Humanoid = character:WaitForChild("Humanoid")
 
-		-- Death handling (save real-time inventory and kick)
+		-- Save inventory on death
 		Humanoid.Died:Connect(function()
-			player:Kick("How did you die?")
+			DataManager:SaveData(player)
 		end)
 
 		-- Events for real-time inventory tracking

@@ -337,7 +337,10 @@ local function createFishIndexUI()
 	end
 end
 
+local playerGui = player.PlayerGui
+
 local function openIndex()
+	playerGui:SetAttribute("ActiveLargeUI", "Index")
 	newIndexFrame.Visible = true
 	uiScale.Scale = 0
 	TweenService:Create(uiScale, OPEN_TWEEN, {Scale = 1}):Play()
@@ -361,6 +364,12 @@ local function toggleIndex()
 	task.wait(0.5)
 	canClick = true
 end
+
+playerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
+	if playerGui:GetAttribute("ActiveLargeUI") ~= "Index" and isIndexOpen() then
+		closeIndex()
+	end
+end)
 
 indexToggle.Event:Connect(function(action)
 	if action == "toggle" then

@@ -3,8 +3,6 @@ local sellShop = workspace:WaitForChild("Sell Shop"):WaitForChild("Seller")
 local gambler = workspace:WaitForChild("Gambler")
 local updateShop = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller")
 local robuxShop = workspace:WaitForChild("Pap")
-local boatDealer1 = workspace:WaitForChild("BoatDealer1")
-local boatDealer2 = workspace:FindFirstChild("BoatDealer2")
 local voidQuestGiver = workspace:FindFirstChild("Void Quest Giver")
 
 local TweenService = game:GetService("TweenService")
@@ -22,14 +20,6 @@ updateHighlight.Parent = updateShop
 local robuxHighlight = robuxShop:FindFirstChild("Highlight") or Instance.new("Highlight")
 robuxHighlight.Parent = robuxShop
 
-local boatDealer1Highlight = boatDealer1:FindFirstChild("Highlight") or Instance.new("Highlight")
-boatDealer1Highlight.Parent = boatDealer1
-
-local boatDealer2Highlight = boatDealer2 and (boatDealer2:FindFirstChild("Highlight") or Instance.new("Highlight"))
-if boatDealer2Highlight and boatDealer2 then
-	boatDealer2Highlight.Parent = boatDealer2
-end
-
 -- Add Void Quest Giver Highlight
 local voidQuestHighlight = voidQuestGiver and (voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight"))
 if voidQuestHighlight and voidQuestGiver then voidQuestHighlight.Parent = voidQuestGiver end
@@ -39,7 +29,8 @@ local UPDATE_SHOP_RANGE = 15  -- Separate range for upgrade shop
 local VOID_QUEST_RANGE = 12   -- Void Quest Giver range
 local CHECK_INTERVAL = 0.1
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local sellChoiceEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellChoiceEvent")
+local sellChoiceEvent   = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellChoiceEvent")
+local gambleChoiceEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleChoiceEvent")
 
 -- Void Quest related events
 local voidQuestEvents = ReplicatedStorage:FindFirstChild("VoidQuestEvents")
@@ -80,9 +71,7 @@ local wasNearby = {
 	questGiver = false,
 	updateShop = false,
 	robuxShop = false,
-	boatDealer1 = false,
-	boatDealer2 = false,
-	voidQuestGiver = false  -- Void Quest Giver
+	voidQuestGiver = false,
 }
 
 -- Distance check function (per-NPC range)
@@ -107,12 +96,6 @@ updateHighlight.Enabled = true
 updateHighlight.OutlineTransparency = 1
 robuxHighlight.Enabled = true
 robuxHighlight.OutlineTransparency = 1
-boatDealer1Highlight.Enabled = true
-boatDealer1Highlight.OutlineTransparency = 1
-if boatDealer2Highlight then
-	boatDealer2Highlight.Enabled = true
-	boatDealer2Highlight.OutlineTransparency = 1
-end
 if voidQuestHighlight then
 	voidQuestHighlight.Enabled = true
 	voidQuestHighlight.OutlineTransparency = 1
@@ -159,7 +142,7 @@ while true do
 	if not gambleNearby and wasNearby.gambler then
 		local prompt = gambler:FindFirstChild("ProximityPrompt")
 		if prompt and not prompt.Enabled then
-			sellChoiceEvent:FireServer("Option4")
+			gambleChoiceEvent:FireServer("Option2")
 			local gui = player.PlayerGui:FindFirstChild("GambleOptions")
 			if gui then gui.Enabled = false end
 		end
@@ -185,28 +168,6 @@ while true do
 		animateHighlight(robuxHighlight, shouldShowRobuxHighlight and 0 or 1)
 	end
 	wasNearby.robuxShop = shouldShowRobuxHighlight
-
-	-- Boat Dealer 1
-	local boatDealer1Nearby = isPlayerNearby(boatDealer1)
-	local canInteractBoatDealer1 = canInteractWithNPC(boatDealer1)
-	local shouldShowBoatDealer1Highlight = boatDealer1Nearby and canInteractBoatDealer1
-
-	if shouldShowBoatDealer1Highlight ~= wasNearby.boatDealer1 then
-		animateHighlight(boatDealer1Highlight, shouldShowBoatDealer1Highlight and 0 or 1)
-	end
-	wasNearby.boatDealer1 = shouldShowBoatDealer1Highlight
-
-	-- Boat Dealer 2
-	if boatDealer2 and boatDealer2Highlight then
-		local boatDealer2Nearby = isPlayerNearby(boatDealer2)
-		local canInteractBoatDealer2 = canInteractWithNPC(boatDealer2)
-		local shouldShowBoatDealer2Highlight = boatDealer2Nearby and canInteractBoatDealer2
-
-		if shouldShowBoatDealer2Highlight ~= wasNearby.boatDealer2 then
-			animateHighlight(boatDealer2Highlight, shouldShowBoatDealer2Highlight and 0 or 1)
-		end
-		wasNearby.boatDealer2 = shouldShowBoatDealer2Highlight
-	end
 
 	-- Void Quest Giver
 	if voidQuestGiver then

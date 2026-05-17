@@ -173,18 +173,6 @@ function WeatherSystem.UpdateWeatherCycle()
 		return
 	end
 
-	-- During the day: end any active Firework weather immediately
-	if not isNightTime() and SecureWeatherState.currentWeather == "Firework" and SecureWeatherState.isWeatherActive then
-		stopFireworkEffects()
-		SecureWeatherState.isWeatherActive = false
-		SecureWeatherState.currentWeather = "Clear"
-		SecureWeatherState.nextWeatherTime = now + COOLDOWN_TIME
-		if WeatherSystem.WeatherChanged then
-			WeatherSystem.WeatherChanged:Fire("Clear")
-		end
-		return
-	end
-
 	-- Daytime weather cycle
 	if not isNightTime() and now >= SecureWeatherState.nextWeatherTime and not SecureWeatherState.isWeatherActive then
 		local newWeather = selectSecureRandomWeather()
@@ -290,11 +278,20 @@ function WeatherSystem.Initialize()
 	local weatherChangedEvent = weatherRemotes:WaitForChild("WeatherChangedEvent")
 	local fireworkEffectEvent = weatherRemotes:WaitForChild("FireworkEffectEvent")
 
+	local savedClockTime = nil
+
 	WeatherSystem.WeatherChanged.Event:Connect(function(newWeather)
 		updateSnowPartState(newWeather)
 
-		if newWeather ~= "Firework" then
+		if newWeather == "Firework" then
+			savedClockTime = Lighting.ClockTime
+			Lighting.ClockTime = 22
+		else
 			stopFireworkEffects()
+			if savedClockTime then
+				Lighting.ClockTime = savedClockTime
+				savedClockTime = nil
+			end
 		end
 
 		for _, player in pairs(Players:GetPlayers()) do

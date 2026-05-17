@@ -11,8 +11,11 @@ local DATA_TEMPLATE = {
 	CurrentRod = "FishingRod";
 	CurrentFishTrap = "";
 	IsTutorialed = false;
+	SeenUpdateLog = false;
 	Playtime = 0;
 	DiscoveryClaimed = {};
+	SkillPoints = 0;
+	Skills = {};
 }
 
 local sessionStartTimes = {}
@@ -20,7 +23,13 @@ local ProfileStore = ProfileService.New("StoreName", DATA_TEMPLATE)
 local Profiles = {}
 
 local function OnPlayerAdded(player)
-	local profile = ProfileStore:StartSessionAsync("Player_" .. player.UserId, {Steal = true})
+	local profile
+	for attempt = 1, 3 do
+		profile = ProfileStore:StartSessionAsync("Player_" .. player.UserId, {Steal = true})
+		if profile then break end
+		if not player:IsDescendantOf(Players) then return end
+		task.wait(3)
+	end
 
 	if profile then
 		profile:AddUserId(player.UserId)
@@ -215,6 +224,22 @@ function DataManager:SafeSavePlayer(player)
 	end
 	if currentRod    then profile.Data.CurrentRod    = currentRod.Value end
 	if isTutorialed  then profile.Data.IsTutorialed  = isTutorialed.Value end
+	local seenUpdateLog = player:FindFirstChild("SeenUpdateLog")
+	if seenUpdateLog then profile.Data.SeenUpdateLog = seenUpdateLog.Value end
+
+	local skillPoints = player:FindFirstChild("SkillPoints")
+	if skillPoints then profile.Data.SkillPoints = skillPoints.Value end
+
+	local skillsFolder = player:FindFirstChild("Skills")
+	if skillsFolder then
+		local skillsData = {}
+		for _, sv in ipairs(skillsFolder:GetChildren()) do
+			if sv:IsA("IntValue") then
+				skillsData[sv.Name] = sv.Value
+			end
+		end
+		profile.Data.Skills = skillsData
+	end
 
 	local rodsData = {}
 	if rodsFolder then

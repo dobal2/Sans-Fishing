@@ -13,8 +13,10 @@ local soldNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForC
 local gambleNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleNotification")
 local enablePromptEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SetPromptEvent")
 
-local shopSellerDialogEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("ShopSellerDialog")
-local openShopLocalEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenShopLocal")
+local shopSellerDialogEvent  = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("ShopSellerDialog")
+local openShopLocalEvent     = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenShopLocal")
+local openRobuxShopEvent     = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenRobuxShop")
+local openRobuxShopLocalEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("OpenRobuxShopLocal")
 
 -- ─── Seller ───────────────────────────────────────────────────────────────────
 local sellerDialog = nil
@@ -88,9 +90,9 @@ local function initGambler()
 	local prompt = gambler:WaitForChild("ProximityPrompt", 5)
 	if not root or not head or not prompt then return end
 
-	local dialog = DialogModule.new("Gambler", root, head, prompt)
-	dialog:addDialog("Want to gamble? <font color='rgb(255,150,150)'>(¢4000)</font>", {
-		"Let's gamble!",
+	local dialog = DialogModule.new("Appraiser", root, head, prompt)
+	dialog:addDialog("Want me to appraise your fish? <font color='rgb(255,150,150)'>(¢4000)</font>", {
+		"Appraise it!",
 		"No thanks",
 	})
 	gamblerDialog = dialog
@@ -115,11 +117,11 @@ local function initGambler()
 			if messageType == "exit" then
 				dialog:hideGui("Come back anytime!")
 			elseif messageType == "no_fish" then
-				dialog:hideGui("Hold a fish to gamble!")
+				dialog:hideGui("Hold a fish to appraise!")
 			elseif messageType == "insufficient_coins" then
-				dialog:hideGui("You need <font color='rgb(255,150,150)'>¢4000</font> to gamble!")
+				dialog:hideGui("You need <font color='rgb(255,150,150)'>¢4000</font> to appraise!")
 			elseif messageType == "invalid_fish" then
-				dialog:hideGui("This fish can't be gambled!")
+				dialog:hideGui("This fish can't be appraised!")
 			end
 		else
 			if messageType == "success" and extraData then
@@ -175,6 +177,80 @@ local function initShopSeller()
 	end)
 end
 
+-- ─── Pap (Robux Shop) ─────────────────────────────────────────────────────────
+local papDialog = nil
+
+local function initPap()
+	local pap = workspace:WaitForChild("Pap", 20)
+	if not pap then return end
+	local root   = pap:WaitForChild("HumanoidRootPart", 5)
+	local head   = pap:WaitForChild("Head", 5)
+	local prompt = pap:WaitForChild("ProximityPrompt", 5)
+	if not root or not head or not prompt then return end
+
+	local dialog = DialogModule.new("Pap", root, head, prompt)
+	dialog:addDialog("Hey! I've got some exclusive deals you won't find anywhere else!", {
+		"Show me!",
+		"No thanks",
+	})
+	papDialog = dialog
+
+	openRobuxShopEvent.OnClientEvent:Connect(function()
+		if not papDialog then return end
+		prompt.Enabled = false
+		dialog:triggerDialog(player, 1)
+	end)
+
+	dialog.responded:Connect(function(idx)
+		if idx == 1 then
+			dialog:hideGui("Take a look!")
+			openRobuxShopLocalEvent:Fire()
+		else
+			dialog:hideGui("Come back anytime!")
+			prompt.Enabled = true
+		end
+	end)
+end
+
+-- ─── Legend Rock ──────────────────────────────────────────────────────────────
+local legendRockDialog = nil
+
+local function initLegendRock()
+	local rock = workspace:WaitForChild("LegendROck", 20)
+	if not rock then return end
+	local prompt = rock:WaitForChild("ProximityPrompt", 5)
+	if not prompt then return end
+
+	local dialog = DialogModule.new("Legend Rock", rock, rock, prompt)
+	dialog:addDialog("...you have awakened me. For this, I shall grant you ONE question.", {
+		"What's the secret to fishing?",
+		"Will I ever be rich?",
+		"You're just a rock.",
+		"Sorry, go back to sleep.",
+	})
+	legendRockDialog = dialog
+
+	prompt.Triggered:Connect(function()
+		prompt.Enabled = false
+		dialog:triggerDialog(player, 1)
+	end)
+
+	dialog.responded:Connect(function(idx)
+		if idx == 1 then
+			dialog:hideGui("Cast. Wait. Catch. Repeat. I have spoken.")
+		elseif idx == 2 then
+			dialog:hideGui("Fish more. Sell more. Repeat. This is the way.")
+		elseif idx == 3 then
+			dialog:hideGui("...correct. Now leave.")
+		else
+			dialog:hideGui("Finally. Some respect.")
+		end
+		task.delay(0.5, function() prompt.Enabled = true end)
+	end)
+end
+
 task.spawn(initSeller)
 task.spawn(initGambler)
 task.spawn(initShopSeller)
+task.spawn(initPap)
+task.spawn(initLegendRock)

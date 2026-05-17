@@ -133,6 +133,15 @@
       },
       "RodOnBack": {
         "$path": "src2/ServerScriptService/RodOnBack.server.luau"
+      },
+      "SkillServer": {
+        "$path": "src2/ServerScriptService/SkillServer.server.luau"
+      },
+      "SkillHelper": {
+        "$path": "src2/ServerScriptService/SkillHelper.luau"
+      },
+      "HotBarLayoutServer": {
+        "$path": "src2/ServerScriptService/HotBarLayoutServer.server.luau"
       }
     },
 
@@ -243,8 +252,17 @@
         "Main_Money": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_Money.client.luau"
         },
+        "Main_UpdateLog": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_UpdateLog.client.luau"
+        },
         "Main_WeatherInfo": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_WeatherInfo.client.luau"
+        },
+        "Main_ServerTime": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_ServerTime.client.luau"
+        },
+        "Main_WeatherTimer": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_WeatherTimer.client.luau"
         },
         "SellOptions": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/SellOptions.client.luau"
@@ -302,6 +320,25 @@
         },
         "Index": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/Index.client.luau"
+        },
+        "SkillTreeClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SkillTreeClient.client.luau"
+        },
+        "SkillTreeHover": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/SkillTreeHover.client.luau"
+        },
+        "Main_StatLabels": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_StatLabels.client.luau"
+        },
+
+        "Main_SkillTree": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_SkillTree.client.luau"
+        },
+        "RodsGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/RodsGui.client.luau"
+        },
+        "LeaderboardYourStats": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/LeaderboardYourStats.client.luau"
         }
       },
       "StarterCharacterScripts": {

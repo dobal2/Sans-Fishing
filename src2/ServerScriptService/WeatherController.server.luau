@@ -35,7 +35,7 @@ local function handleAdminCommand(player, message)
 	local duration = tonumber(args[2]) or entry.default
 	local ok = WeatherSystem.SetWeather(entry.name, duration)
 	if ok and weatherEvent then
-		weatherEvent:FireClient(player, entry.name)
+		weatherEvent:FireAllClients(entry.name)
 	elseif not ok then
 		warn("Failed to set weather:", entry.name)
 	end
@@ -53,3 +53,15 @@ for _, player in pairs(Players:GetPlayers()) do
 	connectAdminCommands(player)
 end
 Players.PlayerAdded:Connect(connectAdminCommands)
+
+-- RemoteFunction: client queries current weather state (for timer display)
+local getWeatherState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("GetWeatherState")
+getWeatherState.OnServerInvoke = function()
+	local info = WeatherSystem.GetSecureWeatherInfo()
+	return {
+		isActive      = info.isActive,
+		currentWeather = info.currentWeather,
+		remainingTime  = info.remainingTime,
+		nextWeatherIn  = info.nextWeatherIn,
+	}
+end

@@ -154,7 +154,10 @@ end
 
 local function hasRod(itemName)
 	local rods = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Rods")
-	local rod = rods and rods:FindFirstChild(itemName)
+	if not rods then return false end
+	local rodData = RodData.Rods[itemName]
+	local lookupName = (rodData and rodData.storageName) or itemName
+	local rod = rods:FindFirstChild(lookupName)
 	return rod and rod.Value
 end
 
@@ -208,7 +211,7 @@ local function updateView(skipTween)
 	local rodName = currentRodKeys[target]
 	local rodData = RodData.Rods[rodName]
 
-	nameText.Text = rodName
+	nameText.Text = rodData.displayName or rodName
 	if ROD_NAME_GRADIENTS[rodName] then
 		nameGradient.Color = ROD_NAME_GRADIENTS[rodName]
 	end
@@ -300,6 +303,7 @@ local function updateView(skipTween)
 end
 
 local function openShop(voidMode)
+	player.PlayerGui:SetAttribute("ActiveLargeUI", "ShopGui")
 	isVoidShop = voidMode or false
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
@@ -346,6 +350,12 @@ local function closeShop()
 	enablePromptEvent:FireServer(true, "shop_seller")
 	canShop = true
 end
+
+player.PlayerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
+	if player.PlayerGui:GetAttribute("ActiveLargeUI") ~= "ShopGui" and buyframe.Visible then
+		task.spawn(closeShop)
+	end
+end)
 
 openShopRemote.OnClientEvent:Connect(function()
 	if canShop then openShop(false) end
@@ -467,7 +477,8 @@ buyButton.MouseButton1Click:Connect(function()
 	end
 
 	if hasRod(rodName) then
-		if currentRod and currentRod.Value ~= rodName then
+		local storageName = (rodData and rodData.storageName) or rodName
+		if currentRod and currentRod.Value ~= storageName then
 			if buyBtnLabel then buyBtnLabel.Text = "Equipped" end
 			buyRemote:FireServer(rodName)
 			equipSound:Play()

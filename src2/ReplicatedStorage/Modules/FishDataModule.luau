@@ -11,6 +11,23 @@ local fishFolder = serverStorage:WaitForChild("Fishes")
 -- Load WeatherSystem module
 local WeatherSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
 
+local RunService = game:GetService("RunService")
+local SkillServer = nil
+local BoostAPI = nil
+if RunService:IsServer() then
+	local ok, result = pcall(function()
+		return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
+	end)
+	if ok then SkillServer = result end
+
+	local ok2, api = pcall(function()
+		return game:GetService("ServerScriptService"):WaitForChild("ServerBoostManager"):WaitForChild("ServerBoostAPI", 30)
+	end)
+	if ok2 and api then BoostAPI = api end
+end
+
+local Players = game:GetService("Players")
+
 local ICE_SETTINGS = {
 	material = Enum.Material.Plastic,
 	transparency = 0.3,
@@ -325,37 +342,79 @@ local function removeFestivalEffect(fishModel)
 	return true
 end
 
+-- Rod tier determines weight distribution shift.
+-- Higher tier rods push probability toward heavier brackets.
+local ROD_WEIGHT_TIER = {
+	FishingRod   = 0,
+	SliverRod    = 1,
+	GoldRod      = 2,
+	CrystalRod   = 3,
+	MagneticRod  = 4,
+	BoneRod      = 5,
+	CloverRod    = 6,
+	RainbowRod   = 7,
+	UnknownRod   = 8,
+	RobuxRod     = 8,
+	ElectricRod  = 9,
+	RealisticRod = 10,
+	ArcaneRod    = 11,
+	VoidRod      = 12,
+}
+
 -- Fixed probability weight function
-local function getFixedProbabilityWeight(minW, maxW)
+-- rodName shifts high-weight bracket chances upward for better rods.
+-- Tier 0 (FishingRod): 1~5kg = 70.8% (original)
+-- Each tier transfers 2% from the 1~5kg bucket into 5~40kg buckets.
+-- Max shift at tier 12 (VoidRod): 1~5kg drops to ~46.8%, mid-heavy gains ~24%.
+local function getFixedProbabilityWeight(minW, maxW, rodName, extraShift)
 	local rng = Random.new()
 	local r = rng:NextNumber()
 
-	-- Correct cumulative probability (total 100%)
-	local ranges = {
-		{low = 1,   high = 5,   chance = 0.708},    -- 70.8%
-		{low = 5,   high = 10,  chance = 0.883},    -- 17.5%
-		{low = 10,  high = 20,  chance = 0.923},    -- 4.0%
-		{low = 20,  high = 40,  chance = 0.940},    -- 1.7%
-		{low = 40,  high = 60,  chance = 0.945},    -- 0.5%
-		{low = 60,  high = 70,  chance = 0.9475},   -- 0.25%
-		{low = 70,  high = 80,  chance = 0.9495},   -- 0.2%
-		{low = 80,  high = 90,  chance = 0.94995},  -- 0.045% (80-90kg)
-		{low = 90,  high = 100, chance = 0.95},     -- 0.005% (90-100kg)
-		{low = 1,   high = 5,   chance = 1.0}       -- Remaining 5% is 1-5kg
-	}
+	local tier = ROD_WEIGHT_TIER[rodName] or 0
+	local shift = tier * 0.02 + (extraShift or 0)
 
-	for i, range in ipairs(ranges) do
-		if r <= range.chance then
+	-- Distribute the shift: 50% into 5~10kg, 30% into 10~20kg, 20% into 20~40kg
+	local base1_5    = 0.708 - shift
+	local base5_10   = 0.175 + shift * 0.50
+	local base10_20  = 0.040 + shift * 0.30
+	local base20_40  = 0.017 + shift * 0.20
+
+	-- Build cumulative thresholds
+	local c1  = base1_5
+	local c2  = c1 + base5_10
+	local c3  = c2 + base10_20
+	local c4  = c3 + base20_40
+	local c5  = c4 + 0.005   -- 40~60kg  (unchanged)
+	local c6  = c5 + 0.0025  -- 60~70kg  (unchanged)
+	local c7  = c6 + 0.002   -- 70~80kg  (unchanged)
+	local c8  = c7 + 0.00045 -- 80~90kg  (unchanged)
+	-- 90~100kg: remaining ~0.00005 + fallback to 1~5kg for the rest
+
+	local ranges = {
+		{low = 1,   high = 5,   threshold = c1},
+		{low = 5,   high = 10,  threshold = c2},
+		{low = 10,  high = 20,  threshold = c3},
+		{low = 20,  high = 40,  threshold = c4},
+		{low = 40,  high = 60,  threshold = c5},
+		{low = 60,  high = 70,  threshold = c6},
+		{low = 70,  high = 80,  threshold = c7},
+		{low = 80,  high = 90,  threshold = c8},
+		{low = 90,  high = 100, threshold = 0.95},
+		{low = 1,   high = 5,   threshold = 1.0},  -- fallback
+	}
+	-- (legacy field name kept as "chance" → renamed to "threshold" above;
+	--  loop below uses threshold)
+
+	for _, range in ipairs(ranges) do
+		if r <= range.threshold then
 			local low = math.max(minW, range.low)
 			local high = math.min(maxW, range.high)
 			if low < high then
-				local selectedWeight = rng:NextNumber(low, high)
-				return selectedWeight
+				return rng:NextNumber(low, high)
 			end
 		end
 	end
 
-	-- Backup (1-5kg only)
 	return rng:NextNumber(1, 5)
 end
 
@@ -470,19 +529,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		}
 	end
 
-	-- Apply luck bubble buff (stacks with gamepass)
-	if hasLuckBubbleBuff then
-		baseChances = {
-			["Common"] = baseChances["Common"] * 0.8,     -- Common -20%
-			["Uncommon"] = baseChances["Uncommon"] * 0.9, -- Uncommon -10%
-			["Rare"] = baseChances["Rare"] * 1.1,        -- Rare +10%
-			["Epic"] = baseChances["Epic"] * 1.3,        -- Epic +30%
-			["Legendary"] = baseChances["Legendary"] * 1.5, -- Legendary +50%
-			["Mystic"] = baseChances["Mystic"] * 1.8,    -- Mystic +80%
-			["Fantasy"] = baseChances["Fantasy"] * 2.0,  -- Fantasy +100%
-			["Unknown"] = baseChances["Unknown"] * 2.5   -- Unknown +150%
-		}
-	end
+	-- luck bubble buff: handled via luckBonus after rod/skill bonuses are summed
 
 	-- Rod-based max weight bonus (adds to maxW cap, up to 200kg)
 	local ROD_MAX_WEIGHT_BONUS = {
@@ -503,6 +550,16 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	}
 	local weightBonus = ROD_MAX_WEIGHT_BONUS[rodName] or 0
 
+	-- WeightUp skill: extra probability shift toward heavier brackets
+	local weightUpShift = 0
+	if player then
+		local skillsFolder = player:FindFirstChild("Skills")
+		local wuVal = skillsFolder and skillsFolder:FindFirstChild("WeightUp")
+		local WEIGHT_UP_SHIFTS = { 0.04, 0.10, 0.18, 0.28 }
+		local wuLevel = wuVal and wuVal.Value or 0
+		weightUpShift = (wuLevel > 0 and WEIGHT_UP_SHIFTS[wuLevel]) or 0
+	end
+
 	-- Per-rod luck bonus: multiplies Uncommon+ chances by (1 + luckBonus).
 	-- VoidRod = 2.50 means 3.5× multiplier on all rare+ rarities.
 	-- Common absorbs the reduction naturally after normalization.
@@ -511,18 +568,56 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		SliverRod    = 0.15,
 		GoldRod      = 0.30,
 		CrystalRod   = 0.50,
-		MagneticRod  = 0.75,
-		BoneRod      = 1.00,
-		CloverRod    = 1.30,
-		RainbowRod   = 1.20,
-		UnknownRod   = 1.70,
-		RobuxRod     = 2.00,
-		ElectricRod  = 3.00,
-		RealisticRod = 3.80,
-		ArcaneRod    = 4.50,
-		VoidRod      = 6.00,
+		MagneticRod  = 0.60,  -- 너프 (기존 0.75)
+		BoneRod      = 0.80,  -- 너프 (기존 1.00)
+		CloverRod    = 1.05,  -- 소폭 너프 (기존 1.30)
+		RainbowRod   = 1.50,  -- 유지
+		UnknownRod   = 2.20,  -- 상승 (기존 1.70)
+		RobuxRod     = 2.60,  -- 상승 (기존 2.00)
+		ElectricRod  = 3.60,  -- 상승 (기존 3.00)
+		RealisticRod = 4.80,  -- 상승 (기존 3.80)
+		ArcaneRod    = 6.00,  -- 상승 (기존 4.50)
+		VoidRod      = 10.00,
 	}
 	local luckBonus = ROD_LUCK_BONUS[rodName] or 0
+
+	-- 스킬 럭 보너스 + 친구 보너스 누적
+	if player and SkillServer then
+		luckBonus = luckBonus + SkillServer.GetLuckBonus(player)
+
+		-- FriendBonus: 친구 수 × 스킬 효과값
+		local friendBonusPerFriend = SkillServer.GetEffect(player, "FriendBonus")
+		if friendBonusPerFriend > 0 then
+			local friendsCount = 0
+			for _, other in ipairs(Players:GetPlayers()) do
+				if other ~= player then
+					local ok, isFriend = pcall(function()
+						return player:IsFriendsWith(other.UserId)
+					end)
+					if ok and isFriend then
+						friendsCount += 1
+					end
+				end
+			end
+			luckBonus = luckBonus + (friendsCount * friendBonusPerFriend)
+		end
+	end
+
+	-- luck bubble: adds flat +2.0 (200%) to luckBonus
+	if hasLuckBubbleBuff then
+		luckBonus = luckBonus + 2.0
+	end
+
+	-- Server boost: multiply total luckBonus by server boost multiplier
+	if BoostAPI then
+		local getBoostMult = BoostAPI:FindFirstChild("GetBoostMult")
+		if getBoostMult then
+			local ok, boostMult = pcall(function() return getBoostMult:Invoke() end)
+			if ok and type(boostMult) == "number" and boostMult > 1 then
+				luckBonus = luckBonus * boostMult
+			end
+		end
+	end
 
 	local finalChances = {}
 	for rarity, chance in pairs(baseChances) do
@@ -530,10 +625,17 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	end
 
 	if luckBonus > 0 then
-		local multiplier = 1 + luckBonus
-		local rareRarities = { "Uncommon", "Rare", "Epic", "Legendary", "Mystic", "Fantasy", "Unknown" }
-		for _, r in ipairs(rareRarities) do
-			finalChances[r] = finalChances[r] * multiplier
+		local rarityScale = {
+			Uncommon = 1.0,
+			Rare     = 1.2,
+			Epic     = 1.5,
+			Legendary= 2.0,
+			Mystic   = 2.5,
+			Fantasy  = 3.5,
+			Unknown  = 5.0,
+		}
+		for r, scale in pairs(rarityScale) do
+			finalChances[r] = finalChances[r] * (1 + luckBonus * scale)
 		end
 	end
 
@@ -549,6 +651,25 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 
 		for rarity, chance in pairs(finalChances) do
 			finalChances[rarity] = chance * factor
+		end
+	end
+
+	-- Guarantee Common is at least 10% regardless of luck
+	local COMMON_MIN = 10
+	if (finalChances["Common"] or 0) < COMMON_MIN then
+		finalChances["Common"] = COMMON_MIN
+		local othersTotal = 0
+		for r, c in pairs(finalChances) do
+			if r ~= "Common" then othersTotal = othersTotal + c end
+		end
+		local targetOthers = 100 - COMMON_MIN
+		if othersTotal > 0 then
+			local scale = targetOthers / othersTotal
+			for r in pairs(finalChances) do
+				if r ~= "Common" then
+					finalChances[r] = finalChances[r] * scale
+				end
+			end
 		end
 	end
 
@@ -574,7 +695,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 					local selectedFish = selectRandomFishFromRarity(rarity)
 					local minW = selectedFish.minWeight or 1
 					local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
-					local weight = getFixedProbabilityWeight(minW, maxW)
+					local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
 					weight = math.floor(weight * 10 + 0.5) / 10
 					local fishInfo = {
 						name = rarity.name,
@@ -606,7 +727,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 
 			local minW = selectedFish.minWeight or 1
 			local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
-			local weight = getFixedProbabilityWeight(minW, maxW)
+			local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
 			weight = math.floor(weight * 10 + 0.5) / 10
 
 			-- Build fishInfo structure (backward compatible)

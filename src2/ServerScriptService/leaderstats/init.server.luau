@@ -58,7 +58,12 @@ local function hasGamepass(player, gamepassId)
 	return success and result
 end
 
+local playerSetupInProgress = {}
+
 Players.PlayerAdded:Connect(function(plr)
+	if playerSetupInProgress[plr.UserId] then return end
+	playerSetupInProgress[plr.UserId] = true
+
 	task.wait(2)
 
 	-- Create base structure
@@ -98,7 +103,29 @@ Players.PlayerAdded:Connect(function(plr)
 	IsTutorialed.Value = false
 	IsTutorialed.Parent = plr
 
-	local rodList = {"FishingRod", "SliverRod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","RealisticRod","ArcaneRod","VoidRod"}
+	local SeenUpdateLog = Instance.new("BoolValue")
+	SeenUpdateLog.Name = "SeenUpdateLog"
+	SeenUpdateLog.Value = false
+	SeenUpdateLog.Parent = plr
+
+	local SkillPoints = Instance.new("IntValue")
+	SkillPoints.Name = "SkillPoints"
+	SkillPoints.Value = 0
+	SkillPoints.Parent = plr
+
+	local Skills = Instance.new("Folder")
+	Skills.Name = "Skills"
+	Skills.Parent = plr
+
+	local SKILL_NAMES = {"Root", "AutoFish", "LuckUp", "SellBonus", "FriendBonus", "HitZoneUp", "InvenUp", "WeightUp", "PowerUp", "AutoUp", "PointBoost", "QuickBite"}
+	for _, skillName in ipairs(SKILL_NAMES) do
+		local sv = Instance.new("IntValue")
+		sv.Name = skillName
+		sv.Value = 0
+		sv.Parent = Skills
+	end
+
+	local rodList = {"FishingRod", "SliverRod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","BlockyRod","ArcaneRod","VoidRod","FriendRod"}
 
 	local boatList = {"BasicBoat"}  -- Boat list
 
@@ -137,10 +164,11 @@ Players.PlayerAdded:Connect(function(plr)
 
 
 	-- Create rods
+	local specialUser = isSpecialUser(plr)
 	for _, rodName in ipairs(rodList) do
 		local rod = Instance.new("BoolValue")
 		rod.Name = rodName
-		rod.Value = (rodName == "FishingRod")
+		rod.Value = (rodName == "FishingRod") or (rodName == "FriendRod" and specialUser)
 		rod.Parent = Rods
 	end
 
@@ -188,15 +216,31 @@ Players.PlayerAdded:Connect(function(plr)
 	-- Apply data
 	if Data then
 		Coins.Value = Data.Coins or 0
-		CurrentRod.Value = Data.CurrentRod or "FishingRod"
+
+		-- RealisticRod → BlockyRod 마이그레이션
+		local savedRod = Data.CurrentRod or "FishingRod"
+		if savedRod == "RealisticRod" then savedRod = "BlockyRod" end
+		CurrentRod.Value = savedRod
+		if Data.Rods and Data.Rods["RealisticRod"] then
+			Data.Rods["BlockyRod"] = Data.Rods["RealisticRod"]
+			Data.Rods["RealisticRod"] = nil
+		end
 
 		CurrentFishTrapValue.Value = Data.CurrentFishTrap or ""
 
 		IsTutorialed.Value = Data.IsTutorialed
+		SeenUpdateLog.Value = Data.SeenUpdateLog or false
 
 		if Coins.Value < 0 then
 			warn("Abnormal coin value detected (" .. Coins.Value .. ") - clamping to 0")
 			Coins.Value = 0
+		end
+
+		SkillPoints.Value = Data.SkillPoints or 0
+
+		for skillName, level in pairs(Data.Skills or {}) do
+			local sv = Skills:FindFirstChild(skillName)
+			if sv then sv.Value = level end
 		end
 
 		-- Apply rod data
@@ -340,15 +384,6 @@ Players.PlayerAdded:Connect(function(plr)
 		task.wait(0.5)
 	end
 
-	-- Give FriendRod to special users
-	if(isSpecialUser(plr)) then
-		local newFriendRod = ServerStorage:FindFirstChild("FriendRod")
-		if newFriendRod then
-			newFriendRod = newFriendRod:Clone()
-			newFriendRod.Parent = plr.Backpack
-		end
-	end
-
 	local equippedFishTrap = CurrentFishTrapValue.Value
 
 	if equippedFishTrap == "RobuxFishTrap" then
@@ -488,6 +523,8 @@ Players.PlayerAdded:Connect(function(plr)
 			task.wait(0.5)
 		end
 	end
+
+	playerSetupInProgress[plr.UserId] = nil
 
 	-- Signal data loading complete
 	local dataReady = Instance.new("BoolValue")
@@ -644,5 +681,6 @@ end)
 
 
 Players.PlayerRemoving:Connect(function(plr)
+	playerSetupInProgress[plr.UserId] = nil
 	datamanager:SafeSavePlayer(plr)
 end)

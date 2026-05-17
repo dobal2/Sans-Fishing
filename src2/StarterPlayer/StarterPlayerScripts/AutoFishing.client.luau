@@ -3,9 +3,19 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
-local AUTO_CAST_COOLDOWN = 3.5   -- wait after IsFishing clears before next cast
-local AUTO_CLICK_COOLDOWN = 0.5  -- cooldown after hitting zone
+local AUTO_CAST_COOLDOWN = 1.1   -- wait after IsFishing clears before next cast
+local AUTO_CLICK_COOLDOWN_BASE = 1.5
+
+local AUTO_UP_REDUCTIONS = { 0.1, 0.4, 0.8 }
+local function getAutoClickCooldown()
+	local folder = player:FindFirstChild("Skills")
+	local sv = folder and folder:FindFirstChild("AutoUp")
+	local level = sv and sv.Value or 0
+	local reduction = (level > 0 and AUTO_UP_REDUCTIONS[level]) or 0
+	return AUTO_CLICK_COOLDOWN_BASE - reduction
+end
 local EQUIP_DELAY = 1.0          -- delay after equipping rod before first cast
+local AUTO_ENABLE_DELAY = 1.0    -- delay after enabling AutoFishing before first cast
 
 local lastCastTime = 0
 local lastClickTime = 0
@@ -81,6 +91,13 @@ player.AttributeChanged:Connect(function(attr)
 	if attr == "IsFishing" and player:GetAttribute("IsFishing") == false then
 		fishingEndedAt = tick()
 	end
+	-- AutoFishing 켤 때 첫 캐스트를 1초 뒤로 맞춤
+	if attr == "AutoFishing" and player:GetAttribute("AutoFishing") == true then
+		local soon = tick() - AUTO_CAST_COOLDOWN + AUTO_ENABLE_DELAY
+		lastCastTime = soon
+		fishingEndedAt = soon
+		equipTime = soon
+	end
 end)
 
 RunService.Heartbeat:Connect(function()
@@ -91,7 +108,7 @@ RunService.Heartbeat:Connect(function()
 
 	if gui then
 		-- Minigame open: click when slider in zone, with cooldown
-		if now - lastClickTime < AUTO_CLICK_COOLDOWN then return end
+		if now - lastClickTime < getAutoClickCooldown() then return end
 		local slider, hitZone, strongZone = getSliderAndHitZone(gui)
 		if slider and hitZone then
 			if isSliderInZone(slider, strongZone) or isSliderInZone(slider, hitZone) then

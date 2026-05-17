@@ -36,7 +36,13 @@ local Profiles = {}
 local DataManager = {}
 
 function DataManager.OnPlayerAdded(player)
-	local profile = ProfileStore:StartSessionAsync("Player_" .. player.UserId, {Steal = true})
+	local profile
+	for attempt = 1, 3 do
+		profile = ProfileStore:StartSessionAsync("Player_" .. player.UserId, {Steal = true})
+		if profile then break end
+		if not player:IsDescendantOf(Players) then return end
+		task.wait(3)
+	end
 
 	if profile then
 		profile:AddUserId(player.UserId)

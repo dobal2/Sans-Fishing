@@ -16,14 +16,18 @@ local currentTween = nil
 local renderConnection = nil
 local previousValue = coins.Value
 
-local function formatNumberWithCommas(n)
-	local formatted = tostring(math.floor(n))
-	while true do
-		local k
-		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", "%1,%2")
-		if k == 0 then break end
+-- 유효숫자 3자리 + 단위 포맷 (단위 붙은 후 소수점 3자리)
+local function formatNumber(n)
+	n = math.floor(n)
+	if n >= 1000000000 then
+		return string.format("%.3fB", n / 1000000000)
+	elseif n >= 1000000 then
+		return string.format("%.3fM", n / 1000000)
+	elseif n >= 1000 then
+		return string.format("%.3fK", n / 1000)
+	else
+		return tostring(n)
 	end
-	return formatted
 end
 
 local function animateToValue(newValue)
@@ -36,7 +40,7 @@ local function animateToValue(newValue)
 
 	if math.abs(difference) < 1 then
 		currentDisplayValue = targetValue
-		textLabel.Text = "¢ " .. formatNumberWithCommas(targetValue)
+		textLabel.Text = formatNumber(targetValue)
 		return
 	end
 
@@ -48,13 +52,13 @@ local function animateToValue(newValue)
 
 	renderConnection = RunService.RenderStepped:Connect(function()
 		currentDisplayValue = valueObject.Value
-		textLabel.Text = "¢ " .. formatNumberWithCommas(currentDisplayValue)
+		textLabel.Text = formatNumber(currentDisplayValue)
 	end)
 
 	currentTween.Completed:Connect(function()
 		if renderConnection then renderConnection:Disconnect(); renderConnection = nil end
 		currentDisplayValue = targetValue
-		textLabel.Text = "¢ " .. formatNumberWithCommas(targetValue)
+		textLabel.Text = formatNumber(targetValue)
 		currentTween = nil
 		valueObject:Destroy()
 	end)
@@ -74,4 +78,4 @@ coins.Changed:Connect(function(newValue)
 	end
 end)
 
-textLabel.Text = "¢ " .. formatNumberWithCommas(coins.Value)
+textLabel.Text = formatNumber(coins.Value)

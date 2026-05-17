@@ -1,12 +1,14 @@
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoinLeaderboard = DataStoreService:GetOrderedDataStore("CoinLeaderboard")
 
 local lb          = workspace:WaitForChild("CoinLeaderboard")
 local surfaceGui  = lb:WaitForChild("LeaderBoard"):WaitForChild("SurfaceGui")
 local scrollFrame = surfaceGui:WaitForChild("ScrollFrame")
-local yspFrame    = lb:WaitForChild("YourStatsPart"):WaitForChild("SurfaceGui"):WaitForChild("Frame")
 local uiList      = scrollFrame:FindFirstChildOfClass("UIListLayout")
+
+local coinYourStatsEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Leaderboard"):WaitForChild("CoinYourStats")
 
 surfaceGui.MaxDistance = math.huge
 
@@ -27,7 +29,7 @@ loadingFrame.BackgroundTransparency = 1
 local loadingLabel = Instance.new("TextLabel", loadingFrame)
 loadingLabel.Size = UDim2.fromScale(1, 1)
 loadingLabel.BackgroundTransparency = 1
-loadingLabel.Text = "로딩중..."
+loadingLabel.Text = "Loading..."
 loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 loadingLabel.TextScaled = true
 loadingLabel.Font = Enum.Font.GothamBold
@@ -40,11 +42,11 @@ end
 uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
 
 local EXCLUDED = {
-	bluehome79     = true,
-	tallmo_bim     = true,
-	mkdoingsu      = true,
+	bluehome79      = true,
+	tallmo_bim      = true,
+	mkdoingsu       = true,
 	thatcoolgamedev = true,
-	uiuiuioiuiuiu  = true,
+	uiuiuioiuiuiu   = true,
 }
 local nameCache = {}
 
@@ -70,16 +72,7 @@ local function updateYourStats(player, entries)
 	for i, e in ipairs(entries) do
 		if e.UserId == player.UserId then rank = i; coins = e.Coins; break end
 	end
-	local pos  = yspFrame:FindFirstChild("PositionText")
-	local img  = yspFrame:FindFirstChild("ImageLabel")
-	local disp = yspFrame:FindFirstChild("DisplayName")
-	local amt  = yspFrame:FindFirstChild("Amount")
-	local user = yspFrame:FindFirstChild("UserName")
-	if pos  then pos.Text  = rank and ("#" .. rank) or "-" end
-	if img  then img.Image = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=150&h=150" end
-	if disp then disp.Text = player.DisplayName end
-	if amt  then amt.Text  = formatCoins(coins) end
-	if user then user.Text = "@" .. player.Name end
+	coinYourStatsEvent:FireClient(player, rank, coins, player.UserId, player.DisplayName, player.Name)
 end
 
 local function updateBoard()

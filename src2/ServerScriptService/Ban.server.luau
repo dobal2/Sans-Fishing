@@ -25,11 +25,14 @@ Players.PlayerAdded:Connect(function(player)
 	local ok, banData = pcall(function()
 		return banStore:GetAsync(player.UserId)
 	end)
-	if ok and banData then
+	if not ok then
+		warn("Ban GetAsync failed for", player.Name, banData)
+		-- DataStore outage: allow join, log warning
+		return
+	end
+	if banData == true then
 		player:Kick("You've been banned by creator")
 		return
-	elseif not ok then
-		warn("Ban GetAsync failed for", player.Name, banData)
 	end
 
 	if not table.find(ADMINS, player.UserId) then return end

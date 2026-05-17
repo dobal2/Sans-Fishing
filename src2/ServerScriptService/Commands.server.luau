@@ -9,6 +9,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 local ItemSaveDataManager = require(ServerScriptService:WaitForChild("ItemSave"):WaitForChild("DataManager"))
+local SkillHelper = require(ServerScriptService:WaitForChild("SkillHelper"))
+local RodDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
 
 -- Create/get announcement remote event
 local announceRemote = ReplicatedStorage:FindFirstChild("AnnounceRemote")
@@ -42,6 +44,12 @@ local Permissions = {
 		coinreset = true,
 		invenreset = true,
 		indexreset = true,
+		skillreset = true,
+		rodreset = true,
+		tutorialreset = true,
+		updatelogreset = true,
+		questreset = true,
+		dailyquestreset = true,
 	},
 	Moderator = {
 		kick = true,
@@ -276,6 +284,25 @@ local function command(plr, chat)
 				local stats = v:FindFirstChild("leaderstats")
 				if stats and stats:FindFirstChild("Coins") then
 					stats.Coins.Value = amount
+					LeaderstatsDataManager:UpdateData(v, "Coins", amount)
+				end
+			end
+		end
+	end
+
+	-- :setfp
+	if chat:sub(1, 6) == Prefix.."setfp" then
+		if hasPermission(plr.Name, "setcoins") then
+			local args = string.split(chat, " ")
+			local targetName = args[2]
+			local amount = tonumber(args[3])
+			if not targetName or not amount then return end
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local sp = v:FindFirstChild("SkillPoints")
+				if sp then
+					sp.Value = amount
+					LeaderstatsDataManager:UpdateData(v, "SkillPoints", amount)
 				end
 			end
 		end
@@ -446,53 +473,108 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
 			local foundPlayers = findPlayers(plr, targetName)
-			local MarketplaceService = game:GetService("MarketplaceService")
-			local LuckGamePassId = 1289569606
+
+			local ROD_LUCK_BONUS = {
+				FishingRod=0, SliverRod=0.15, GoldRod=0.30, CrystalRod=0.50,
+				MagneticRod=0.60, BoneRod=0.80, CloverRod=1.05, RainbowRod=1.50,
+				UnknownRod=2.20, RobuxRod=2.60, ElectricRod=3.60, RealisticRod=4.80,
+				ArcaneRod=6.00, VoidRod=10.00,
+			}
+			local BASE_CHANCES = {
+				Common=46.9, Uncommon=25, Rare=15, Epic=8,
+				Legendary=3, Mystic=1.5, Fantasy=0.5, Unknown=0.1,
+			}
+			local RARITY_SCALE = {
+				Uncommon=1.0, Rare=1.2, Epic=1.5,
+				Legendary=2.0, Mystic=2.5, Fantasy=3.5, Unknown=5.0,
+			}
 
 			for _, v in pairs(foundPlayers) do
-				local hasLuck = false
-				local ok, res = pcall(function()
-					return MarketplaceService:UserOwnsGamePassAsync(v.UserId, LuckGamePassId)
-				end)
-				if ok then hasLuck = res end
+				-- Get current rod
+				local ls = v:FindFirstChild("leaderstats")
+				local rodName = ls and ls:FindFirstChild("CurrentRod") and ls.CurrentRod.Value or "FishingRod"
+				local luckBonus = ROD_LUCK_BONUS[rodName] or 0
+
+				-- Skills + friend bonus
+				luckBonus = luckBonus + SkillHelper.GetLuckBonus(v)
+				local friendBonusPerFriend = SkillHelper.GetEffect(v, "FriendBonus")
+				if friendBonusPerFriend > 0 then
+					local friendCount = 0
+					for _, other in ipairs(Players:GetPlayers()) do
+						if other ~= v then
+							local ok, isFriend = pcall(function() return v:IsFriendsWith(other.UserId) end)
+							if ok and isFriend then friendCount += 1 end
+						end
+					end
+					luckBonus = luckBonus + (friendCount * friendBonusPerFriend)
+				end
+
+				-- Luck bubble
 				local hasBubble = v:GetAttribute("LuckBubbleBuff") == true
+				if hasBubble then luckBonus = luckBonus + 2.0 end
 
-				local chances
-				if hasLuck then
-					chances = {
-						Common=37.4, Uncommon=21.07, Rare=14.33, Epic=14.0,
-						Legendary=8.0, Mystic=4.0, Fantasy=1.0, Unknown=0.2
-					}
-				else
-					chances = {
-						Common=50.0, Uncommon=25.0, Rare=13.0, Epic=6.5,
-						Legendary=3.0, Mystic=1.8, Fantasy=0.5, Unknown=0.1
-					}
+				-- Luck x2 gamepass
+				local hasLuckPass = false
+				pcall(function()
+					hasLuckPass = game:GetService("MarketplaceService"):UserOwnsGamePassAsync(v.UserId, 1289569606)
+				end)
+				if hasLuckPass then luckBonus = luckBonus * 2 end
+
+				-- Apply rarityScale
+				local chances = {}
+				for rarity, base in pairs(BASE_CHANCES) do
+					local scale = RARITY_SCALE[rarity]
+					if scale then
+						chances[rarity] = base * (1 + luckBonus * scale)
+					else
+						chances[rarity] = base
+					end
 				end
 
-				if hasBubble then
-					chances.Common    = chances.Common    * 0.8
-					chances.Uncommon  = chances.Uncommon  * 0.9
-					chances.Rare      = chances.Rare      * 1.1
-					chances.Epic      = chances.Epic      * 1.3
-					chances.Legendary = chances.Legendary * 1.5
-					chances.Mystic    = chances.Mystic    * 1.8
-					chances.Fantasy   = chances.Fantasy   * 2.0
-					chances.Unknown   = chances.Unknown   * 2.5
-				end
-
-				-- Normalize to 100%
+				-- Normalize
 				local total = 0
 				for _, w in pairs(chances) do total += w end
 
 				local order = {"Common","Uncommon","Rare","Epic","Legendary","Mystic","Fantasy","Unknown"}
-				local lines = {string.format("=== %s Fish Odds (Luck=%s Bubble=%s) ===", v.Name, tostring(hasLuck), tostring(hasBubble))}
+				local lines = {string.format("=== %s | Rod:%s Luck:%.2f%s%s ===",
+					v.Name, rodName, luckBonus,
+					hasLuckPass and " x2pass" or "",
+					hasBubble and " bubble" or ""
+				)}
 				for _, rarity in ipairs(order) do
 					local pct = chances[rarity] / total * 100
-					table.insert(lines, string.format("%s: %.2f%%", rarity, pct))
+					table.insert(lines, string.format("  %s: %.2f%%", rarity, pct))
 				end
-				local msg = table.concat(lines, "\n")
-				announceRemote:FireClient(plr, msg, "SYSTEM")
+				warn(table.concat(lines, "\n"))
+				announceRemote:FireClient(plr, table.concat(lines, " | "), "SYSTEM")
+			end
+		end
+	end
+
+	-- :skillreset [target] — 스킬 데이터만 초기화 + SkillPoints 0
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "skillreset" then
+		if hasPermission(plr.Name, "skillreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				-- Skills 폴더 초기화
+				local skillsFolder = v:FindFirstChild("Skills")
+				if skillsFolder then
+					for _, sv in ipairs(skillsFolder:GetChildren()) do
+						if sv:IsA("IntValue") then sv.Value = 0 end
+					end
+				end
+				-- SkillPoints 초기화
+				local sp = v:FindFirstChild("SkillPoints")
+				if sp then sp.Value = 0 end
+				-- ProfileService 데이터 반영
+				local data = LeaderstatsDataManager:GetData(v)
+				if data then
+					data.Skills = {}
+					data.SkillPoints = 0
+				end
+				announceRemote:FireClient(plr, "Skill reset: " .. v.Name, "SYSTEM")
 			end
 		end
 	end
@@ -514,7 +596,11 @@ local function command(plr, chat)
 					data.FishTraps = {}
 					data.Playtime = 0
 					data.Donations = 0
+					data.Skills = {}
+					data.SkillPoints = 0
 					LeaderstatsDataManager:UpdateData(v, "Coins", 2000)
+					LeaderstatsDataManager:UpdateData(v, "Skills", {})
+					LeaderstatsDataManager:UpdateData(v, "SkillPoints", 0)
 				end
 				local itemData = ItemSaveDataManager:GetData(v)
 				if itemData then
@@ -584,6 +670,58 @@ local function command(plr, chat)
 		end
 	end
 
+	-- :rodreset [target] — reset rods to FishingRod only (VoidRod kept)
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "rodreset" then
+		if hasPermission(plr.Name, "rodreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local data = LeaderstatsDataManager:GetData(v)
+				local hadVoidRod = false
+				if data and data.Rods then
+					hadVoidRod = data.Rods["VoidRod"] == true
+					data.Rods = { FishingRod = true, VoidRod = hadVoidRod }
+					data.CurrentRod = "FishingRod"
+					LeaderstatsDataManager:UpdateData(v, "Rods", data.Rods)
+					LeaderstatsDataManager:UpdateData(v, "CurrentRod", "FishingRod")
+				end
+				local leaderstats = v:FindFirstChild("leaderstats")
+				if leaderstats then
+					local rodsFolder = leaderstats:FindFirstChild("Rods")
+					if rodsFolder then
+						for _, rod in ipairs(rodsFolder:GetChildren()) do
+							if rod:IsA("BoolValue") then
+								if rod.Name == "FishingRod" then
+									rod.Value = true
+								elseif rod.Name == "VoidRod" then
+									-- keep as-is
+								else
+									rod.Value = false
+								end
+							end
+						end
+					end
+					local currentRod = leaderstats:FindFirstChild("CurrentRod")
+					if currentRod then currentRod.Value = "FishingRod" end
+				end
+				-- Remove all rods from backpack/character except VoidRod
+				for _, container in ipairs({ v:FindFirstChild("Backpack"), v.Character }) do
+					if container then
+						for _, tool in ipairs(container:GetChildren()) do
+							if tool:IsA("Tool") and tool.Name ~= "VoidRod" then
+								if RodDataModule.Rods[tool.Name] or tool.Name == "FriendRod" then
+									tool:Destroy()
+								end
+							end
+						end
+					end
+				end
+				announceRemote:FireClient(v, "Your rods have been reset to FishingRod.", "SYSTEM")
+			end
+		end
+	end
+
 	-- :indexreset [target] — reset fish discovery catalog
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "indexreset" then
 		if hasPermission(plr.Name, "indexreset") then
@@ -606,6 +744,102 @@ local function command(plr, chat)
 					end
 				end
 				announceRemote:FireClient(v, "Your fish catalog has been reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :tutorialreset [target] — reset tutorial flag so tutorial plays again
+	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "tutorialreset" then
+		if hasPermission(plr.Name, "tutorialreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local isTutorialed = v:FindFirstChild("IsTutorialed")
+				if isTutorialed then isTutorialed.Value = false end
+				local data = LeaderstatsDataManager:GetData(v)
+				if data then
+					LeaderstatsDataManager:UpdateData(v, "IsTutorialed", false)
+				end
+				announceRemote:FireClient(v, "Your tutorial has been reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :questreset [target] — wipe all quest data (active + completed + sequential index)
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "questreset" then
+		if hasPermission(plr.Name, "questreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local QuestDataManager = require(ServerScriptService:WaitForChild("QuestSaver"):WaitForChild("DataManager"))
+			for _, v in pairs(foundPlayers) do
+				local data = QuestDataManager:GetData(v)
+				if data then
+					data.Quests = { ActiveQuests = {}, CompletedQuests = {} }
+					data.SequentialQuestIndex = 0
+					data.LastQuestDate = ""
+					QuestDataManager:UpdateData(v, "Quests", data.Quests)
+					QuestDataManager:UpdateData(v, "SequentialQuestIndex", 0)
+					QuestDataManager:UpdateData(v, "LastQuestDate", "")
+				end
+				local ls = v:FindFirstChild("leaderstats")
+				local quests = ls and ls:FindFirstChild("Quests")
+				if quests then
+					local aq = quests:FindFirstChild("ActiveQuests")
+					local cq = quests:FindFirstChild("CompletedQuests")
+					if aq then for _, c in pairs(aq:GetChildren()) do c:Destroy() end end
+					if cq then for _, c in pairs(cq:GetChildren()) do c:Destroy() end end
+				end
+				announceRemote:FireClient(v, "Quest data reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :dailyquestreset [target] — reset daily quest so a new one is assigned
+	if chat:lower():sub(1, #Prefix + 15) == Prefix .. "dailyquestreset" then
+		if hasPermission(plr.Name, "dailyquestreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local QuestDataManager = require(ServerScriptService:WaitForChild("QuestSaver"):WaitForChild("DataManager"))
+			for _, v in pairs(foundPlayers) do
+				local data = QuestDataManager:GetData(v)
+				if data then
+					data.LastQuestDate = ""
+					QuestDataManager:UpdateData(v, "LastQuestDate", "")
+					if data.Quests and data.Quests.ActiveQuests then
+						data.Quests.ActiveQuests["daily_random_quest"] = nil
+						data.Quests.ActiveQuests["daily_playtime_15min"] = nil
+						QuestDataManager:UpdateData(v, "Quests", data.Quests)
+					end
+				end
+				local ls = v:FindFirstChild("leaderstats")
+				local quests = ls and ls:FindFirstChild("Quests")
+				local aq = quests and quests:FindFirstChild("ActiveQuests")
+				if aq then
+					local dq = aq:FindFirstChild("daily_random_quest") or aq:FindFirstChild("daily_playtime_15min")
+					if dq then dq:Destroy() end
+				end
+				announceRemote:FireClient(v, "Daily quest reset.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :updatelogreset [target] — reset SeenUpdateLog so update log shows again
+	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "updatelogreset" then
+		if hasPermission(plr.Name, "updatelogreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local seenFlag = v:FindFirstChild("SeenUpdateLog")
+				if seenFlag then seenFlag.Value = false end
+				local data = LeaderstatsDataManager:GetData(v)
+				if data then
+					LeaderstatsDataManager:UpdateData(v, "SeenUpdateLog", false)
+				end
+				announceRemote:FireClient(v, "Your update log has been reset.", "SYSTEM")
 			end
 		end
 	end

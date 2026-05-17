@@ -1,108 +1,95 @@
--- ServerScript (Place in ServerScriptService)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Create RemoteFunction
 local getFriendsCountRemote = Instance.new("RemoteFunction")
 getFriendsCountRemote.Name = "GetFriendsCountRemote"
 getFriendsCountRemote.Parent = ReplicatedStorage
 
--- Rate limiting system
+-- Cache: userId → Set of friend userIds
+local friendCache = {}
+
+local function loadFriendCache(player)
+	local userId = player.UserId
+	local friendSet = {}
+
+	local ok, pages = pcall(function()
+		return Players:GetFriendsAsync(userId)
+	end)
+
+	if not ok then
+		warn("GetFriendsAsync failed for", player.Name, pages)
+		friendCache[userId] = friendSet
+		return
+	end
+
+	local safeRead = true
+	while safeRead do
+		local pageOk, items = pcall(function()
+			return pages:GetCurrentPage()
+		end)
+		if not pageOk then break end
+		for _, item in ipairs(items) do
+			friendSet[item.Id] = true
+		end
+		if pages.IsFinished then break end
+		local advOk = pcall(function() pages:AdvanceToNextPageAsync() end)
+		if not advOk then break end
+	end
+
+	friendCache[userId] = friendSet
+end
+
+Players.PlayerAdded:Connect(function(player)
+	task.spawn(function()
+		loadFriendCache(player)
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	friendCache[player.UserId] = nil
+end)
+
+-- Preload for players already in game (server script start timing)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(function()
+		loadFriendCache(player)
+	end)
+end
+
 local playerCooldowns = {}
-local COOLDOWN_TIME = 3  -- 3 second cooldown
-local MAX_REQUESTS_PER_MINUTE = 20  -- Max 20 requests per minute
-local playerRequestCounts = {}
+local COOLDOWN_TIME = 5
 
--- Count online friends function
-local function getFriendsOnlineCount(player)
-	local friendsCount = 0
+getFriendsCountRemote.OnServerInvoke = function(player)
+	local userId = player.UserId
+	local now = tick()
 
-	-- Check all players currently in the server
-	for _, otherPlayer in pairs(Players:GetPlayers()) do
-		if otherPlayer ~= player then
-			-- Check if friend
-			local success, isFriend = pcall(function()
-				return player:IsFriendsWith(otherPlayer.UserId)
-			end)
-
-			if success and isFriend then
-				friendsCount = friendsCount + 1
+	if playerCooldowns[userId] and now - playerCooldowns[userId] < COOLDOWN_TIME then
+		-- Return cached count without recomputing
+		local cache = friendCache[userId]
+		if not cache then return 0 end
+		local count = 0
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player and cache[other.UserId] then
+				count += 1
 			end
 		end
+		return count
 	end
 
-	return friendsCount
-end
+	playerCooldowns[userId] = now
 
--- Rate limit check function
-local function isRateLimited(player)
-	local userId = player.UserId
-	local currentTime = tick()
-
-	-- Cooldown check
-	if playerCooldowns[userId] and currentTime - playerCooldowns[userId] < COOLDOWN_TIME then
-		local remainingTime = COOLDOWN_TIME - (currentTime - playerCooldowns[userId])
-		--warn(player.Name .. " is on cooldown (remaining: " .. math.ceil(remainingTime) .. "s)")
-		return true
+	local cache = friendCache[userId]
+	if not cache then
+		-- Cache not loaded yet, try loading now
+		loadFriendCache(player)
+		cache = friendCache[userId] or {}
 	end
 
-	-- Check request count per minute
-	if not playerRequestCounts[userId] then
-		playerRequestCounts[userId] = {requests = {}, count = 0}
-	end
-
-	local requests = playerRequestCounts[userId].requests
-
-	-- Remove requests older than 1 minute
-	for i = #requests, 1, -1 do
-		if currentTime - requests[i] > 60 then
-			table.remove(requests, i)
+	local count = 0
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player and cache[other.UserId] then
+			count += 1
 		end
 	end
-
-	-- Check request count
-	if #requests >= MAX_REQUESTS_PER_MINUTE then
-		warn(player.Name .. " exceeded max requests per minute (" .. #requests .. "/" .. MAX_REQUESTS_PER_MINUTE .. ")")
-		return true
-	end
-
-	return false
+	return count
 end
-
--- Record request function
-local function recordRequest(player)
-	local userId = player.UserId
-	local currentTime = tick()
-
-	playerCooldowns[userId] = currentTime
-
-	if not playerRequestCounts[userId] then
-		playerRequestCounts[userId] = {requests = {}}
-	end
-
-	table.insert(playerRequestCounts[userId].requests, currentTime)
-end
-
--- Handle client request
-getFriendsCountRemote.OnServerInvoke = function(player)
-	-- Rate limit check
-	if isRateLimited(player) then
-		return 0  -- Return 0 if limited
-	end
-
-	-- Record request
-	recordRequest(player)
-
-	-- Count friends
-	local friendsCount = getFriendsOnlineCount(player)
-	--print(player.Name .. " online friends:", friendsCount, "(bonus: " .. (friendsCount * 5) .. "%)")
-	return friendsCount
-end
-
--- Clean up data when player leaves
-Players.PlayerRemoving:Connect(function(player)
-	local userId = player.UserId
-	playerCooldowns[userId] = nil
-	playerRequestCounts[userId] = nil
-	--print(player.Name .. " data cleaned up")
-end)

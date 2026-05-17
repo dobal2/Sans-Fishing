@@ -24,8 +24,8 @@ if proximity then
 	end)
 
 	setPromptEvent.OnServerEvent:Connect(function(player, enabled, target)
-		if target == "shop_seller" then
-			proximity.Enabled = enabled
+		if target == "shop_seller" and enabled == true then
+			proximity.Enabled = true
 		end
 	end)
 end

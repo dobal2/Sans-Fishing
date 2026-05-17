@@ -1,12 +1,14 @@
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlaytimeStore = DataStoreService:GetOrderedDataStore("PlaytimeLeaderBoard")
 
 local lb          = workspace:WaitForChild("PlayTimeLeaderboard")
 local surfaceGui  = lb:WaitForChild("LeaderBoard"):WaitForChild("SurfaceGui")
 local scrollFrame = surfaceGui:WaitForChild("ScrollFrame")
 local uiList      = scrollFrame:FindFirstChildOfClass("UIListLayout")
-local yspFrame    = lb:WaitForChild("YourStatsPart"):WaitForChild("SurfaceGui"):WaitForChild("Frame")
+
+local playtimeYourStatsEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Leaderboard"):WaitForChild("PlaytimeYourStats")
 
 surfaceGui.MaxDistance = math.huge
 
@@ -28,7 +30,7 @@ loadingFrame.BackgroundTransparency = 1
 local loadingLabel = Instance.new("TextLabel", loadingFrame)
 loadingLabel.Size = UDim2.fromScale(1, 1)
 loadingLabel.BackgroundTransparency = 1
-loadingLabel.Text = "로딩중..."
+loadingLabel.Text = "Loading..."
 loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 loadingLabel.TextScaled = true
 loadingLabel.Font = Enum.Font.GothamBold
@@ -74,16 +76,7 @@ local function updateYourStats(player, entries)
 	for i, e in ipairs(entries) do
 		if e.UserId == player.UserId then rank = i; playtime = e.Playtime; break end
 	end
-	local pos  = yspFrame:FindFirstChild("PositionText")
-	local img  = yspFrame:FindFirstChild("ImageLabel")
-	local disp = yspFrame:FindFirstChild("DisplayName")
-	local amt  = yspFrame:FindFirstChild("Amount")
-	local user = yspFrame:FindFirstChild("UserName")
-	if pos  then pos.Text  = rank and ("#" .. rank) or "-" end
-	if img  then img.Image = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=150&h=150" end
-	if disp then disp.Text = player.DisplayName end
-	if amt  then amt.Text  = formatTime(playtime) end
-	if user then user.Text = "@" .. player.Name end
+	playtimeYourStatsEvent:FireClient(player, rank, playtime, player.UserId, player.DisplayName, player.Name)
 end
 
 local function updateBoard()
@@ -96,6 +89,15 @@ local function updateBoard()
 		return t
 	end)
 	if not ok or not raw then return end
+
+	-- Pre-fetch all names in parallel
+	local threads = {}
+	for _, entry in ipairs(raw) do
+		if not nameCache[entry.UserId] then
+			table.insert(threads, task.spawn(function() getName(entry.UserId) end))
+		end
+	end
+	for _ in ipairs(threads) do task.wait() end
 
 	local filtered = {}
 	for _, entry in ipairs(raw) do

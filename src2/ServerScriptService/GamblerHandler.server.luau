@@ -4,6 +4,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AnalyticsService = game:GetService("AnalyticsService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 local gambleChoiceEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("GambleChoiceEvent")
 local enablePromptEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SetPromptEvent")
@@ -259,6 +262,7 @@ local function performGamble(player, tool)
 		return
 	end
 	coins.Value -= GAMBLE_COST
+	datamanager:UpdateData(player, "Coins", coins.Value)
 	pcall(function()
 		AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Sink, "Coins",
 			GAMBLE_COST, coins.Value, "Gamble", "GambleFish")
@@ -302,8 +306,8 @@ end
 task.spawn(wireGambler)
 
 enablePromptEvent.OnServerEvent:Connect(function(player, enabled, target)
-	if target == "gambler" and gamblerPrompt then
-		gamblerPrompt.Enabled = enabled
+	if target == "gambler" and gamblerPrompt and enabled == true then
+		gamblerPrompt.Enabled = true
 	end
 end)
 

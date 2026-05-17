@@ -5,12 +5,17 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AnalyticsService = game:GetService("AnalyticsService")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local SkillServer = require(script.Parent.SkillHelper)
+local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 local DOUBLE_SELL_GAMEPASS_ID = 1293430515
 local GROUP_ID = 9744474
 local SELL_COOLDOWN = 1.0
 
 local sellCooldowns = {}
+local doubleGamepassCache = {}
 
 local soldNotificationEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
 local sellGuiEvent          = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SellGuiEvent")
@@ -60,6 +65,8 @@ local function calculateFinalValue(baseValue, player, hasDoubleGamepass)
 		additionalBonus += baseValue * (friendsCount * 0.05)
 	end
 
+	additionalBonus += baseValue * SkillServer.GetSellBonus(player)
+
 	local finalValue
 	if hasDoubleGamepass then
 		finalValue = baseValue * 2 + additionalBonus
@@ -92,6 +99,7 @@ task.spawn(wireSellShop)
 
 Players.PlayerRemoving:Connect(function(player)
 	sellCooldowns[player] = nil
+	doubleGamepassCache[player.UserId] = nil
 end)
 
 sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
@@ -104,15 +112,20 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local coins = leaderstats and leaderstats:FindFirstChild("Coins")
 
-	if not character or not coins then return end
+	if not character or not coins or not backpack then return end
 
 	local totalEarned = 0
 	local itemSold = false
 	local hasDoubleGamepass = false
 
-	pcall(function()
-		hasDoubleGamepass = MarketplaceService:UserOwnsGamePassAsync(player.UserId, DOUBLE_SELL_GAMEPASS_ID)
-	end)
+	if doubleGamepassCache[player.UserId] ~= nil then
+		hasDoubleGamepass = doubleGamepassCache[player.UserId]
+	else
+		pcall(function()
+			hasDoubleGamepass = MarketplaceService:UserOwnsGamePassAsync(player.UserId, DOUBLE_SELL_GAMEPASS_ID)
+			doubleGamepassCache[player.UserId] = hasDoubleGamepass
+		end)
+	end
 
 	if choice == "Option1" then
 		local tools = {}
@@ -154,6 +167,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 		if itemSold then
 			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
 			coins.Value += totalEarned
+			datamanager:UpdateData(player, "Coins", coins.Value)
 			soldNotificationEvent:FireClient(player, totalEarned)
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
@@ -181,6 +195,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 		elseif totalEarned > 0 then
 			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
 			coins.Value += totalEarned
+			datamanager:UpdateData(player, "Coins", coins.Value)
 			soldNotificationEvent:FireClient(player, totalEarned)
 			pcall(function()
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
