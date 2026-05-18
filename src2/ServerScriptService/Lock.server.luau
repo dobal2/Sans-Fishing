@@ -1,64 +1,53 @@
--- Server script (place in ServerScriptService)
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Players = game:GetService("Players")
 
--- Create RemoteEvent (run once)
 local fishLockEvent = Instance.new("RemoteEvent")
 fishLockEvent.Name = "FishLockEvent"
 fishLockEvent.Parent = ReplicatedStorage
 
--- Request rate limiting to prevent spam/exploits
 local playerCooldowns = {}
-local COOLDOWN_TIME = 0.1 -- 0.1 second cooldown
+local COOLDOWN_TIME = 0.1
 
--- Handle fish lock state change requests from client (with security)
-fishLockEvent.OnServerEvent:Connect(function(player, tool, isLocked)
-	-- Cooldown check (spam prevention)
-	local currentTime = tick()
-	local lastRequest = playerCooldowns[player.UserId] or 0
-
-	if currentTime - lastRequest < COOLDOWN_TIME then
-		warn(player.Name .. " - Fish lock request too fast (spam prevention)")
-		return
-	end
-	playerCooldowns[player.UserId] = currentTime
-
-	-- Basic validation
-	if not tool or not tool:IsA("Tool") then
-		warn(player.Name .. " - Invalid tool")
-		return
-	end
-
-	if typeof(isLocked) ~= "boolean" then
-		warn(player.Name .. " - Invalid lock state")
-		return
-	end
-
-	-- Ownership validation (exploit prevention)
-	if tool.Parent ~= player.Character and tool.Parent ~= player.Backpack then
-		warn(player.Name .. " - Attempted to lock unowned tool: " .. tool.Name)
-		return
-	end
-
-	-- Verify it is a fish
-	if not tool:FindFirstChild("FishValue") then
-		warn(player.Name .. " - Attempted to lock non-fish tool: " .. tool.Name)
-		return
-	end
-
-	-- All checks passed - create/update BoolValue on server
-	local lockValue = tool:FindFirstChild("FishLock")
-	if not lockValue then
-		lockValue = Instance.new("BoolValue")
-		lockValue.Name = "FishLock"
-		lockValue.Parent = tool
-	end
-
-	lockValue.Value = isLocked
+-- FishLockBindable: tells ItemSave to update lock state in PlayerFishData
+local FishLockBindable = nil
+task.spawn(function()
+	FishLockBindable = ServerScriptService:WaitForChild("FishLockBindable", 30)
 end)
 
--- Clean up cooldown data when player leaves
+-- client fires: (tool_or_nil, isLocked, fishIndex)
+-- tool may be nil when the fish is not currently equipped (data-only mode)
+fishLockEvent.OnServerEvent:Connect(function(player, toolOrIndex, isLocked, fishIndex)
+	local currentTime = tick()
+	if (playerCooldowns[player.UserId] or 0) + COOLDOWN_TIME > currentTime then return end
+	playerCooldowns[player.UserId] = currentTime
+
+	if typeof(isLocked) ~= "boolean" then return end
+
+	-- If a real Tool instance was passed and it is owned by this player, update BoolValue on it too
+	if typeof(toolOrIndex) == "Instance" and toolOrIndex:IsA("Tool") then
+		local tool = toolOrIndex
+		if tool.Parent ~= player.Character and tool.Parent ~= player.Backpack then
+			warn(player.Name .. " - Attempted to lock unowned tool")
+			return
+		end
+		if not tool:FindFirstChild("FishValue") then return end
+
+		local lockValue = tool:FindFirstChild("FishLock")
+		if not lockValue then
+			lockValue = Instance.new("BoolValue")
+			lockValue.Name = "FishLock"
+			lockValue.Parent = tool
+		end
+		lockValue.Value = isLocked
+	end
+
+	-- Always update PlayerFishData via FishLockBindable (index-based)
+	if FishLockBindable and type(fishIndex) == "number" then
+		FishLockBindable:Fire(player, fishIndex, isLocked)
+	end
+end)
+
 Players.PlayerRemoving:Connect(function(player)
 	playerCooldowns[player.UserId] = nil
 end)

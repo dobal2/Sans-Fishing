@@ -48,6 +48,11 @@ local EquipFishRequestRemote = nil
 local UnequipFishRequestRemote = nil
 local GetInventoryDataRemote = nil
 
+-- BindableEvent for fish lock toggle (called from client via FishLockEvent server handler)
+local FishLockBindable = Instance.new("BindableEvent")
+FishLockBindable.Name = "FishLockBindable"
+FishLockBindable.Parent = game:GetService("ServerScriptService")
+
 task.spawn(function()
 	Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
 	FishDataAddedRemote = Misc:WaitForChild("FishDataAdded")
@@ -60,6 +65,14 @@ task.spawn(function()
 	GetInventoryDataRemote.OnServerInvoke = function(player)
 		return PlayerFishData[player] or {}
 	end
+
+	-- FishLock toggle from client (index-based, no Tool reference needed)
+	FishLockBindable.Event:Connect(function(player, index, lockState)
+		local fishList = PlayerFishData[player]
+		if not fishList or not fishList[index] then return end
+		fishList[index].isLocked = lockState
+		scheduleSave(player)
+	end)
 
 	EquipFishRequestRemote.OnServerEvent:Connect(function(player, index)
 		if type(index) ~= "number" then return end
@@ -702,6 +715,49 @@ Players.PlayerRemoving:Connect(function(player)
 	PlayerFishData[player]       = nil
 	PlayerEquippedIndex[player]  = nil
 	PlayerEquippedTool[player]   = nil
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- FishGiveBindable handler
+-- Called by GiveFish.server.luau to transfer equipped fish from sender to receiver.
+-- Returns true on success, false on failure.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local FishGiveBindable = nil
+task.spawn(function()
+	FishGiveBindable = game:GetService("ServerScriptService"):WaitForChild("FishGiveBindable", 30)
+	if not FishGiveBindable then return end
+
+	FishGiveBindable.OnInvoke = function(fromPlayer, toPlayer, tool)
+		local equippedIdx = PlayerEquippedIndex[fromPlayer]
+		if not equippedIdx then return false end
+
+		local fromList = PlayerFishData[fromPlayer]
+		if not fromList or not fromList[equippedIdx] then return false end
+		local fishItem = fromList[equippedIdx]
+		if fishItem.isLocked then return false end
+
+		-- Remove from sender
+		table.remove(fromList, equippedIdx)
+		local prevTool = PlayerEquippedTool[fromPlayer]
+		if prevTool and prevTool.Parent then prevTool:Destroy() end
+		PlayerEquippedTool[fromPlayer]  = nil
+		PlayerEquippedIndex[fromPlayer] = nil
+		if InventoryDataSyncRemote then
+			InventoryDataSyncRemote:FireClient(fromPlayer, fromList)
+		end
+		scheduleSave(fromPlayer)
+
+		-- Add to receiver
+		if not PlayerFishData[toPlayer] then return false end
+		table.insert(PlayerFishData[toPlayer], fishItem)
+		if FishDataAddedRemote then
+			FishDataAddedRemote:FireClient(toPlayer, fishItem, #PlayerFishData[toPlayer])
+		end
+		scheduleSave(toPlayer)
+
+		return true
+	end
 end)
 
 -- ─────────────────────────────────────────────────────────────────────────────

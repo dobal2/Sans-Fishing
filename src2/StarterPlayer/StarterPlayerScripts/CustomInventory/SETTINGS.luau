@@ -270,12 +270,12 @@ local function rebuildFishInventory()
 
 		-- Right-click to toggle lock
 		frame.MouseButton2Click:Connect(function()
-			module.FishList[i].isLocked = not module.FishList[i].isLocked
+			local fishItem = module.FishList[i]
+			if not fishItem then return end
+			fishItem.isLocked = not fishItem.isLocked
+			-- fire server: (nil tool, isLocked, fishIndex)
 			pcall(function()
-				-- We need the equipped Tool reference for the legacy FishLockEvent.
-				-- If this fish is equipped, use the tool; otherwise fire with a dummy signal.
-				-- The server-side lock state is updated via a separate path if needed.
-				-- For now, update local state only and rely on save to persist.
+				fishLockRemote:FireServer(nil, fishItem.isLocked, i)
 			end)
 			rebuildFishInventory()
 		end)
@@ -321,7 +321,12 @@ function module:addFishItem(fishItem, index)
 		end)
 
 		frame.MouseButton2Click:Connect(function()
-			self.FishList[index].isLocked = not self.FishList[index].isLocked
+			local fishItem = self.FishList[index]
+			if not fishItem then return end
+			fishItem.isLocked = not fishItem.isLocked
+			pcall(function()
+				fishLockRemote:FireServer(nil, fishItem.isLocked, index)
+			end)
 			rebuildFishInventory()
 		end)
 
@@ -389,7 +394,7 @@ function module:searchTool()
 	-- Non-fish tool objects
 	for uniqueId, toolObject in pairs(self.OBJECTS.Inventory) do
 		local toolName = toolObject.Name:lower():gsub("%s+", "")
-		frame_ref = toolObject.Frame
+		local frame_ref = toolObject.Frame
 		if frame_ref then
 			frame_ref.Visible = toolName:find(searchText) ~= nil
 		end

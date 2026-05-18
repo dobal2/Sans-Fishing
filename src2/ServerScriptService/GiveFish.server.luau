@@ -1,28 +1,24 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
--- Create remote event for fish receiving
 local FishReceiveNoticeEvent = Instance.new("RemoteEvent")
 FishReceiveNoticeEvent.Name = "FishReceiveNoticeEvent"
 FishReceiveNoticeEvent.Parent = ReplicatedStorage
 
--- Check if tool is a fish
+-- FishGiveBindable: ItemSave handles the actual data transfer
+local FishGiveBindable = Instance.new("BindableFunction")
+FishGiveBindable.Name = "FishGiveBindable"
+FishGiveBindable.Parent = ServerScriptService
+
 local function isFish(tool)
-	if not tool or not tool:IsA("Tool") then
-		return false
-	end
+	if not tool or not tool:IsA("Tool") then return false end
 	local fishValue = tool:FindFirstChild("FishValue")
-	if not fishValue then
-		return false
-	end
-	-- Safely check IntValue with pcall
-	local success, isIntValue = pcall(function()
-		return fishValue:IsA("IntValue")
-	end)
-	return success and isIntValue
+	if not fishValue then return false end
+	local ok, isInt = pcall(function() return fishValue:IsA("IntValue") end)
+	return ok and isInt
 end
 
--- Attach prompt to character
 local function addPromptToCharacter(char, owner)
 	local hrp = char:WaitForChild("HumanoidRootPart", 5)
 	if not hrp then return end
@@ -38,36 +34,30 @@ local function addPromptToCharacter(char, owner)
 	prompt.Parent = hrp
 
 	prompt.Triggered:Connect(function(fromPlayer)
-		if fromPlayer == owner then return end -- Ignore self
+		if fromPlayer == owner then return end
 
 		local senderChar = fromPlayer.Character
 		if not senderChar then return end
 
-		-- Check if held tool is a fish and belongs to sender
 		local tool = senderChar:FindFirstChildWhichIsA("Tool")
 		if not isFish(tool) then
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "You need to hold a fish to give!")
 			return
 		end
-		-- Ownership: tool must be in sender's character (not cloned/injected)
 		if tool.Parent ~= senderChar then
 			warn("Fish ownership mismatch:", fromPlayer.Name)
 			return
 		end
 
-		local receiverBackpack = owner:FindFirstChild("Backpack")
-		if receiverBackpack then
-			-- Get fish info
-			local fishName = tool.Name or "Unknown Fish"
+		-- Delegate to ItemSave: move equipped fish data from sender to receiver
+		local ok, success = pcall(function()
+			return FishGiveBindable:Invoke(fromPlayer, owner, tool)
+		end)
 
-			-- Transfer fish
-			tool.Parent = receiverBackpack
-
-			-- Success notifications
+		if ok and success then
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "Fish given to " .. owner.Name .. "!")
 			FishReceiveNoticeEvent:FireClient(owner, "Received fish from " .. fromPlayer.Name .. "!")
 		else
-			-- Backpack not found
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "Failed to give fish to " .. owner.Name)
 		end
 	end)
