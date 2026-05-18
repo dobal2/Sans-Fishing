@@ -1,6 +1,14 @@
+-- CustomInventory/init.client.luau
+-- Fish inventory is now server-side data. This script listens to InventoryDataSync
+-- and FishDataAdded to maintain a local copy, then renders slots from that data.
+-- Clicking a fish slot sends EquipFishRequest/UnequipFishRequest to the server.
+-- Rods and bubble tools still appear in Backpack as Tools; those are handled
+-- by the original newTool() path (unchanged).
+
 local StarterGui = game:GetService("StarterGui")
 local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = game:GetService("Players").LocalPlayer
 local backpack = player:WaitForChild("Backpack")
@@ -19,126 +27,26 @@ local inventoryHandler = require(script.SETTINGS)
 local lastClickTime = {}
 local doubleClickDelay = 0.3
 
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Fish count display (based on server data table)
+-- ──────────────────────────────────────────────────────────────────────────────
+
 local function updateFishCount()
-	local fishCount = 0
-
-	for _, tool in pairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-			local amount = tool:GetAttribute("amount") or 1
-			fishCount = fishCount + amount
-		end
-	end
-
-	if player.Character then
-		for _, tool in pairs(player.Character:GetChildren()) do
-			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-				local amount = tool:GetAttribute("amount") or 1
-				fishCount = fishCount + amount
-			end
-		end
-	end
-
-	fishCountText.Text = "Fish Count: " .. fishCount
+	local count = inventoryHandler:getFishCount()
+	fishCountText.Text = "Fish Count: " .. count
 end
 
-local function connectFishCountUpdates()
-	player.Backpack.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-			task.wait(0.1)
-			updateFishCount()
-		end
-	end)
-
-	player.Backpack.ChildRemoved:Connect(function(child)
-		if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-			task.wait(0.1)
-			updateFishCount()
-		end
-	end)
-
-	player.CharacterAdded:Connect(function(character)
-		task.wait(1)
-		updateFishCount()
-
-		character.ChildAdded:Connect(function(child)
-			if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-				task.wait(0.1)
-				updateFishCount()
-			end
-		end)
-
-		character.ChildRemoved:Connect(function(child)
-			if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-				task.wait(0.1)
-				updateFishCount()
-			end
-		end)
-	end)
-
-	if player.Character then
-		player.Character.ChildAdded:Connect(function(child)
-			if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-				task.wait(0.1)
-				updateFishCount()
-			end
-		end)
-
-		player.Character.ChildRemoved:Connect(function(child)
-			if child:IsA("Tool") and child:FindFirstChild("FishValue") then
-				task.wait(0.1)
-				updateFishCount()
-			end
-		end)
-	end
-end
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Lock UI sync
+-- ──────────────────────────────────────────────────────────────────────────────
 
 local function updateAllFishLockUI()
-	for index = 1, inventoryHandler.slotAmount do
-		local toolObject = inventoryHandler.OBJECTS.HotBar[index]
-		if toolObject and toolObject.Tool then
-			local tool = toolObject.Tool
-			local fishValue = tool:FindFirstChild("FishValue")
-			local isLocked = tool:GetAttribute("fishlock") or false
-
-			if fishValue then
-				local frame = hotBar:FindFirstChild(tostring(index))
-				if frame and frame:FindFirstChild("lock") then
-					frame.lock.Visible = isLocked
-				end
-			end
-		end
-	end
-
-	if inventoryHandler.OBJECTS.Inventory then
-		for index = 1, 100 do
-			local toolObject = inventoryHandler.OBJECTS.Inventory[index]
-			if toolObject and toolObject.Tool then
-				local tool = toolObject.Tool
-				local fishValue = tool:FindFirstChild("FishValue")
-				local isLocked = tool:GetAttribute("fishlock") or false
-
-				if fishValue then
-					local frame = Inventory.Frame:FindFirstChild(tostring(index))
-					if frame and frame:FindFirstChild("lock") then
-						frame.lock.Visible = isLocked
-					end
-				end
-			end
-		end
-	end
+	inventoryHandler:refreshAllLockUI(hotBar, Inventory)
 end
 
-local function toggleFishLock(tool)
-	if not tool:IsA("Tool") then return end
-
-	local fishValue = tool:FindFirstChild("FishValue")
-	if not fishValue then return end
-
-	local currentLock = tool:GetAttribute("fishlock") or false
-	tool:SetAttribute("fishlock", not currentLock)
-
-	updateAllFishLockUI()
-end
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Slot display helpers
+-- ──────────────────────────────────────────────────────────────────────────────
 
 local function showSlots()
 	for index = 1, inventoryHandler.slotAmount do
@@ -184,7 +92,6 @@ local function toggleInventory()
 		return
 	end
 
-	-- 다른 큰 UI가 열려있으면 닫기
 	local active = player.PlayerGui:GetAttribute("ActiveLargeUI")
 	if active then
 		player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
@@ -201,7 +108,6 @@ local function toggleInventory()
 	end)
 end
 
--- 다른 UI가 열리면 인벤토리 자동 닫기
 player.PlayerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
 	if player.PlayerGui:GetAttribute("ActiveLargeUI") ~= "Inventory" and Inventory.Visible then
 		Inventory.Visible = false
@@ -215,19 +121,6 @@ end)
 local function manageInventory(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
 		toggleInventory()
-	elseif not inputState then
-		for index = inventoryHandler.slotAmount + 1, inventoryHandler.slotAmount do
-			local toolObject = inventoryHandler.OBJECTS.HotBar[index]
-			local toolFrame = hotBar:FindFirstChild(index)
-			if toolObject then
-				local tool = toolObject.Tool
-				toolObject:DisconnectAll()
-				tool:SetAttribute("toolAdded", nil)
-				inventoryHandler:newTool(tool)
-			elseif toolFrame then
-				toolFrame:Destroy()
-			end
-		end
 	end
 end
 
@@ -243,14 +136,15 @@ local function searchTool()
 	inventoryHandler:searchTool()
 end
 
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Rod / bubble tools in Backpack (unchanged path)
+-- ──────────────────────────────────────────────────────────────────────────────
+
 local function newTool(tool)
 	if tool:IsA("Tool") then
+		-- Only handle non-fish tools via the old path (rods, bubbles)
+		if tool:FindFirstChild("FishValue") then return end
 		inventoryHandler:newTool(tool)
-		task.spawn(function()
-			task.wait(0.1)
-			updateAllFishLockUI()
-			updateFishCount()
-		end)
 	end
 end
 
@@ -258,38 +152,12 @@ local function reloadInventory(character)
 	inventoryHandler.currentlyEquipped = nil
 	backpack = player:WaitForChild("Backpack")
 
-	-- 이후 추가되는 툴은 바로 처리 (저장 레이아웃 무관)
 	backpack.ChildAdded:Connect(newTool)
 	character.ChildAdded:Connect(newTool)
 
 	task.spawn(function()
-		-- 저장된 핫바 레이아웃 비동기 로드 (첫 캐릭터 로드 시 1회)
-		local nameToSlot = {}
-		if not _G.hotBarLayoutLoaded then
-			_G.hotBarLayoutLoaded = true
-			local ok, result = pcall(function()
-				local RS = game:GetService("ReplicatedStorage")
-				local getRemote = RS:WaitForChild("Remotes", 10)
-					and RS.Remotes:WaitForChild("Misc", 10)
-					and RS.Remotes.Misc:WaitForChild("GetHotBarLayout", 10)
-				if not getRemote then return {} end
-				return getRemote:InvokeServer()
-			end)
-			if ok and typeof(result) == "table" then
-				for slot, toolName in pairs(result) do
-					nameToSlot[toolName] = slot
-				end
-			end
-		end
-
-		-- 이미 백팩에 있는 툴 배치 (저장 슬롯 있으면 적용, 없으면 빈 슬롯에 그냥 넣음)
 		for _, tool in pairs(backpack:GetChildren()) do
-			if tool:IsA("Tool") and not tool:GetAttribute("toolAdded") then
-				local slot = nameToSlot[tool.Name]
-				if slot then
-					tool:SetAttribute("position", slot)
-					nameToSlot[tool.Name] = nil
-				end
+			if tool:IsA("Tool") and not tool:GetAttribute("toolAdded") and not tool:FindFirstChild("FishValue") then
 				newTool(tool)
 			end
 		end
@@ -299,46 +167,56 @@ local function reloadInventory(character)
 	end)
 end
 
-local function getToolEquipped()
-	local character = player.Character
-	return character and character:FindFirstChildOfClass("Tool")
-end
-
-_G.toggleFishLock = toggleFishLock
-_G.lastClickTime = lastClickTime
-_G.doubleClickDelay = doubleClickDelay
-
-connectFishCountUpdates()
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Server data sync listeners
+-- ──────────────────────────────────────────────────────────────────────────────
 
 task.spawn(function()
-	while true do
-		task.wait(0.5)
+	local Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
 
-		local currentBackpackTools = {}
-		for _, tool in pairs(player.Backpack:GetChildren()) do
-			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-				table.insert(currentBackpackTools, tool.Name)
-			end
-		end
+	-- Full inventory sync (on join or after sell)
+	local inventoryDataSync = Misc:WaitForChild("InventoryDataSync")
+	inventoryDataSync.OnClientEvent:Connect(function(fishList)
+		inventoryHandler:syncInventory(fishList)
+		updateFishCount()
+		task.spawn(function()
+			task.wait(0.1)
+			updateAllFishLockUI()
+		end)
+	end)
 
-		if player.Character then
-			for _, tool in pairs(player.Character:GetChildren()) do
-				if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-					table.insert(currentBackpackTools, tool.Name)
-				end
-			end
-		end
+	-- New fish added (after successful catch)
+	local fishDataAdded = Misc:WaitForChild("FishDataAdded")
+	fishDataAdded.OnClientEvent:Connect(function(fishItem, index)
+		inventoryHandler:addFishItem(fishItem, index)
+		updateFishCount()
+	end)
 
-		if #currentBackpackTools ~= (_G.lastToolCount or 0) then
-			_G.lastToolCount = #currentBackpackTools
-			updateFishCount()
-		end
+	-- Request initial data in case sync fired before listeners were ready
+	local getInventoryData = Misc:WaitForChild("GetInventoryData")
+	local ok, result = pcall(function()
+		return getInventoryData:InvokeServer()
+	end)
+	if ok and result then
+		inventoryHandler:syncInventory(result)
+		updateFishCount()
 	end
 end)
 
-reloadInventory(player.Character or player.CharacterAdded:Wait())
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Global helpers
+-- ──────────────────────────────────────────────────────────────────────────────
 
+_G.lastClickTime = lastClickTime
+_G.doubleClickDelay = doubleClickDelay
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Bootstrap
+-- ──────────────────────────────────────────────────────────────────────────────
+
+reloadInventory(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(reloadInventory)
+
 Inventory.SearchBox:GetPropertyChangedSignal("Text"):Connect(searchTool)
 
 if inventoryHandler.SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR then
@@ -362,10 +240,10 @@ UserInputService.InputChanged:Connect(function(input)
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 
-		local toolEquipped = getToolEquipped()
+		local toolEquipped = character and character:FindFirstChildOfClass("Tool")
 		local toolPosition = inventoryHandler:getToolPosition(toolEquipped) or 0
 
-		for i=toolPosition + direction, direction < 0 and 1 or inventoryHandler.slotAmount, direction do
+		for i = toolPosition + direction, direction < 0 and 1 or inventoryHandler.slotAmount, direction do
 			local toolObject = inventoryHandler.OBJECTS.HotBar[i]
 			if toolObject and humanoid then
 				humanoid:EquipTool(toolObject.Tool)

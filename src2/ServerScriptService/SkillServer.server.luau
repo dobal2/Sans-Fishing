@@ -46,17 +46,17 @@ local SKILLS = {
 		effects  = { 0.15, 0.30, 0.50 },
 	},
 	-- 피싱포인트 전용
+	FishingPoint = {
+		currency = CURRENCY_FISHINGPOINT,
+		maxLevel = 1,
+		costs    = { 5 },
+		effects  = { 1 },
+	},
 	HitZoneUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 5,
 		costs    = { 10, 25, 50, 100, 200 },
 		effects  = { 0.06, 0.10, 0.15, 0.21, 0.28 },
-	},
-	InvenUp = {
-		currency = CURRENCY_FISHINGPOINT,
-		maxLevel = 4,
-		costs    = { 10, 40, 80, 200 },
-		effects  = { 10, 20, 35, 55 }, -- 추가 인벤토리 슬롯
 	},
 	WeightUp = {
 		currency = CURRENCY_FISHINGPOINT,
@@ -174,14 +174,15 @@ skillBuyEvent.OnServerEvent:Connect(function(player, skillName, targetStage)
 		return
 	end
 
-	-- HitZoneUp은 PowerUp Lv1 이상 필요
-	if skillName == "HitZoneUp" and getSkillLevel(player, "PowerUp") < 1 then
+	-- FishingPoint, HitZoneUp, WeightUp, PowerUp은 FishingPoint Lv1 이상 필요
+	if (skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp")
+		and getSkillLevel(player, "FishingPoint") < 1 then
 		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)
 		return
 	end
 
-	-- PowerUp은 InvenUp Lv1 이상 필요
-	if skillName == "PowerUp" and getSkillLevel(player, "InvenUp") < 1 then
+	-- HitZoneUp은 PowerUp Lv1 이상 필요
+	if skillName == "HitZoneUp" and getSkillLevel(player, "PowerUp") < 1 then
 		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)
 		return
 	end
@@ -194,12 +195,6 @@ skillBuyEvent.OnServerEvent:Connect(function(player, skillName, targetStage)
 
 	-- QuickBite는 AutoFish Lv1 이상 필요
 	if skillName == "QuickBite" and getSkillLevel(player, "AutoFish") < 1 then
-		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)
-		return
-	end
-
-	-- WeightUp은 InvenUp Lv1 이상 필요
-	if skillName == "WeightUp" and getSkillLevel(player, "InvenUp") < 1 then
 		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)
 		return
 	end

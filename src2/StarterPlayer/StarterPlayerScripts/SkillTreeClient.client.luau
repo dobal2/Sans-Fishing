@@ -96,14 +96,15 @@ local function refreshUI()
 			continue
 		end
 
-		-- HitZoneUp은 PowerUp Lv1 필요
-		if skillName == "HitZoneUp" and (data.levels["PowerUp"] or 0) < 1 then
+		-- HitZoneUp, WeightUp, PowerUp은 FishingPoint Lv1 필요
+		if (skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp")
+			and (data.levels["FishingPoint"] or 0) < 1 then
 			lockNode()
 			continue
 		end
 
-		-- PowerUp은 InvenUp Lv1 필요
-		if skillName == "PowerUp" and (data.levels["InvenUp"] or 0) < 1 then
+		-- HitZoneUp은 PowerUp Lv1 필요
+		if skillName == "HitZoneUp" and (data.levels["PowerUp"] or 0) < 1 then
 			lockNode()
 			continue
 		end
@@ -116,12 +117,6 @@ local function refreshUI()
 
 		-- QuickBite는 AutoFish Lv1 필요
 		if skillName == "QuickBite" and (data.levels["AutoFish"] or 0) < 1 then
-			lockNode()
-			continue
-		end
-
-		-- WeightUp은 InvenUp Lv1 필요
-		if skillName == "WeightUp" and (data.levels["InvenUp"] or 0) < 1 then
 			lockNode()
 			continue
 		end

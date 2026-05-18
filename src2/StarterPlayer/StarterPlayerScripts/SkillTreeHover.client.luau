@@ -47,12 +47,6 @@ local function getDesc(skillName, stage)
 			"Increases minigame hit zone size by 21%.",
 			"Increases minigame hit zone size by 28%.",
 		},
-		InvenUp = {
-			"Adds 10 extra inventory slots.",
-			"Adds 20 extra inventory slots.",
-			"Adds 35 extra inventory slots.",
-			"Adds 55 extra inventory slots.",
-		},
 		WeightUp = {
 			"Heavy fish chance +4%.",
 			"Heavy fish chance +10%.",
@@ -79,8 +73,9 @@ local function getDesc(skillName, stage)
 			"Earn +2 extra Fishing Points per catch.",
 			"Earn +3 extra Fishing Points per catch.",
 		},
-		Root     = {"Unlocks the skill tree."},
-		AutoFish = {"Enables the auto fishing button."},
+		Root         = {"Unlocks the skill tree."},
+		AutoFish     = {"Enables the auto fishing button."},
+		FishingPoint = {"Unlocks Fishing Point skill tree (HitZoneUp, WeightUp, PowerUp)."},
 	}
 
 	local list = descs[skillName]

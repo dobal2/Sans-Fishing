@@ -1,6 +1,9 @@
--- Full item loader excluding rods (supports Festival + Frozen fish)
-local SAVE_ON_DEATH = true
+-- ItemSave: server-side fish data store
+-- Fish items are stored as data tables in PlayerFishData (not as Tool instances in Backpack).
+-- Backpack holds at most one equipped fish Tool at a time (plus rods/bubbles).
+-- Bubble tools retain the old clone-to-Backpack behaviour unchanged.
 
+local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -12,24 +15,84 @@ local FishIceEffect = require(ReplicatedStorage:WaitForChild("Modules"):WaitForC
 local WeatherSystemModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
 local FishData = require(moduleScript)
 
--- Real-time inventory tracking table per player
-local PlayerInventoryTracker = {}
+-- BindableEvent: FishingServerModule fires this when a fish is caught
+local FishCaughtBindable = Instance.new("BindableEvent")
+FishCaughtBindable.Name = "FishCaughtBindable"
+FishCaughtBindable.Parent = ServerScriptService
 
--- Debounce batch-save state (scheduleSave defined after saveCurrentInventory)
+-- BindableFunction: SellShopHandler calls this to sell fish from data table
+-- Returns: totalBaseValue (number), itemsSoldCount (number)
+local SellFishBindable = Instance.new("BindableFunction")
+SellFishBindable.Name = "SellFishBindable"
+SellFishBindable.Parent = ServerScriptService
+
+-- Per-player tables
+local PlayerFishData = {}       -- [player] = { {name, fishName, rarity, weight, value, isLocked, isFrozen, isFestival}, ... }
+local PlayerEquippedIndex = {}  -- [player] = index or nil
+local PlayerEquippedTool = {}   -- [player] = Tool instance or nil
+
+-- Debounce batch-save
 local pendingSaveTimers = {}
 local SAVE_DEBOUNCE = 3.0
-local scheduleSave -- forward declaration
+local scheduleSave
 
--- StripSuffixes modified to handle Festival + Frozen fish
-local function StripSuffixes(name: string)
+-- Forward declarations for equip functions (defined below remote setup)
+local cloneAndEquipFish
+local unequipFish
+
+-- Remotes (populated after RemoteInit runs)
+local Misc = nil
+local FishDataAddedRemote = nil
+local InventoryDataSyncRemote = nil
+local EquipFishRequestRemote = nil
+local UnequipFishRequestRemote = nil
+local GetInventoryDataRemote = nil
+
+task.spawn(function()
+	Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
+	FishDataAddedRemote = Misc:WaitForChild("FishDataAdded")
+	InventoryDataSyncRemote = Misc:WaitForChild("InventoryDataSync")
+	EquipFishRequestRemote = Misc:WaitForChild("EquipFishRequest")
+	UnequipFishRequestRemote = Misc:WaitForChild("UnequipFishRequest")
+	GetInventoryDataRemote = Misc:WaitForChild("GetInventoryData")
+
+	-- Wire up remotes
+	GetInventoryDataRemote.OnServerInvoke = function(player)
+		return PlayerFishData[player] or {}
+	end
+
+	EquipFishRequestRemote.OnServerEvent:Connect(function(player, index)
+		if type(index) ~= "number" then return end
+		cloneAndEquipFish(player, index)
+	end)
+
+	UnequipFishRequestRemote.OnServerEvent:Connect(function(player)
+		unequipFish(player)
+	end)
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Utility helpers
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local function IsRod(itemName)
+	itemName = itemName:lower()
+	return itemName:match("rods?$") ~= nil or itemName:match("trap$") ~= nil or itemName:match("bubble$") ~= nil
+end
+
+local ChangedItemName = require(script.ChangedItemName)
+local OriginalItemName = {}
+for i, v in pairs(ChangedItemName) do
+	OriginalItemName[v] = i
+end
+
+local function StripSuffixes(name)
 	local originalName = name
 	local hasFrozen = name:find("^Frozen ") ~= nil
 	local hasFestival = name:find("^Festival ") ~= nil
 	local hasBoth = name:find("^Frozen Festival ") ~= nil or name:find("^Festival Frozen ") ~= nil
 
-	-- Handle prefixes in order
 	if hasBoth then
-		-- Remove both Frozen Festival or Festival Frozen
 		name = name:gsub("^Frozen Festival ", "")
 		name = name:gsub("^Festival Frozen ", "")
 	elseif hasFrozen then
@@ -38,13 +101,10 @@ local function StripSuffixes(name: string)
 		name = name:gsub("^Festival ", "")
 	end
 
-	-- Remove kg and grade suffix
-	name = name:match("^(.-) %-%s*[%d%.]+kg$") or name -- Remove kg
-	name = name:match("^(.-)%s*%[.-%]$") or name       -- Remove [grade]
+	name = name:match("^(.-) %-%s*[%d%.]+kg$") or name
+	name = name:match("^(.-)%s*%[.-%]$") or name
 
-	-- Restore prefixes
 	if hasBoth then
-		-- Maintain original order
 		if originalName:find("^Frozen Festival ") then
 			name = "Frozen Festival " .. name
 		else
@@ -64,72 +124,31 @@ local function ExtractWeightFromName(name)
 	return tonumber(w)
 end
 
-local function IsRod(itemName)
-	itemName = itemName:lower()
-	return itemName:match("rods?$") ~= nil or itemName:match("trap$") ~= nil or itemName:match("bubble$") ~= nil
-end
-
-
-local ChangedItemName = require(script.ChangedItemName)
-local OriginalItemName = {}
-for i, v in pairs(ChangedItemName) do
-	OriginalItemName[v] = i
-end
-
 local function FindItem(itemName)
-	-- Check if it is a bubble tool
 	if itemName:lower():match("bubble$") then
 		local bubbleToolsFolder = ServerStorage:FindFirstChild("BubbleTools")
 		if bubbleToolsFolder then
 			local bubbleTool = bubbleToolsFolder:FindFirstChild(itemName)
-			if bubbleTool then
-				return bubbleTool
-			end
+			if bubbleTool then return bubbleTool end
 		end
 		return nil
 	end
 
 	local stripped = StripSuffixes(itemName):lower()
-
-	-- Remove all prefixes to find base name
 	local baseName = stripped:gsub("^frozen ", ""):gsub("^festival ", "")
-
-	-- Handle Frozen Festival and Festival Frozen cases
 	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
 
-	-- Check ServerStorage models directly
 	if baseName == "unknown" then
-		local unknownModel = ItemsFolder:FindFirstChild("Unknown")
-		if unknownModel then
-			return unknownModel
-		else
-			warn("Unknown model not found in ServerStorage!")
-		end
+		return ItemsFolder:FindFirstChild("Unknown")
 	end
 
-	-- Check model reference in FishData
 	for _, rarity in ipairs(FishData.Rarities) do
 		for _, fish in ipairs(rarity.fishes) do
-			local fishNameLower = fish.fishName:lower()
-			if fishNameLower == baseName then
-				-- Verify model exists and is valid
-				if fish.model then
-					if fish.model.Parent then
-						return fish.model
-					else
-						-- Find directly from ServerStorage
-						local directModel = ItemsFolder:FindFirstChild(fish.fishName)
-						if directModel then
-							return directModel
-						end
-					end
-				else
-					-- Find directly from ServerStorage
-					local directModel = ItemsFolder:FindFirstChild(fish.fishName)
-					if directModel then
-						return directModel
-					end
+			if fish.fishName:lower() == baseName then
+				if fish.model and fish.model.Parent then
+					return fish.model
 				end
+				return ItemsFolder:FindFirstChild(fish.fishName)
 			end
 		end
 	end
@@ -137,32 +156,23 @@ local function FindItem(itemName)
 	return nil
 end
 
-local function GetOriginalNameFromChangedItemName(itemName)
-	itemName = StripSuffixes(itemName)
-	return OriginalItemName[itemName] or itemName
-end
-
--- GetFishDataByName modified to handle Festival + Frozen fish
 local function GetFishDataByName(name)
 	local stripped = StripSuffixes(name)
 	local strippedLower = stripped:lower()
-
-	-- Remove all prefixes
 	local baseName = strippedLower:gsub("^frozen ", ""):gsub("^festival ", "")
 	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
 
-	-- Search in new structure (case insensitive)
 	for _, rarity in ipairs(FishData.Rarities) do
 		for _, fish in ipairs(rarity.fishes) do
 			if fish.fishName:lower() == baseName then
 				return {
-					name = rarity.name,        -- Rarity name
-					fishName = fish.fishName,  -- Fish name (original)
-					value = fish.value,
-					model = fish.model,
+					name     = rarity.name,
+					fishName = fish.fishName,
+					value    = fish.value,
+					model    = fish.model,
 					minWeight = fish.minWeight,
 					maxWeight = fish.maxWeight,
-					chance = rarity.chance
+					chance   = rarity.chance,
 				}
 			end
 		end
@@ -171,383 +181,16 @@ local function GetFishDataByName(name)
 	return nil
 end
 
--- Create save data from item
-local function createItemData(tool)
-	local weightObj = tool:FindFirstChild("FishWeight")
-	local rarityObj = tool:FindFirstChild("FishRarity")
-	local fishValueObj = tool:FindFirstChild("FishValue")
-	local lockObj = tool:FindFirstChild("FishLock")
-
-	local weight = weightObj and weightObj.Value
-	local rarity = rarityObj and rarityObj.Value
-	local isFish = fishValueObj ~= nil
-
-	-- Build item name (strip non-ASCII characters that break DataStore UTF-8 validation)
-	local function sanitizeName(s)
-		return (s:gsub("[^\32-\126\194-\244][\128-\191]*", "?"))
-	end
-	local itemName
-	if weight and rarity then
-		local baseName = sanitizeName(StripSuffixes(tool.Name))
-		itemName = string.format("%s [%s] - %.1fkg", baseName, rarity, weight)
-	else
-		itemName = sanitizeName(tool.Name)
-	end
-
-	-- Lock state (fish only)
-	local isLocked = nil
-	if isFish and lockObj then
-		isLocked = lockObj.Value
-	end
-
-	local hotbarSlot = tool:GetAttribute("hotbarSlot")
-
-	return {
-		name = itemName,
-		isLocked = isLocked,
-		isFish = isFish,
-		hotbarSlot = hotbarSlot,
-	}
-end
-
--- Real-time inventory update function
-local function updatePlayerInventory(player)
-	-- Skip if ItemReady not set
-	if not player:FindFirstChild("ItemReady") then
-		return
-	end
-
-	if not PlayerInventoryTracker[player] then
-		PlayerInventoryTracker[player] = {}
-	end
-
-	local currentTools = {}
-
-	-- Collect backpack tools
-	local backpack = player:FindFirstChild("Backpack")
-	if backpack then
-		for _, tool in ipairs(backpack:GetChildren()) do
-			if tool:IsA("Tool") and not IsRod(tool.Name) then
-				table.insert(currentTools, tool)
-			end
-		end
-	end
-
-	-- Collect character tools
-	local character = player.Character
-	if character and character.Parent then
-		for _, tool in ipairs(character:GetChildren()) do
-			if tool:IsA("Tool") and not IsRod(tool.Name) then
-				table.insert(currentTools, tool)
-			end
-		end
-	end
-
-	PlayerInventoryTracker[player] = currentTools
-end
-
--- Real-time inventory save function (revised)
-local function saveCurrentInventory(player)
-	-- Skip if ItemReady not set
-	if not player:FindFirstChild("ItemReady") then
-		return
-	end
-
-	local Data = DataManager:GetData(player)
-	if not Data then return end
-
-
-	local newItemsData = {}
-	local newLocksData = {}
-	local newHotbarSlots = {}
-	local index = 0
-
-	-- Tool scan function
-	local function tryAddTool(tool)
-		if not tool:IsA("Tool") or IsRod(tool.Name) then return end
-
-		local itemData = createItemData(tool)
-		index += 1
-		table.insert(newItemsData, itemData.name)
-
-		if itemData.isFish and itemData.isLocked ~= nil then
-			newLocksData[tostring(index)] = itemData.isLocked
-		end
-		if itemData.hotbarSlot then
-			newHotbarSlots[tostring(index)] = itemData.hotbarSlot
-		end
-	end
-
-	-- Collect from Backpack
-	local backpack = player:FindFirstChild("Backpack")
-	if backpack then
-		for _, tool in ipairs(backpack:GetChildren()) do
-			tryAddTool(tool)
-		end
-	end
-
-	-- Collect from Character (before it gets destroyed)
-	local character = player.Character
-	if character and character.Parent then
-		for _, tool in ipairs(character:GetChildren()) do
-			tryAddTool(tool)
-		end
-	end
-
-	-- Find Tools in all player descendants (extra safety)
-	local success, allDescendants = pcall(function()
-		return player:GetDescendants()
-	end)
-
-	if success then
-		for _, descendant in ipairs(allDescendants) do
-			if descendant:IsA("Tool") and not IsRod(descendant.Name) then
-				-- Check if already added
-				local alreadyAdded = false
-				for _, existingName in ipairs(newItemsData) do
-					if existingName == descendant.Name then
-						alreadyAdded = true
-						break
-					end
-				end
-
-				if not alreadyAdded then
-					tryAddTool(descendant)
-				end
-			end
-		end
-	end
-
-	-- Final save
-	Data.items = newItemsData
-	Data.fishLocks = newLocksData
-	Data.hotbarSlots = newHotbarSlots
-
-	DataManager:SaveData(player)
-end
-
-scheduleSave = function(player)
-	if pendingSaveTimers[player] then
-		task.cancel(pendingSaveTimers[player])
-	end
-	pendingSaveTimers[player] = task.delay(SAVE_DEBOUNCE, function()
-		pendingSaveTimers[player] = nil
-		if player:IsDescendantOf(game.Players) then
-			saveCurrentInventory(player)
-		end
-	end)
-end
-
-local function ItemObtained(player, itemName)
-	-- Skip rods
-	if IsRod(itemName) then
-		return
-	end
-
-	-- Find tool (improved)
-	local tool = nil
-	local backpack = player:FindFirstChild("Backpack")
-
-	-- Find in Backpack
-	if backpack then
-		tool = backpack:FindFirstChild(itemName)
-	end
-	if not tool and player.Character then
-		-- Find in Character
-		tool = player.Character:FindFirstChild(itemName)
-	end
-
-	-- Find by exact name again (Unknown case)
-	if not tool then
-		local strippedName = StripSuffixes(itemName)
-		tool = (backpack and backpack:FindFirstChild(strippedName)) or
-			(player.Character and player.Character:FindFirstChild(strippedName))
-	end
-
-	if tool then
-		-- Check if bubble tool
-		local isBubbleTool = itemName:lower():match("bubble$") ~= nil
-
-		if isBubbleTool then
-			-- Bubble tools are saved by name only
-			local success, errorMsg = pcall(function()
-				if SAVE_ON_DEATH then
-					tool:Clone().Parent = player.StarterGear
-				end
-
-				local originalData = DataManager:GetData(player)
-				if not originalData then
-					error("No player data")
-				end
-
-				if not originalData.items then
-					originalData.items = {}
-				end
-
-				table.insert(originalData.items, itemName)
-				scheduleSave(player)
-			end)
-
-			if not success then
-				warn("Bubble tool save failed:", errorMsg)
-			end
-			return
-		end
-
-		-- Fish tool processing (existing logic)
-		local weightObj = tool:FindFirstChild("FishWeight")
-		local rarityObj = tool:FindFirstChild("FishRarity")
-		local fishValueObj = tool:FindFirstChild("FishValue")
-		local lockObj = tool:FindFirstChild("FishLock")
-
-		local weight = weightObj and weightObj.Value
-		local rarity = rarityObj and rarityObj.Value
-		local isFish = fishValueObj ~= nil
-		local isLocked = false
-
-		if isFish and lockObj then
-			isLocked = lockObj.Value
-		end
-
-		local baseName = StripSuffixes(itemName)
-		local fullName
-
-		-- Special Unknown fish error diagnostics
-		if baseName:lower() == "unknown" then
-
-			-- Print all children of Unknown tool
-			for _, child in pairs(tool:GetChildren()) do
-			end
-
-			-- Error if weight or grade missing
-			if not weight or not rarity then
-				error("Missing required data for Unknown fish! Weight: " .. tostring(weight) .. ", Grade: " .. tostring(rarity))
-				return
-			end
-		end
-
-		-- General processing
-		if weight and rarity then
-			fullName = string.format("%s [%s] - %.1fkg", baseName, rarity, weight)
-		else
-			-- Error if weight or grade missing for any fish
-			error("Missing fish data! Item: " .. itemName .. ", Weight: " .. tostring(weight) .. ", Grade: " .. tostring(rarity))
-			return
-		end
-
-		-- Attempt to save data
-		local success, errorMsg = pcall(function()
-			if SAVE_ON_DEATH then
-				tool:Clone().Parent = player.StarterGear
-			end
-
-			local originalData = DataManager:GetData(player)
-			if not originalData then
-				error("No player data")
-			end
-
-			if not originalData.items then
-				originalData.items = {}
-			end
-
-			table.insert(originalData.items, fullName)
-
-			-- Save lock state for fish only
-			if isFish then
-				if not originalData.fishLocks then
-					originalData.fishLocks = {}
-				end
-				local itemIndex = #originalData.items
-				originalData.fishLocks[tostring(itemIndex)] = isLocked
-			end
-
-			scheduleSave(player)
-		end)
-
-		if not success then
-			warn("Save failed:", errorMsg)
-		end
-	else
-		-- Debug for Unknown case
-		if itemName:lower():find("unknown") then
-			for _, item in pairs(player.Backpack:GetChildren()) do
-				if item:IsA("Tool") then
-				end
-			end
-
-			if player.Character then
-				for _, item in pairs(player.Character:GetChildren()) do
-					if item:IsA("Tool") then
-					end
-				end
-			end
-		end
-	end
-end
-
--- ItemLost function (revised, excludes rods)
-local function ItemLost(player, itemName)
-	-- Skip rods
-	if IsRod(itemName) then
-		return
-	end
-
-	local originalData = DataManager:GetData(player)
-	if not originalData.items then originalData.items = {} end
-	if not originalData.fishLocks then originalData.fishLocks = {} end
-
-	local strippedItemName = StripSuffixes(itemName):lower()
-
-	for i = #originalData.items, 1, -1 do
-		local strippedStoredName = StripSuffixes(originalData.items[i]):lower()
-
-		if strippedStoredName == strippedItemName then
-			if SAVE_ON_DEATH then
-				local stripped = StripSuffixes(itemName)
-				for _, sgItem in ipairs(player.StarterGear:GetChildren()) do
-					if StripSuffixes(sgItem.Name):lower() == stripped:lower() then
-						sgItem:Destroy()
-					end
-				end
-			end
-
-			table.remove(originalData.items, i)
-
-			-- Rebuild lock data (re-index after removal)
-			local newFishLocks = {}
-			for j = 1, #originalData.items do
-				local oldKey = tostring(j < i and j or j + 1)
-				if originalData.fishLocks[oldKey] then
-					newFishLocks[tostring(j)] = originalData.fishLocks[oldKey]
-				end
-			end
-			originalData.fishLocks = newFishLocks
-
-			scheduleSave(player)
-			return
-		end
-	end
-end
-
--- Scale adjustment functions
-local function scaleHandleByRatio(handle: BasePart, scaleRatio: number)
-	if not handle or not handle:IsA("BasePart") then
-		warn("Invalid handle")
-		return
-	end
+-- Size helpers (same as original)
+local function scaleHandleByRatio(handle, scaleRatio)
+	if not handle or not handle:IsA("BasePart") then return end
 	if scaleRatio == 1 then return end
-
 	local originalCFrame = handle.CFrame
-	local originalSize = handle.Size
-
-	handle.Size = originalSize * scaleRatio
+	handle.Size = handle.Size * scaleRatio
 	handle.CFrame = originalCFrame
 	handle.Massless = true
-
 	if scaleRatio > 2 then
-		handle.CustomPhysicalProperties = PhysicalProperties.new(
-			0.01, 0.5, 0, 1, 1
-		)
+		handle.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.5, 0, 1, 1)
 	end
 end
 
@@ -573,67 +216,320 @@ local function fixLoadedFishSize(clone, weight, fishData)
 		clone.Equipped:Connect(function()
 			handle.AssemblyLinearVelocity = Vector3.zero
 			handle.AssemblyAngularVelocity = Vector3.zero
-
 			for _, obj in pairs(handle:GetChildren()) do
 				if obj:IsA("BodyPosition") or obj:IsA("BodyVelocity") or obj:IsA("BodyAngularVelocity") or
 					obj:IsA("BodyThrust") or obj:IsA("BodyForce") or obj:IsA("BodyGyro") then
 					obj:Destroy()
 				end
 			end
-
 			task.wait(0.1)
 			handle.AssemblyLinearVelocity = Vector3.zero
 			handle.AssemblyAngularVelocity = Vector3.zero
 		end)
-
-		clone.Unequipped:Connect(function()
-			-- Natural physics on unequip
-		end)
 	end
 end
 
-local MarketplaceService = game:GetService("MarketplaceService")
-local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Save / sync helpers
+-- ─────────────────────────────────────────────────────────────────────────────
 
-local function hasInventoryExpansionGamepass(player)
-	local success, hasGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
-	end)
+local function saveCurrentInventory(player)
+	if not player:FindFirstChild("ItemReady") then return end
+	local Data = DataManager:GetData(player)
+	if not Data then return end
 
-	if success then
-		return hasGamepass
-	else
-		warn("Failed to check inventory expansion gamepass:", player.Name)
-		return false
-	end
-end
+	local fishList = PlayerFishData[player] or {}
+	local newItemsData = {}
+	local newLocksData = {}
 
-local function collectAllPlayerItems(player)
-	local allItems = {}
-
-	-- Collect items from Backpack (excluding rods)
-	for _, tool in pairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") and not IsRod(tool.Name) then
-			table.insert(allItems, tool)
+	for i, fishItem in ipairs(fishList) do
+		table.insert(newItemsData, fishItem.name)
+		if fishItem.isLocked ~= nil then
+			newLocksData[tostring(i)] = fishItem.isLocked
 		end
 	end
 
-	-- Collect equipped items from Character (excluding rods)
-	if player.Character then
-		for _, tool in pairs(player.Character:GetChildren()) do
-			if tool:IsA("Tool") and not IsRod(tool.Name) then
-				table.insert(allItems, tool)
+	Data.items    = newItemsData
+	Data.fishLocks = newLocksData
+	-- hotbarSlots no longer used for fish (fish have no hotbar slot concept)
+
+	DataManager:SaveData(player)
+end
+
+scheduleSave = function(player)
+	if pendingSaveTimers[player] then
+		task.cancel(pendingSaveTimers[player])
+	end
+	pendingSaveTimers[player] = task.delay(SAVE_DEBOUNCE, function()
+		pendingSaveTimers[player] = nil
+		if player:IsDescendantOf(Players) then
+			saveCurrentInventory(player)
+		end
+	end)
+end
+
+local function syncInventory(player)
+	if InventoryDataSyncRemote then
+		InventoryDataSyncRemote:FireClient(player, PlayerFishData[player] or {})
+	end
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Equip / unequip
+-- ─────────────────────────────────────────────────────────────────────────────
+
+unequipFish = function(player)
+	local prevTool = PlayerEquippedTool[player]
+	if prevTool and prevTool.Parent then
+		prevTool:Destroy()
+	end
+	PlayerEquippedTool[player]  = nil
+	PlayerEquippedIndex[player] = nil
+end
+
+cloneAndEquipFish = function(player, index)
+	local fishList = PlayerFishData[player]
+	if not fishList then return end
+	local fishData = fishList[index]
+	if not fishData then return end
+
+	-- Remove previous equipped fish tool
+	unequipFish(player)
+
+	-- Find base model
+	local item = FindItem(fishData.name)
+	if not item then
+		warn("ItemSave: Model not found for equip:", fishData.name)
+		return
+	end
+
+	local clone = item:Clone()
+	clone.CanBeDropped = false
+	clone.Name = fishData.name
+
+	-- Value objects
+	local valueObj = clone:FindFirstChild("FishValue") or Instance.new("IntValue")
+	valueObj.Name = "FishValue"
+	valueObj.Value = fishData.value
+	valueObj:SetAttribute("OriginalBaseValue", fishData.baseValue or fishData.value)
+	valueObj.Parent = clone
+
+	local weightObj = clone:FindFirstChild("FishWeight") or Instance.new("NumberValue")
+	weightObj.Name = "FishWeight"
+	weightObj.Value = fishData.weight
+	weightObj.Parent = clone
+
+	local rarityObj = clone:FindFirstChild("FishRarity") or Instance.new("StringValue")
+	rarityObj.Name = "FishRarity"
+	rarityObj.Value = fishData.rarity
+	rarityObj.Parent = clone
+
+	if fishData.isLocked then
+		local lockObj = clone:FindFirstChild("FishLock") or Instance.new("BoolValue")
+		lockObj.Name = "FishLock"
+		lockObj.Value = fishData.isLocked
+		lockObj.Parent = clone
+	end
+
+	-- Visual effects
+	if fishData.isFrozen then
+		pcall(function()
+			FishIceEffect.ApplyIceEffect(clone, { fishName = fishData.name, currentWeather = "Snow" })
+		end)
+	end
+	if fishData.isFestival then
+		pcall(function()
+			FishData.ApplyFestivalEffect(clone, { fishName = fishData.name, currentWeather = "Firework" })
+		end)
+	end
+
+	-- Size adjustment
+	local fd = GetFishDataByName(fishData.name)
+	if fd then
+		fixLoadedFishSize(clone, fishData.weight, fd)
+	end
+
+	clone.Parent = player.Backpack
+
+	PlayerEquippedTool[player]  = clone
+	PlayerEquippedIndex[player] = index
+
+	-- When the tool leaves the player (sold, dropped, etc.), remove from data and clear state
+	clone.AncestryChanged:Connect(function(_, newParent)
+		if PlayerEquippedTool[player] ~= clone then return end
+		if newParent == nil or (newParent ~= player.Backpack and newParent ~= player.Character) then
+			-- Remove from PlayerFishData if the tool was destroyed externally (e.g. sold via SellShopHandler directly)
+			local idx = PlayerEquippedIndex[player]
+			if idx and PlayerFishData[player] and PlayerFishData[player][idx] then
+				table.remove(PlayerFishData[player], idx)
+				if InventoryDataSyncRemote then
+					InventoryDataSyncRemote:FireClient(player, PlayerFishData[player])
+				end
+				scheduleSave(player)
+			end
+			PlayerEquippedTool[player]  = nil
+			PlayerEquippedIndex[player] = nil
+		end
+	end)
+
+	-- When the tool's Name changes (e.g. after gamble), sync data table
+	clone:GetPropertyChangedSignal("Name"):Connect(function()
+		if PlayerEquippedTool[player] ~= clone then return end
+		local idx = PlayerEquippedIndex[player]
+		if idx and PlayerFishData[player] and PlayerFishData[player][idx] then
+			local fishItem = PlayerFishData[player][idx]
+			fishItem.name = clone.Name
+			-- Update weight and value from tool children
+			local wObj = clone:FindFirstChild("FishWeight")
+			local vObj = clone:FindFirstChild("FishValue")
+			if wObj then fishItem.weight = wObj.Value end
+			if vObj then fishItem.value  = vObj.Value end
+			local isFrozen   = clone.Name:find("Frozen") ~= nil
+			local isFestival = clone.Name:find("Festival") ~= nil
+			fishItem.isFrozen   = isFrozen
+			fishItem.isFestival = isFestival
+			scheduleSave(player)
+		end
+	end)
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Build fish item data from fishInfo (used when a fish is caught)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local function buildFishItemData(fishInfo)
+	local minW = fishInfo.minWeight or 1
+	local maxW = fishInfo.maxWeight or 1
+	local baseValue = fishInfo.value or 0
+	local valueRatio = math.clamp((fishInfo.weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
+	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+	local isFrozen   = fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") ~= nil
+	local isFestival = fishInfo.fishName and string.find(fishInfo.fishName, "Festival") ~= nil
+
+	-- Apply weather multipliers (same as createFishTool in FishingServerModule)
+	if isFrozen and isFestival then
+		local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
+			WeatherSystemModule.WeatherTypes.Firework and
+			WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
+		adjustedValue = math.floor(adjustedValue * 2.0 * festivalMultiplier)
+	elseif isFrozen then
+		adjustedValue = math.floor(adjustedValue * 2.0)
+	elseif isFestival then
+		local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
+			WeatherSystemModule.WeatherTypes.Firework and
+			WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
+		adjustedValue = math.floor(adjustedValue * festivalMultiplier)
+	end
+
+	local fullName = string.format("%s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
+
+	return {
+		name      = fullName,
+		fishName  = fishInfo.fishName,
+		rarity    = fishInfo.name,
+		weight    = fishInfo.weight,
+		value     = adjustedValue,
+		baseValue = baseValue,
+		isLocked  = false,
+		isFrozen  = isFrozen,
+		isFestival = isFestival,
+	}
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- FishCaughtBindable handler
+-- ─────────────────────────────────────────────────────────────────────────────
+
+FishCaughtBindable.Event:Connect(function(player, fishInfo)
+	if not player:FindFirstChild("ItemReady") then return end
+
+	local fishItem = buildFishItemData(fishInfo)
+
+	if not PlayerFishData[player] then
+		PlayerFishData[player] = {}
+	end
+
+	table.insert(PlayerFishData[player], fishItem)
+
+	-- Notify client of new fish
+	if FishDataAddedRemote then
+		FishDataAddedRemote:FireClient(player, fishItem, #PlayerFishData[player])
+	end
+
+	scheduleSave(player)
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ItemLost: called when a fish tool is sold/lost from Backpack
+-- Removes the equipped fish from PlayerFishData when its Tool is destroyed
+-- Also handles bubble tool loss (kept as legacy direct-save)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local function ItemLost(player, itemName)
+	if IsRod(itemName) then return end
+
+	-- If it is the currently equipped fish, remove from data table
+	local equippedIdx = PlayerEquippedIndex[player]
+	if equippedIdx and PlayerFishData[player] then
+		local equippedItem = PlayerFishData[player][equippedIdx]
+		if equippedItem then
+			local strippedItem = StripSuffixes(equippedItem.name):lower()
+			local strippedName = StripSuffixes(itemName):lower()
+			if strippedItem == strippedName then
+				table.remove(PlayerFishData[player], equippedIdx)
+				PlayerEquippedTool[player]  = nil
+				PlayerEquippedIndex[player] = nil
+				if InventoryDataSyncRemote then
+					InventoryDataSyncRemote:FireClient(player, PlayerFishData[player])
+				end
+				scheduleSave(player)
+				return
 			end
 		end
 	end
 
-	return allItems
+	-- Fallback: search entire list
+	local fishList = PlayerFishData[player]
+	if not fishList then return end
+
+	local strippedName = StripSuffixes(itemName):lower()
+	for i = #fishList, 1, -1 do
+		if StripSuffixes(fishList[i].name):lower() == strippedName then
+			table.remove(fishList, i)
+			-- Adjust equipped index if needed
+			if PlayerEquippedIndex[player] then
+				if PlayerEquippedIndex[player] == i then
+					PlayerEquippedTool[player]  = nil
+					PlayerEquippedIndex[player] = nil
+				elseif PlayerEquippedIndex[player] > i then
+					PlayerEquippedIndex[player] = PlayerEquippedIndex[player] - 1
+				end
+			end
+			if InventoryDataSyncRemote then
+				InventoryDataSyncRemote:FireClient(player, PlayerFishData[player])
+			end
+			scheduleSave(player)
+			return
+		end
+	end
 end
 
--- Load items on player join (excluding rods)
-game.Players.PlayerAdded:Connect(function(player)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PlayerAdded: load saved fish data into PlayerFishData table
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local function safeValueRatio(weight, minW, maxW)
+	if minW == maxW then return 0 end
+	local ratio = (weight - minW) / (maxW - minW)
+	if ratio ~= ratio or ratio == math.huge or ratio == -math.huge then return 0 end
+	return math.clamp(ratio, 0, 1)
+end
+
+Players.PlayerAdded:Connect(function(player)
 	local timeout = 60
 	local elapsed = 0
+
 	repeat
 		task.wait(1)
 		elapsed += 1
@@ -656,238 +552,92 @@ game.Players.PlayerAdded:Connect(function(player)
 	until DataManager:GetData(player)
 
 	local Data = DataManager:GetData(player)
+	if not Data.fishLocks then Data.fishLocks = {} end
 
-	-- Ensure fishLocks compatibility with existing data
-	if not Data.fishLocks then
-		Data.fishLocks = {}
-	end
+	PlayerFishData[player] = {}
 
-	local hasExpansion = hasInventoryExpansionGamepass(player)
-	local MAX_ITEMS = hasExpansion and 400 or 200
-	local LOAD_LIMIT = hasExpansion and 200 or 100
+	-- Load all items from saved data into PlayerFishData (no Backpack cloning)
+	for i, itemName in ipairs(Data.items or {}) do
+		if IsRod(itemName) then continue end
 
-	if #Data.items > MAX_ITEMS then
-		local trimmed = {}
-		local trimmedLocks = {}
-
-		for i = 1, LOAD_LIMIT do
-			if Data.items[i] then
-				table.insert(trimmed, Data.items[i])
-				-- Carry over lock state
-				if Data.fishLocks[tostring(i)] then
-					trimmedLocks[tostring(#trimmed)] = Data.fishLocks[tostring(i)]
-				end
-			end
-		end
-
-		Data.items = trimmed
-		Data.fishLocks = trimmedLocks
-		DataManager:UpdateData(player, "items", trimmed)
-		DataManager:UpdateData(player, "fishLocks", trimmedLocks)
-		DataManager:SaveData(player)
-	end
-
-	local function safeValueRatio(weight, minW, maxW)
-		if minW == maxW then return 0 end
-		local ratio = (weight - minW) / (maxW - minW)
-		if ratio ~= ratio or ratio == math.huge or ratio == -math.huge then
-			return 0
-		end
-		return math.clamp(ratio, 0, 1)
-	end
-
-	-- Loading loop (supports bubble tools)
-	for i = 1, math.min(LOAD_LIMIT, #Data.items) do
-		local itemName = Data.items[i]
 		local isLocked = Data.fishLocks[tostring(i)]
 
-		-- Skip rods
-		if IsRod(itemName) then
+		-- Bubble tools: still clone into Backpack (legacy behaviour)
+		if itemName:lower():match("bubble$") then
+			local success, errorMsg = pcall(function()
+				local item = FindItem(itemName)
+				if item then
+					local clone = item:Clone()
+					clone.Name = itemName
+					clone.Parent = player.Backpack
+				end
+			end)
+			if not success then
+				warn("ItemSave: Bubble load failed:", itemName, errorMsg)
+			end
 			continue
 		end
 
+		-- Fish items: parse data and store in PlayerFishData table
 		local success, errorMsg = pcall(function()
-			local item = FindItem(itemName)
-			if item then
-				local clone = item:Clone()
-
-				-- Check if bubble tool
-				local isBubbleTool = itemName:lower():match("bubble$") ~= nil
-
-				if isBubbleTool then
-					-- Simple loading for bubble tools
-					clone.Name = itemName
-					if SAVE_ON_DEATH then
-						clone:Clone().Parent = player.StarterGear
-					end
-					clone.Parent = player.Backpack
-					return -- Done processing bubble tool
-				end
-
-				-- Fish tool processing (existing logic)
-				local fishData = GetFishDataByName(itemName)
-
-				if fishData then
-					local weight = ExtractWeightFromName(itemName)
-
-					if weight then
-						-- Detect and handle prefixes
-						local hasFrozen = itemName:find("^Frozen ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
-						local hasFestival = itemName:find("^Festival ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
-						local hasBoth = itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
-
-						local nameWithGrade
-						if hasBoth then
-							-- Maintain original order
-							if itemName:find("Frozen Festival") then
-								nameWithGrade = string.format("Frozen Festival %s [%s] - %.1fkg", fishData.fishName, fishData.name, weight)
-							else
-								nameWithGrade = string.format("Festival Frozen %s [%s] - %.1fkg", fishData.fishName, fishData.name, weight)
-							end
-						elseif hasFrozen then
-							nameWithGrade = string.format("Frozen %s [%s] - %.1fkg", fishData.fishName, fishData.name, weight)
-						elseif hasFestival then
-							nameWithGrade = string.format("Festival %s [%s] - %.1fkg", fishData.fishName, fishData.name, weight)
-						else
-							nameWithGrade = string.format("%s [%s] - %.1fkg", fishData.fishName, fishData.name, weight)
-						end
-
-						clone.Name = nameWithGrade
-
-						local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
-						local baseValue = fishData.value or 0
-						local valueRatio = safeValueRatio(weight, minW, maxW)
-						local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
-
-						-- Get price multipliers from WeatherSystemModule
-						local frozenMultiplier = 2.0  -- Base Frozen multiplier
-						local festivalMultiplier = 1.0
-						local combinedMultiplier = 1.0
-
-						-- Get Festival multiplier from WeatherSystemModule
-						if WeatherSystemModule and WeatherSystemModule.WeatherTypes and WeatherSystemModule.WeatherTypes.Firework then
-							festivalMultiplier = WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier or 1.5
-						else
-							festivalMultiplier = 1.5  -- Default value
-						end
-
-						-- Apply price bonuses
-						if hasBoth then
-							-- Both Frozen + Festival: multiply together
-							combinedMultiplier = frozenMultiplier * festivalMultiplier
-							adjustedValue = adjustedValue * combinedMultiplier
-						elseif hasFrozen then
-							-- Frozen only: 2x
-							adjustedValue = adjustedValue * frozenMultiplier
-						elseif hasFestival then
-							-- Festival only: use WeatherSystemModule multiplier
-							adjustedValue = adjustedValue * festivalMultiplier
-						end
-
-						-- Create value objects
-						local valueObj = clone:FindFirstChild("FishValue")
-						if not valueObj then
-							valueObj = Instance.new("IntValue")
-							valueObj.Name = "FishValue"
-							valueObj.Parent = clone
-						end
-						valueObj.Value = adjustedValue
-
-						local weightObj = clone:FindFirstChild("FishWeight")
-						if not weightObj then
-							weightObj = Instance.new("NumberValue")
-							weightObj.Name = "FishWeight"
-							weightObj.Parent = clone
-						end
-						weightObj.Value = weight
-
-						local rarityObj = clone:FindFirstChild("FishRarity")
-						if not rarityObj then
-							rarityObj = Instance.new("StringValue")
-							rarityObj.Name = "FishRarity"
-							rarityObj.Parent = clone
-						end
-						rarityObj.Value = fishData.name
-
-						-- Lock state object (fish only)
-						if isLocked ~= nil then
-							local lockObj = clone:FindFirstChild("FishLock")
-							if not lockObj then
-								lockObj = Instance.new("BoolValue")
-								lockObj.Name = "FishLock"
-								lockObj.Parent = clone
-							end
-							lockObj.Value = isLocked
-						end
-
-						-- Apply effects
-						if hasFrozen then
-							local fishInfo = {
-								fishName = nameWithGrade,
-								currentWeather = "Snow"
-							}
-							FishIceEffect.ApplyIceEffect(clone, fishInfo)
-						end
-
-						if hasFestival then
-							local fishInfo = {
-								fishName = nameWithGrade,
-								currentWeather = "Firework"
-							}
-							-- Use FishData.ApplyFestivalEffect (function in FishDataModule)
-							FishData.ApplyFestivalEffect(clone, fishInfo)
-						end
-
-						fixLoadedFishSize(clone, weight, fishData)
-					else
-						-- Error on weight extraction failure
-						error("Weight extraction failed: " .. itemName)
-					end
-				else
-					-- Error if no fish data found
-					error("No fish data found: " .. itemName)
-				end
-
-				local hotbarSlot = Data.hotbarSlots and Data.hotbarSlots[tostring(i)]
-				if hotbarSlot then
-					clone:SetAttribute("hotbarSlot", hotbarSlot)
-					clone:SetAttribute("position", hotbarSlot)
-				end
-				if SAVE_ON_DEATH then
-					clone:Clone().Parent = player.StarterGear
-				end
-				clone.Parent = player.Backpack
-			else
-				-- Error if model not found
-				error("Model not found: " .. itemName)
+			local fishData = GetFishDataByName(itemName)
+			if not fishData then
+				error("No fish data: " .. itemName)
 			end
+
+			local weight = ExtractWeightFromName(itemName)
+			if not weight then
+				error("Weight extraction failed: " .. itemName)
+			end
+
+			local hasFrozen   = itemName:find("^Frozen ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
+			local hasFestival = itemName:find("^Festival ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
+
+			local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
+			local baseValue  = fishData.value or 0
+			local valueRatio = safeValueRatio(weight, minW, maxW)
+			local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+			local frozenMultiplier   = 2.0
+			local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
+				WeatherSystemModule.WeatherTypes.Firework and
+				WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
+
+			if hasFrozen and hasFestival then
+				adjustedValue = math.floor(adjustedValue * frozenMultiplier * festivalMultiplier)
+			elseif hasFrozen then
+				adjustedValue = math.floor(adjustedValue * frozenMultiplier)
+			elseif hasFestival then
+				adjustedValue = math.floor(adjustedValue * festivalMultiplier)
+			end
+
+			local fishItem = {
+				name      = itemName,
+				fishName  = fishData.fishName,
+				rarity    = fishData.name,
+				weight    = weight,
+				value     = adjustedValue,
+				baseValue = baseValue,
+				isLocked  = isLocked or false,
+				isFrozen  = hasFrozen and true or false,
+				isFestival = hasFestival and true or false,
+			}
+
+			table.insert(PlayerFishData[player], fishItem)
 		end)
 
 		if not success then
-			warn("Item loading failed:", itemName, "Error:", errorMsg)
+			warn("ItemSave: Item load failed:", itemName, errorMsg)
 		end
 	end
 
-	-- Detect character respawn
+	-- Character tracking for bubble tool loss (fish loss is handled via ItemLost below)
 	local function onCharacterAdded(character)
 		local Humanoid = character:WaitForChild("Humanoid")
 
-		-- Save inventory on death
 		Humanoid.Died:Connect(function()
 			DataManager:SaveData(player)
 		end)
-
-		-- Events for real-time inventory tracking
-		local function childAdded(child)
-			if not child:IsA("Tool") then return end
-			if IsRod(child.Name) then return end
-
-			ItemObtained(player, child.Name)
-
-			-- Small delay for stability
-			task.wait(0.1)
-			updatePlayerInventory(player)
-		end
 
 		local function childRemoved(child)
 			if Humanoid.Parent == nil or Humanoid.Health <= 0 then return end
@@ -895,81 +645,139 @@ game.Players.PlayerAdded:Connect(function(player)
 			if IsRod(child.Name) then return end
 			if child.Parent == character or child.Parent == player.Backpack then return end
 
-			ItemLost(player, child.Name)
-
-			-- Update inventory
-			task.wait(0.1)
-			updatePlayerInventory(player)
+			-- Only track bubble tools through the old path; fish tracked via equipped index
+			if child.Name:lower():match("bubble$") then
+				ItemLost(player, child.Name)
+			end
 		end
 
-		character.ChildAdded:Connect(childAdded)
 		character.ChildRemoved:Connect(childRemoved)
-		player.Backpack.ChildAdded:Connect(childAdded)
-		player.Backpack.ChildRemoved:Connect(childRemoved)
 
-		-- Initial inventory tracking setup
-		updatePlayerInventory(player)
+		-- Track bubble tool removal from Backpack (sold etc.)
+		player.Backpack.ChildRemoved:Connect(function(child)
+			if not child:IsA("Tool") then return end
+			if not child.Name:lower():match("bubble$") then return end
+			if child.Parent == character or child.Parent == player.Backpack then return end
+			ItemLost(player, child.Name)
+		end)
 	end
 
 	player.CharacterAdded:Connect(onCharacterAdded)
 	if player.Character then onCharacterAdded(player.Character) end
 
-	-- Set ItemReady after all loading is complete
+	-- Mark loading complete
 	local itemReady = Instance.new("BoolValue")
-	itemReady.Name = "ItemReady"
+	itemReady.Name  = "ItemReady"
 	itemReady.Value = true
 	itemReady.Parent = player
 
+	-- Send initial inventory data to client once remotes are ready
+	task.spawn(function()
+		-- Wait until remotes are wired
+		local waitCount = 0
+		while not InventoryDataSyncRemote and waitCount < 30 do
+			task.wait(0.5)
+			waitCount += 1
+		end
+		if InventoryDataSyncRemote then
+			InventoryDataSyncRemote:FireClient(player, PlayerFishData[player])
+		end
+	end)
 end)
 
--- PlayerRemoving event (revised, checks ItemReady)
-game.Players.PlayerRemoving:Connect(function(player)
-	-- Cancel any pending debounce timer; we save immediately below
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PlayerRemoving: save and clean up
+-- ─────────────────────────────────────────────────────────────────────────────
+
+Players.PlayerRemoving:Connect(function(player)
 	if pendingSaveTimers[player] then
 		task.cancel(pendingSaveTimers[player])
 		pendingSaveTimers[player] = nil
 	end
 
-	-- Skip save if ItemReady not set
-	if not player:FindFirstChild("ItemReady") then
-		PlayerInventoryTracker[player] = nil
-		return
-	end
-
-	-- Use tracked inventory for saving if available
-	if PlayerInventoryTracker[player] then
-		local Data = DataManager:GetData(player)
-		if Data then
-			local newItemsData = {}
-			local newLocksData = {}
-			local newHotbarSlots = {}
-			local index = 0
-
-			for _, tool in ipairs(PlayerInventoryTracker[player]) do
-				if tool and tool.Parent then -- Verify tool is still valid
-					local itemData = createItemData(tool)
-					index += 1
-					table.insert(newItemsData, itemData.name)
-
-					if itemData.isFish and itemData.isLocked ~= nil then
-						newLocksData[tostring(index)] = itemData.isLocked
-					end
-					if itemData.hotbarSlot then
-						newHotbarSlots[tostring(index)] = itemData.hotbarSlot
-					end
-				end
-			end
-
-			Data.items = newItemsData
-			Data.fishLocks = newLocksData
-			Data.hotbarSlots = newHotbarSlots
-			DataManager:SaveData(player)
-		end
-	else
-		-- Fall back to existing method if no tracked inventory
+	if player:FindFirstChild("ItemReady") then
 		saveCurrentInventory(player)
 	end
 
-	-- Clean up tracking data
-	PlayerInventoryTracker[player] = nil
+	PlayerFishData[player]       = nil
+	PlayerEquippedIndex[player]  = nil
+	PlayerEquippedTool[player]   = nil
 end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SellFishBindable handler
+-- Called by SellShopHandler to sell fish from data table.
+-- mode: "all" (sell all unlocked) | "equipped" (sell currently equipped fish)
+-- Returns: totalBaseValue (number), itemsSoldCount (number)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+SellFishBindable.OnInvoke = function(player, mode)
+	local fishList = PlayerFishData[player]
+	if not fishList then return 0, 0 end
+
+	local totalBaseValue = 0
+	local itemsSoldCount = 0
+
+	if mode == "all" then
+		-- Sell all unlocked fish
+		local remaining = {}
+		local equippedIdx = PlayerEquippedIndex[player]
+
+		for i, fishItem in ipairs(fishList) do
+			if fishItem.isLocked then
+				table.insert(remaining, fishItem)
+			else
+				-- If this was the equipped fish, destroy its Tool
+				if i == equippedIdx then
+					local tool = PlayerEquippedTool[player]
+					if tool and tool.Parent then tool:Destroy() end
+					PlayerEquippedTool[player]  = nil
+					PlayerEquippedIndex[player] = nil
+				end
+				totalBaseValue += fishItem.value
+				itemsSoldCount += 1
+			end
+		end
+
+		PlayerFishData[player] = remaining
+		-- Adjust equipped index: if equipped was not sold (still locked), find its new position
+		if PlayerEquippedIndex[player] then
+			-- Recalculate equipped index in new list
+			local equippedItem = fishList[equippedIdx]
+			if equippedItem then
+				for newIdx, item in ipairs(remaining) do
+					if item == equippedItem then
+						PlayerEquippedIndex[player] = newIdx
+						break
+					end
+				end
+			end
+		end
+
+	elseif mode == "equipped" then
+		-- Sell only the currently equipped fish
+		local equippedIdx = PlayerEquippedIndex[player]
+		if not equippedIdx then return 0, 0 end
+
+		local fishItem = fishList[equippedIdx]
+		if not fishItem or fishItem.isLocked then return 0, 0 end
+
+		-- Destroy the equipped Tool
+		local tool = PlayerEquippedTool[player]
+		if tool and tool.Parent then tool:Destroy() end
+		PlayerEquippedTool[player]  = nil
+		PlayerEquippedIndex[player] = nil
+
+		totalBaseValue = fishItem.value
+		itemsSoldCount = 1
+		table.remove(fishList, equippedIdx)
+	end
+
+	-- Sync to client and save
+	if InventoryDataSyncRemote then
+		InventoryDataSyncRemote:FireClient(player, PlayerFishData[player])
+	end
+	scheduleSave(player)
+
+	return totalBaseValue, itemsSoldCount
+end

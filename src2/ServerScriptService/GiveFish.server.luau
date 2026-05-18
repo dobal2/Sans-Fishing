@@ -1,32 +1,10 @@
 local Players = game:GetService("Players")
-local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Create remote event for fish receiving
 local FishReceiveNoticeEvent = Instance.new("RemoteEvent")
 FishReceiveNoticeEvent.Name = "FishReceiveNoticeEvent"
 FishReceiveNoticeEvent.Parent = ReplicatedStorage
-
--- Inventory expansion gamepass ID (same as FishingServerModule)
-local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
-
--- Cache gamepass results per player (cleared on leave)
-local gamepassCache = {}
-Players.PlayerRemoving:Connect(function(p) gamepassCache[p.UserId] = nil end)
-
-local function hasInventoryExpansionGamepass(player)
-	if gamepassCache[player.UserId] ~= nil then return gamepassCache[player.UserId] end
-	local success, result = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
-	end)
-	local has = success and result or false
-	gamepassCache[player.UserId] = has
-	return has
-end
-
-local function getInventoryLimit(player)
-	return hasInventoryExpansionGamepass(player) and 200 or 100
-end
 
 -- Check if tool is a fish
 local function isFish(tool)
@@ -42,44 +20,6 @@ local function isFish(tool)
 		return fishValue:IsA("IntValue")
 	end)
 	return success and isIntValue
-end
-
--- Check inventory limit including held fish
-local function checkInventoryLimit(player)
-	local backpack = player:FindFirstChild("Backpack")
-	local character = player.Character
-
-	local fishCount = 0
-
-	-- Count fish in backpack
-	if backpack then
-		for _, item in pairs(backpack:GetChildren()) do
-			if item:IsA("Tool") and item:FindFirstChild("FishValue") then
-				fishCount = fishCount + 1
-			end
-		end
-	end
-
-	-- Count currently held fish (important)
-	if character then
-		for _, item in pairs(character:GetChildren()) do
-			if item:IsA("Tool") and item:FindFirstChild("FishValue") then
-				fishCount = fishCount + 1
-			end
-		end
-	end
-
-	local hasExpansion = hasInventoryExpansionGamepass(player)
-	local inventoryLimit = hasExpansion and 200 or 100
-
-	if fishCount >= inventoryLimit then
-		local message = hasExpansion and
-			string.format("Expanded inventory full! (%d/200) Go sell fish", fishCount) or
-			string.format("Inventory full! (%d/100) Go sell fish or buy expansion pass", fishCount)
-		FishReceiveNoticeEvent:FireClient(player, message)
-		return false
-	end
-	return true
 end
 
 -- Attach prompt to character
@@ -112,14 +52,6 @@ local function addPromptToCharacter(char, owner)
 		-- Ownership: tool must be in sender's character (not cloned/injected)
 		if tool.Parent ~= senderChar then
 			warn("Fish ownership mismatch:", fromPlayer.Name)
-			return
-		end
-
-		-- Check receiver's inventory limit
-		if not checkInventoryLimit(owner) then
-			-- Notify both if inventory is full
-			FishReceiveNoticeEvent:FireClient(fromPlayer, owner.Name .. "'s inventory is full!")
-			-- checkInventoryLimit already notifies the receiver
 			return
 		end
 

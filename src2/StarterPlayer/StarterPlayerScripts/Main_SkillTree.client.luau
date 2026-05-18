@@ -15,12 +15,15 @@ local getSkillData = ReplicatedStorage:WaitForChild("GetSkillData")
 
 -- 현재 게임에 실제로 존재하는 스킬만 포함
 local ACTIVE_SKILLS = {
-	Root        = true,
-	AutoFish    = true,
-	LuckUp      = true,
-	FriendBonus = true,
-	SellBonus   = true,
-	InvenUp     = true,
+	Root         = true,
+	AutoFish     = true,
+	LuckUp       = true,
+	FriendBonus  = true,
+	SellBonus    = true,
+	FishingPoint = true,
+	HitZoneUp    = true,
+	WeightUp     = true,
+	PowerUp      = true,
 }
 
 local isUpdating = false

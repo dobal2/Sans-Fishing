@@ -117,7 +117,7 @@ Players.PlayerAdded:Connect(function(plr)
 	Skills.Name = "Skills"
 	Skills.Parent = plr
 
-	local SKILL_NAMES = {"Root", "AutoFish", "LuckUp", "SellBonus", "FriendBonus", "HitZoneUp", "InvenUp", "WeightUp", "PowerUp", "AutoUp", "PointBoost", "QuickBite"}
+	local SKILL_NAMES = {"Root", "AutoFish", "LuckUp", "SellBonus", "FriendBonus", "FishingPoint", "HitZoneUp", "WeightUp", "PowerUp", "AutoUp", "PointBoost", "QuickBite"}
 	for _, skillName in ipairs(SKILL_NAMES) do
 		local sv = Instance.new("IntValue")
 		sv.Name = skillName

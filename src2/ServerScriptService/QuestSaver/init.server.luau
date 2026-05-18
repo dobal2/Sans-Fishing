@@ -4,6 +4,10 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local datamanager = require(script.DataManager)
 local leaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
+-- Per-player daily random quest handler registry (populated in PlayerAdded, cleared on leave)
+local dailyRandomQuestHandlers = {}
+Players.PlayerRemoving:Connect(function(plr) dailyRandomQuestHandlers[plr] = nil end)
+
 -- ── Sequential quest definitions ──────────────────────────────────────────────
 
 local SEQUENTIAL_QUESTS = {
@@ -668,29 +672,15 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
+	-- Register handler for external FishCaughtBindable calls
+	dailyRandomQuestHandlers[plr] = handleDailyRandomQuest
+
 	local function connectBackpack(backpack)
 		backpack.ChildAdded:Connect(function(item)
 			if not dataReady then return end
 			if item:GetAttribute("FromFishTrap") then return end
-			if item:IsA("Tool") and item:FindFirstChild("FishValue") then
-				-- Legacy quest progress (void / normal quests with TargetFish)
-				local baseName = item.Name:match("^(.-)%s+%[") or item.Name
-				baseName = baseName:gsub("^Frozen ", ""):gsub("^Festival ", "")
-				updateQuestProgress(plr, baseName)
-
-				-- Parse for typed quests
-				local fishBaseName, rarity, weight = parseFishTool(item.Name)
-
-				-- Sequential quest progress
-				task.spawn(function()
-					handleFishCaughtForSequential(plr, fishBaseName, rarity, weight)
-				end)
-
-				-- Daily random quest progress
-				task.spawn(function()
-					handleDailyRandomQuest(rarity)
-				end)
-			end
+			-- Fish tools no longer appear in Backpack directly; this path handles bubble/rod legacy tools
+			-- (fish caught events are routed via FishCaughtBindable instead)
 		end)
 	end
 
@@ -703,6 +693,42 @@ Players.PlayerAdded:Connect(function(plr)
 		local backpack = plr:FindFirstChild("Backpack")
 		if backpack then connectBackpack(backpack) end
 	end
+end)
+
+-- ── FishCaughtBindable: receive fish-caught events from ItemSave ─────────────
+-- This replaces the Backpack.ChildAdded listener for fish tools since fish are
+-- no longer placed as Tool instances in the Backpack.
+
+task.spawn(function()
+	local ServerScriptService = game:GetService("ServerScriptService")
+	local fishCaughtBindable = ServerScriptService:WaitForChild("FishCaughtBindable", 30)
+	if not fishCaughtBindable then
+		warn("QuestSaver: FishCaughtBindable not found — sequential/daily quests may not update")
+		return
+	end
+
+	fishCaughtBindable.Event:Connect(function(plr, fishInfo)
+		-- fishInfo has: fishName (may include Frozen/Festival prefix), name (rarity), weight
+		local fishBaseName = fishInfo.fishName
+		fishBaseName = fishBaseName:gsub("^Frozen Festival ", ""):gsub("^Festival Frozen ", "")
+		fishBaseName = fishBaseName:gsub("^Frozen ", ""):gsub("^Festival ", "")
+
+		local rarity = fishInfo.name
+		local weight = fishInfo.weight
+
+		-- Sequential quest progress (file-level function, player as argument)
+		task.spawn(function()
+			handleFishCaughtForSequential(plr, fishBaseName, rarity, weight)
+		end)
+
+		-- Daily random quest progress (per-player closure registered in PlayerAdded)
+		local dailyHandler = dailyRandomQuestHandlers[plr]
+		if dailyHandler then
+			task.spawn(function()
+				dailyHandler(rarity)
+			end)
+		end
+	end)
 end)
 
 -- ── PlayerRemoving ─────────────────────────────────────────────────────────────

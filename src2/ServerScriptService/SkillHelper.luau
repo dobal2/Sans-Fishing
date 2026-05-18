@@ -3,7 +3,6 @@ local SKILL_EFFECTS = {
 	SellBonus   = { 0.10, 0.20, 0.30, 0.40, 0.50, 0.65 },
 	FriendBonus = { 0.15, 0.30, 0.50 },
 	HitZoneUp   = { 0.06, 0.10, 0.15, 0.21, 0.28 },
-	InvenUp     = { 10, 20, 35, 55 },
 	WeightUp    = { 0.04, 0.10, 0.18, 0.28 },
 	PowerUp     = { 0.05, 0.10, 0.20 },
 	AutoUp      = { 0.1, 0.4, 0.8 },
@@ -40,10 +39,6 @@ end
 
 function SkillHelper.GetHitZoneBonus(player)
 	return SkillHelper.GetEffect(player, "HitZoneUp")
-end
-
-function SkillHelper.GetExtraInventory(player)
-	return SkillHelper.GetEffect(player, "InvenUp")
 end
 
 function SkillHelper.GetWeightMultiplier(player)

@@ -153,19 +153,6 @@ function FishingServer:_bindEvents()
 	self.castEvent.OnServerEvent:Connect(function(player, targetPos)
 		if self.activated or self.isReeling then return end
 
-		if not self:_checkInventoryLimit(player) then
-			local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent")
-			if noticeEvent then
-				local hasExpansion = self:_hasInventoryExpansionGamepass(player)
-				local message = hasExpansion and
-					"Expanded inventory full! Go sell fish (Max 200)" or
-					"Inventory full! Go sell fish or buy expansion pass (Max 100)"
-				noticeEvent:FireClient(player, message)
-			end
-			self.remote:FireClient(player, "inventory_full")
-			return
-		end
-
 		self.player = player
 		self.character = player.Character
 		if not self.character then return end
@@ -233,12 +220,6 @@ function FishingServer:_bindEvents()
 			if gameTime < 0.5 then
 				warn("Security: Game completed too quickly:", gameTime, "seconds by", player.Name)
 				player:Kick("Suspicious fishing behavior detected")
-				return
-			end
-
-			if not self:_checkInventoryLimit(player) then
-				warn("Security: Inventory full at success time for", player.Name)
-				self:_resolveFishing(player, "fail")
 				return
 			end
 
@@ -365,13 +346,6 @@ function FishingServer:_validateAttempt(player, payload)
 	end
 	self.lastServerAttempt = currentTime
 
-	-- Server-side inventory check
-	if not self:_checkInventoryLimit(player) then
-		warn("Fishing blocked due to full inventory:", player.Name)
-		self:_resolveFishing(player, "fail")
-		return
-	end
-
 	-- Basic security validation
 	if not self:_validateBasicSecurity(player, "attempt") then
 		warn("Security validation failed:", player.Name)
@@ -473,78 +447,6 @@ function FishingServer:_validateBasicSecurity(player, action)
 end
 
 
-local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
-
--- Check inventory expansion gamepass
-function FishingServer:_hasInventoryExpansionGamepass(player)
-	local success, hasGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
-	end)
-
-	if success then
-		return hasGamepass
-	else
-		warn("Failed to check inventory expansion gamepass:", player.Name)
-		return false
-	end
-end
-
-function FishingServer:_getInventoryLimit(player)
-	local baseLimit = 100
-
-	if self:_hasInventoryExpansionGamepass(player) then
-		baseLimit = 200
-	end
-
-	-- InvenUp 스킬 추가 슬롯
-	local ok, SkillHelper = pcall(function()
-		return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
-	end)
-	if ok and SkillHelper then
-		baseLimit = baseLimit + SkillHelper.GetExtraInventory(player)
-	end
-
-	return baseLimit
-end
-
-
-function FishingServer:_checkInventoryLimit(player)
-	local backpack = player:FindFirstChild("Backpack")
-	if not backpack then return true end
-
-	local totalItemCount = 0
-
-	-- Local IsRod function (excludes rods and fish traps)
-	local function IsRod(itemName)
-		if not itemName then return false end
-		itemName = itemName:lower()
-		return itemName:match("rod$") ~= nil or
-			itemName:match("trap") ~= nil
-	end
-
-	-- Count all tools (excluding rods and fish traps) in backpack and character
-	local character = player.Character
-	local items = backpack:GetChildren()
-	if character then
-		for _, item in ipairs(character:GetChildren()) do
-			table.insert(items, item)
-		end
-	end
-	for _, item in ipairs(items) do
-		if item:IsA("Tool") and not IsRod(item.Name) then
-			totalItemCount = totalItemCount + 1
-		end
-	end
-
-	-- Check inventory limit
-	local inventoryLimit = self:_getInventoryLimit(player)
-
-	if totalItemCount >= inventoryLimit then
-		return false
-	end
-
-	return true
-end
 
 function FishingServer:_setupRope()
 	-- Tip attachment on the rod handle.
@@ -1385,9 +1287,15 @@ function FishingServer:_resolveFishing(player, result)
 				end
 			end
 
-			-- Add fish tool to backpack
-			local backpackTool = createFishTool(fishInfo)
-			backpackTool.Parent = player:FindFirstChild("Backpack")
+			-- Notify ItemSave to record fish data (no longer adding Tool to Backpack here)
+			local FishCaughtBindable = game:GetService("ServerScriptService"):FindFirstChild("FishCaughtBindable")
+			if FishCaughtBindable then
+				FishCaughtBindable:Fire(player, fishInfo)
+			else
+				-- Fallback: create tool and add to backpack if BindableEvent not found
+				local backpackTool = createFishTool(fishInfo)
+				backpackTool.Parent = player:FindFirstChild("Backpack")
+			end
 
 			-- Award SkillPoints per successful catch (base 1 + PointBoost bonus)
 			local skillPointsVal = player:FindFirstChild("SkillPoints")

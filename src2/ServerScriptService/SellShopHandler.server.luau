@@ -11,6 +11,9 @@ local SkillServer = require(script.Parent.SkillHelper)
 local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 
+-- BindableFunction from ItemSave for selling fish from data table
+local SellFishBindable = ServerScriptService:WaitForChild("SellFishBindable")
+
 local DOUBLE_SELL_GAMEPASS_ID = 1293430515
 local GROUP_ID = 9744474
 local SELL_COOLDOWN = 1.0
@@ -170,50 +173,10 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 	end
 
 	if choice == "Option1" then
-		local tools = {}
-		local lockedCount = 0
-		local zeroValueCount = 0
-
-		for _, tool in ipairs(character:GetChildren()) do
-			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-				if isFishLocked(tool) then
-					lockedCount += 1
-				else
-					local trueVal = calcTrueFishValue(tool)
-					if trueVal <= 0 then
-						zeroValueCount += 1
-					else
-						totalEarned += trueVal
-						table.insert(tools, tool)
-						itemSold = true
-					end
-				end
-			end
-		end
-
-		for _, tool in ipairs(backpack:GetChildren()) do
-			if tool:IsA("Tool") and tool:FindFirstChild("FishValue") then
-				if isFishLocked(tool) then
-					lockedCount += 1
-				else
-					local trueVal = calcTrueFishValue(tool)
-					if trueVal <= 0 then
-						zeroValueCount += 1
-					else
-						totalEarned += trueVal
-						table.insert(tools, tool)
-						itemSold = true
-					end
-				end
-			end
-		end
-
-		for _, tool in ipairs(tools) do
-			tool:Destroy()
-		end
-
-		if itemSold then
-			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
+		-- Sell all unlocked fish from data table
+		local baseValue, soldCount = SellFishBindable:Invoke(player, "all")
+		if soldCount > 0 then
+			totalEarned = calculateFinalValue(baseValue, player, hasDoubleGamepass)
 			coins.Value += totalEarned
 			datamanager:UpdateData(player, "Coins", coins.Value)
 			soldNotificationEvent:FireClient(player, totalEarned)
@@ -227,21 +190,10 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 		enablePromptEvent:FireClient(player, true)
 
 	elseif choice == "Option2" then
-		local toolSold = false
-		for _, tool in ipairs(character:GetChildren()) do
-			if isSellableFish(tool) then
-				totalEarned += calcTrueFishValue(tool)
-				tool:Destroy()
-				itemSold = true
-				toolSold = true
-				break
-			end
-		end
-
-		if not toolSold then
-			soldNotificationEvent:FireClient(player, 0, true)
-		elseif totalEarned > 0 then
-			totalEarned = calculateFinalValue(totalEarned, player, hasDoubleGamepass)
+		-- Sell currently equipped fish only
+		local baseValue, soldCount = SellFishBindable:Invoke(player, "equipped")
+		if soldCount > 0 then
+			totalEarned = calculateFinalValue(baseValue, player, hasDoubleGamepass)
 			coins.Value += totalEarned
 			datamanager:UpdateData(player, "Coins", coins.Value)
 			soldNotificationEvent:FireClient(player, totalEarned)
@@ -249,10 +201,13 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
 					totalEarned, coins.Value, "FishSell", "SellHeld")
 			end)
+		else
+			soldNotificationEvent:FireClient(player, 0, true)
 		end
 		enablePromptEvent:FireClient(player, true)
 
 	elseif choice == "Option3" then
+		-- Preview value of currently equipped fish
 		for _, tool in ipairs(character:GetChildren()) do
 			if isPreviewableFish(tool) then
 				local previewValue = calculateFinalValue(calcTrueFishValue(tool), player, hasDoubleGamepass)

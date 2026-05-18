@@ -150,42 +150,8 @@ function FishingClient.init(tool)
 	return self
 end
 
-local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
-
--- Check inventory expansion gamepass on client
-function FishingClient:_hasInventoryExpansionGamepass()
-	local success, hasGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(self.player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
-	end)
-
-	if success then
-		return hasGamepass
-	else
-		warn("Client: Failed to check inventory expansion gamepass")
-		return false
-	end
-end
-
--- Returns true if inventory is full (and fires notice), false if OK to cast
+-- Inventory is now unlimited; this function always returns false.
 function FishingClient:_isInventoryFull()
-	local backpack = self.player:FindFirstChild("Backpack")
-	if not backpack then return false end
-	local fishCount = 0
-	for _, item in ipairs(backpack:GetChildren()) do
-		if item:IsA("Tool") and item:FindFirstChild("FishValue") then
-			fishCount += 1
-		end
-	end
-	local hasExpansion = self:_hasInventoryExpansionGamepass()
-	local limit = hasExpansion and 200 or 100
-	if fishCount >= limit then
-		local noticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("NoticeEventForClient")
-		local message = hasExpansion and
-			"Expanded inventory full! Go sell fish (Max 200)" or
-			"Inventory full! Go sell fish or buy expansion pass (Max 100)"
-		noticeEvent:Fire(message)
-		return true
-	end
 	return false
 end
 
@@ -1153,18 +1119,6 @@ function FishingClient:_bind()
 
 	-- Remote event handling
 	self.remote.OnClientEvent:Connect(function(data)
-		if data == "inventory_full" then
-			self:_closeGui()
-			self.baitThrown = false
-			task.spawn(function()
-				task.wait(0.5)
-				if self.tool and self.tool.Parent == self.player.Character then
-					self:_playHoldingAnimation(false)
-				end
-			end)
-			return
-		end
-
 		if data == "fail" then
 			self:_closeGui()
 			self.baitThrown = false
