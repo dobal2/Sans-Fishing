@@ -56,7 +56,12 @@ if xButton then
 end
 if joinGroupButton then
 	joinGroupButton.MouseButton1Click:Connect(function()
-		GuiService:OpenBrowserWindow("https://www.roblox.com/communities/9744474/Sans-Fishing#!/about")
+		local GroupService = game:GetService("GroupService")
+		task.spawn(function()
+			pcall(function()
+				GroupService:PromptJoinAsync(player, GROUP_ID)
+			end)
+		end)
 	end)
 end
 

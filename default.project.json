@@ -142,6 +142,9 @@
       },
       "HotBarLayoutServer": {
         "$path": "src2/ServerScriptService/HotBarLayoutServer.server.luau"
+      },
+      "AutoReconnectServer": {
+        "$path": "src2/ServerScriptService/AutoReconnectServer.server.luau"
       }
     },
 
@@ -206,9 +209,6 @@
         },
         "CustomInventory": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/CustomInventory"
-        },
-        "Main": {
-          "$path": "src2/StarterPlayer/StarterPlayerScripts/Main.client.luau"
         },
         "Main_AutoButton_AutoButtonController": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/Main_AutoButton_AutoButtonController.client.luau"

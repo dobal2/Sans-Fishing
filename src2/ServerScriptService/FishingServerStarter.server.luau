@@ -50,14 +50,25 @@ local function connectToolWatcher(container)
 	end)
 end
 
+-- 캐릭터 리스폰 시 tool의 ServerInit 리셋 (재접속/리스폰 후 재초기화 보장)
+local function resetServerInit(container)
+	for _, tool in ipairs(container:GetChildren()) do
+		if tool:IsA("Tool") and tool:GetAttribute("ServerInit") then
+			tool:SetAttribute("ServerInit", nil)
+		end
+	end
+end
+
 -- Handle player join
 Players.PlayerAdded:Connect(function(player)
 	local data = waitForData(player)
 	if not data then return end
 	local backpack = player:WaitForChild("Backpack")
+	resetServerInit(backpack)
 	connectToolWatcher(backpack)
 	watchFishingTools(backpack)
 	player.CharacterAdded:Connect(function(char)
+		resetServerInit(backpack)
 		connectToolWatcher(char)
 		watchFishingTools(char)
 	end)

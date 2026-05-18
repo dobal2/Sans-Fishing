@@ -51,6 +51,7 @@ local Permissions = {
 		updatelogreset = true,
 		questreset = true,
 		dailyquestreset = true,
+		afkreconnect = true,
 	},
 	Moderator = {
 		kick = true,
@@ -776,6 +777,58 @@ local function command(plr, chat)
 					end
 				end
 				announceRemote:FireClient(v, "All fish have been added to your catalog.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :afkreconnect [target] — force auto-reconnect teleport (test AFK prevention)
+	if chat:lower():sub(1, #Prefix + 12) == Prefix .. "afkreconnect" then
+		if hasPermission(plr, "afkreconnect") then
+			local TeleportService = game:GetService("TeleportService")
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local char = v.Character
+				local rodName = nil
+				-- 1. 현재 들고 있는 로드 확인
+				if char then
+					for _, obj in ipairs(char:GetChildren()) do
+						if obj:IsA("Tool") and obj:FindFirstChild("CastRod") then
+							rodName = obj.Name
+							break
+						end
+					end
+				end
+				-- 2. 없으면 백팩에서 확인
+				if not rodName then
+					local bp = v:FindFirstChild("Backpack")
+					if bp then
+						for _, obj in ipairs(bp:GetChildren()) do
+							if obj:IsA("Tool") and obj:FindFirstChild("CastRod") then
+								rodName = obj.Name
+								break
+							end
+						end
+					end
+				end
+				-- 3. 그래도 없으면 leaderstats CurrentRod → storageName 변환
+				if not rodName then
+					local ls = v:FindFirstChild("leaderstats")
+					local currentRod = ls and ls:FindFirstChild("CurrentRod")
+					if currentRod and currentRod.Value ~= "" then
+						local rodData = RodDataModule[currentRod.Value]
+						rodName = (rodData and rodData.storageName) or currentRod.Value
+					end
+				end
+				local options = Instance.new("TeleportOptions")
+				options:SetTeleportData({ autoReconnect = true, rodName = rodName })
+				local ok, err = pcall(function()
+					TeleportService:TeleportAsync(game.PlaceId, { v }, options)
+				end)
+				if not ok then
+					announceRemote:FireClient(plr, "Teleport failed: " .. tostring(err), "SYSTEM")
+				end
 			end
 		end
 	end

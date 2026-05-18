@@ -1,7 +1,9 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+local saveAutoFishing = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("SaveAutoFishing")
 local mainGui = player.PlayerGui:WaitForChild("Main")
 local frame = mainGui:WaitForChild("AutoButton")
 local button = frame:WaitForChild("TextButton")
@@ -18,9 +20,12 @@ local GLOW_OFF_COLOR = Color3.fromRGB(255, 255, 255)
 local HOVER_IN  = TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local HOVER_OUT = TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local function setAutoState(on)
+local function setAutoState(on, skipSave)
 	isAuto = on
 	player:SetAttribute("AutoFishing", on)
+	if not skipSave then
+		saveAutoFishing:FireServer(on)
+	end
 
 	onGradient.Enabled  = on
 	offGradient.Enabled = not on
@@ -98,5 +103,15 @@ else
 	end)
 end
 
-setAutoState(false)
+-- 외부(AutoFishing.client)에서 attribute를 직접 켤 경우 UI 동기화
+player.AttributeChanged:Connect(function(attr)
+	if attr == "AutoFishing" then
+		local val = player:GetAttribute("AutoFishing") == true
+		if val ~= isAuto then
+			setAutoState(val, true)
+		end
+	end
+end)
+
+setAutoState(false, true)
 frame.Visible = false

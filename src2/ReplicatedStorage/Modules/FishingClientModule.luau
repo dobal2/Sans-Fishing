@@ -29,6 +29,11 @@ function FishingClient.init(tool)
 
 	local self = setmetatable({}, FishingClient)
 	instanceMap[tool] = self
+	tool.AncestryChanged:Connect(function()
+		if not tool:IsDescendantOf(game) then
+			instanceMap[tool] = nil
+		end
+	end)
 
 	self.tool = tool
 

@@ -16,6 +16,7 @@ local DATA_TEMPLATE = {
 	DiscoveryClaimed = {};
 	SkillPoints = 0;
 	Skills = {};
+	AutoFishingOn = false;
 }
 
 local sessionStartTimes = {}

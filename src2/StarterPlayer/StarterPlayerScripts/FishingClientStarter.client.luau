@@ -23,6 +23,14 @@ local function initFishingTool(tool)
 	FClient.init(tool)
 end
 
+local function resetClientInit(container)
+	for _, tool in ipairs(container:GetChildren()) do
+		if tool:IsA("Tool") and tool:GetAttribute("ClientInit") then
+			tool:SetAttribute("ClientInit", nil)
+		end
+	end
+end
+
 local function watchContainer(container)
 	container.ChildAdded:Connect(initFishingTool)
 	for _, tool in ipairs(container:GetChildren()) do
@@ -30,11 +38,13 @@ local function watchContainer(container)
 	end
 end
 
+resetClientInit(player.Backpack)
 watchContainer(player.Backpack)
 if player.Character then
 	watchContainer(player.Character)
 end
 
 player.CharacterAdded:Connect(function(char)
+	resetClientInit(player.Backpack)
 	watchContainer(char)
 end)

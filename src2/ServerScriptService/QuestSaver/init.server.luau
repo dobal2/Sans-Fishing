@@ -455,22 +455,19 @@ Players.PlayerAdded:Connect(function(plr)
 	if lastQuestDate ~= currentDate then
 		Data.LastQuestDate = currentDate
 
-		if Data.Quests and Data.Quests.ActiveQuests then
-			for questId, questData in pairs(Data.Quests.ActiveQuests) do
-				if questData.questType == "daily_playtime" or questData.questType == "daily_random" then
-					Data.Quests.ActiveQuests[questId] = nil
-				end
-			end
-		end
+		-- Daily quest disabled: don't clear existing daily quests
+	-- if Data.Quests and Data.Quests.ActiveQuests then
+	-- 	for questId, questData in pairs(Data.Quests.ActiveQuests) do
+	-- 		if questData.questType == "daily_playtime" or questData.questType == "daily_random" then
+	-- 			Data.Quests.ActiveQuests[questId] = nil
+	-- 		end
+	-- 	end
+	-- end
 
 		if not Data.Quests then Data.Quests = {} end
 		if not Data.Quests.ActiveQuests then Data.Quests.ActiveQuests = {} end
 
-		-- Use date as seed so all players get same quest that day
-		local dateSeed = tonumber(currentDate:gsub("-", "")) or os.time()
-		local dailyQuest = pickDailyQuest(dateSeed)
-		Data.Quests.ActiveQuests[dailyQuest.id] = dailyQuest
-
+		-- Daily quest disabled
 		datamanager:SaveData(plr)
 	end
 
@@ -534,14 +531,15 @@ Players.PlayerAdded:Connect(function(plr)
 	local dailyAlreadyCompleted = (lastQuestDate == currentDate)
 		and (not Data.Quests.ActiveQuests or not Data.Quests.ActiveQuests["daily_random_quest"])
 
-	if not hasDailyQuest and not dailyAlreadyCompleted then
-		local dateSeed = tonumber(currentDate:gsub("-", "")) or os.time()
-		local dailyQuest = pickDailyQuest(dateSeed)
-		local questFolder = createQuest(dailyQuest, dailyQuest.id)
-		if questFolder then
-			questFolder.Parent = ActiveQuests
-		end
-	end
+	-- Daily quest disabled
+	-- if not hasDailyQuest and not dailyAlreadyCompleted then
+	-- 	local dateSeed = tonumber(currentDate:gsub("-", "")) or os.time()
+	-- 	local dailyQuest = pickDailyQuest(dateSeed)
+	-- 	local questFolder = createQuest(dailyQuest, dailyQuest.id)
+	-- 	if questFolder then
+	-- 		questFolder.Parent = ActiveQuests
+	-- 	end
+	-- end
 
 	-- ── Sequential quest initialization ──────────────────────────────────────
 

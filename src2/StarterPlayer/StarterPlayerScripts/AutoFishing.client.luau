@@ -1,7 +1,57 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+
+local AUTO_RECONNECT_TIME = 19 * 60  -- 19 minutes
+
+local autoReconnectRequest = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("AutoReconnectRequest")
+local getAutoFishing = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("GetAutoFishing")
+
+-- 접속 시 auto 상태 복원
+task.spawn(function()
+	if not player.Character then player.CharacterAdded:Wait() end
+	task.wait(3)
+	local ok, autoOn, rodName = pcall(function()
+		return getAutoFishing:InvokeServer()
+	end)
+	if not ok or not autoOn then return end
+	-- 로드 equip
+	local equippedRod = nil
+	if rodName then
+		local backpack = player:FindFirstChild("Backpack")
+		if backpack then
+			local rod = backpack:FindFirstChild(rodName)
+			if rod then
+				local char = player.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum:EquipTool(rod)
+					equippedRod = rod
+				end
+			end
+		end
+	end
+	-- 서버에서 FishingServer가 tool에 붙을 때까지 대기 (ServerInit attribute)
+	if equippedRod then
+		local timeout = 10
+		while not equippedRod:GetAttribute("ServerInit") and timeout > 0 do
+			task.wait(0.2)
+			timeout -= 0.2
+		end
+	else
+		task.wait(2)
+	end
+	player:SetAttribute("AutoFishing", true)
+end)
+
+-- 19-minute AFK kick prevention timer (started after isAutoOn/getCurrentRodTool are defined below)
+local afkTimer = 0
+
+local mainGui = player:WaitForChild("PlayerGui"):WaitForChild("Main")
+local rejoinTimer = mainGui:FindFirstChild("RejoinTimer")
+if rejoinTimer then rejoinTimer.Visible = false end
 
 local AUTO_CAST_COOLDOWN = 1.1   -- wait after IsFishing clears before next cast
 local AUTO_CLICK_COOLDOWN_BASE = 1.5
@@ -91,12 +141,40 @@ player.AttributeChanged:Connect(function(attr)
 	if attr == "IsFishing" and player:GetAttribute("IsFishing") == false then
 		fishingEndedAt = tick()
 	end
-	-- AutoFishing 켤 때 첫 캐스트를 1초 뒤로 맞춤
 	if attr == "AutoFishing" and player:GetAttribute("AutoFishing") == true then
 		local soon = tick() - AUTO_CAST_COOLDOWN + AUTO_ENABLE_DELAY
 		lastCastTime = soon
 		fishingEndedAt = soon
 		equipTime = soon
+		afkTimer = 0
+	end
+end)
+
+-- AFK kick prevention: reconnect after 19 minutes of auto fishing
+local lastTimerUpdate = 0
+RunService.Heartbeat:Connect(function(dt)
+	if isAutoOn() and getCurrentRodTool() then
+		afkTimer = afkTimer + dt
+		if rejoinTimer then
+			rejoinTimer.Visible = true
+			if tick() - lastTimerUpdate >= 1 then
+				lastTimerUpdate = tick()
+				local remaining = math.max(0, AUTO_RECONNECT_TIME - afkTimer)
+				local mins = math.floor(remaining / 60)
+				local secs = math.floor(remaining % 60)
+				rejoinTimer.Text = string.format("Rejoin After: %d:%02d", mins, secs)
+			end
+		end
+		if afkTimer >= AUTO_RECONNECT_TIME then
+			afkTimer = 0
+			local tool = getCurrentRodTool()
+			autoReconnectRequest:FireServer(tool and tool.Name or nil)
+		end
+	else
+		afkTimer = 0
+		if rejoinTimer then
+			rejoinTimer.Visible = false
+		end
 	end
 end)
 
