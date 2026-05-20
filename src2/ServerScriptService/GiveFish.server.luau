@@ -39,13 +39,10 @@ local function addPromptToCharacter(char, owner)
 		local senderChar = fromPlayer.Character
 		if not senderChar then return end
 
+		-- Character에 장착 중인 물고기 툴만 허용 (Backpack에 있으면 들고 있지 않은 것)
 		local tool = senderChar:FindFirstChildWhichIsA("Tool")
 		if not isFish(tool) then
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "You need to hold a fish to give!")
-			return
-		end
-		if tool.Parent ~= senderChar then
-			warn("Fish ownership mismatch:", fromPlayer.Name)
 			return
 		end
 

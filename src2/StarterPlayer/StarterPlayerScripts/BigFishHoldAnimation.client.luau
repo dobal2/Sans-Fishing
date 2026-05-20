@@ -4,6 +4,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local BIG_FISH_THRESHOLD = 30.0
 
+local holdBigFishAnim = nil
+task.spawn(function()
+	local folder = ReplicatedStorage:WaitForChild("Animations", 30)
+	if folder then
+		holdBigFishAnim = folder:WaitForChild("HoldBigFish", 10)
+	end
+end)
+
+local currentTrack = nil
+local isStopping = false
+
 local function getAnimator(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return nil end
@@ -15,21 +26,14 @@ local function getAnimator(character)
 	return animator
 end
 
-local holdBigFishAnim = nil
-task.spawn(function()
-	local folder = ReplicatedStorage:WaitForChild("Animations", 30)
-	if folder then
-		holdBigFishAnim = folder:WaitForChild("HoldBigFish", 10)
-	end
-end)
-
-local currentTrack = nil
-
 local function stopBigFishAnim()
+	if isStopping then return end
+	isStopping = true
 	if currentTrack then
 		currentTrack:Stop()
 		currentTrack = nil
 	end
+	isStopping = false
 end
 
 local function playBigFishAnim(character)
@@ -50,29 +54,34 @@ local function playBigFishAnim(character)
 	currentTrack = track
 end
 
-local function onToolEquipped(tool, character)
-	local fw = tool:FindFirstChild("FishWeight")
-	if not fw then return end -- 물고기 Tool이 아님
-
-	if fw.Value >= BIG_FISH_THRESHOLD then
-		playBigFishAnim(character)
-	end
-end
-
-local function onToolUnequipped()
-	stopBigFishAnim()
-end
-
 local function watchCharacter(character)
 	stopBigFishAnim()
 
+	local toolConnections = {}
+
 	character.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") then
-			-- Equipped 시점에 FishWeight가 아직 복제 안 됐을 수 있으므로 잠깐 대기
-			task.defer(function()
-				onToolEquipped(child, character)
-			end)
-			child.Unequipped:Connect(onToolUnequipped)
+		if not child:IsA("Tool") then return end
+		if toolConnections[child] then return end -- 이미 연결됨
+
+		local conn = child.Unequipped:Connect(function()
+			stopBigFishAnim()
+		end)
+		toolConnections[child] = conn
+
+		task.defer(function()
+			if child.Parent then
+				local fw = child:FindFirstChild("FishWeight")
+				if fw and fw.Value >= BIG_FISH_THRESHOLD then
+					playBigFishAnim(character)
+				end
+			end
+		end)
+	end)
+
+	character.ChildRemoved:Connect(function(child)
+		if toolConnections[child] then
+			toolConnections[child]:Disconnect()
+			toolConnections[child] = nil
 		end
 	end)
 end

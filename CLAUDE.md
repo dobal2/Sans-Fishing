@@ -387,7 +387,7 @@ Skills are split into two currencies: **Coins** and **FishingPoints** (earned 1 
 | QuickBite | Coins | 3 | 50K/300K/1.5M | fish bite wait -0.5/1.5/2.5s | AutoFish |
 | AutoUp (Rapid Auto) | Coins | 3 | 100K/1M/5M | auto click cooldown -0.1/0.4/0.8s | AutoFish |
 | PointBoost | Coins | 3 | 5M/20M/100M | +1/2/3 FishingPoints per catch | — |
-| HitZoneUp | FishingPoints | 5 | 10/25/50/100/200 | hit zone size +6/10/15/21/28% | PowerUp Lv1 |
+| HitZoneUp | FishingPoints | 3 | 10/25/50 | hit zone size +6/10/15% | PowerUp Lv1 |
 | InvenUp | FishingPoints | 4 | 10/40/80/200 | +10/20/35/55 inventory slots | — |
 | WeightUp | FishingPoints | 4 | 20/80/200/500 | heavy fish chance +4/10/18/28% | InvenUp Lv1 |
 | PowerUp | FishingPoints | 3 | 20/80/200 | rod power +5/10/20% | InvenUp Lv1 |

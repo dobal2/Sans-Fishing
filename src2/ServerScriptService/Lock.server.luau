@@ -43,7 +43,7 @@ fishLockEvent.OnServerEvent:Connect(function(player, toolOrIndex, isLocked, fish
 	end
 
 	-- Always update PlayerFishData via FishLockBindable (index-based)
-	if FishLockBindable and type(fishIndex) == "number" then
+	if FishLockBindable and type(fishIndex) == "number" and fishIndex >= 1 and fishIndex == math.floor(fishIndex) then
 		FishLockBindable:Fire(player, fishIndex, isLocked)
 	end
 end)

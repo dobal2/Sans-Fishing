@@ -59,7 +59,7 @@ if joinGroupButton then
 		local GroupService = game:GetService("GroupService")
 		task.spawn(function()
 			pcall(function()
-				GroupService:PromptJoinAsync(player, GROUP_ID)
+				GroupService:PromptJoinAsync(GROUP_ID)
 			end)
 		end)
 	end)

@@ -129,10 +129,10 @@ local function updateLabels()
 		luckLabel.Text = "+" .. totalLuck .. "%"
 	end
 
-	-- CoinLabel: SellBonus 스킬 + 그룹 15% + 친구수×5%, Coin x2 패스면 전체 2배
+	-- CoinLabel: SellBonus 스킬 + 그룹 50% + 친구수×5%, Coin x2 패스면 전체 2배
 	if coinLabel then
 		local sellBonusPct  = math.floor(getEffect("SellBonus") * 100)
-		local groupPct      = isInGroup() and 15 or 0
+		local groupPct      = isInGroup() and 50 or 0
 		local friendCoinPct = friendsCount * 5
 		local baseCoin      = sellBonusPct + groupPct + friendCoinPct
 		local totalCoin     = cachedCoinPass and (baseCoin * 2) or baseCoin

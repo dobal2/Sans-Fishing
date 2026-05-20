@@ -12,11 +12,13 @@ local DATA_TEMPLATE = {
 	CurrentFishTrap = "";
 	IsTutorialed = false;
 	SeenUpdateLog = false;
+	LastSeenUpdateVersion = 0;
 	Playtime = 0;
 	DiscoveryClaimed = {};
 	SkillPoints = 0;
 	Skills = {};
 	AutoFishingOn = false;
+	Bubbles = {};
 }
 
 local sessionStartTimes = {}

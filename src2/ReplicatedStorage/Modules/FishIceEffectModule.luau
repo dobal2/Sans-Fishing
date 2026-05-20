@@ -26,18 +26,18 @@ local function createIceBlock(fishModel, fishInfo)
 		return nil
 	end
 
-	-- Calculate size multiplier based on weight
-	local fishWeight = fishInfo and fishInfo.weight
-	local sizeMultiplier = ICE_SETTINGS.size_multiplier or 1.15
+	-- 바운딩 박스 기준이라 weight는 이미 모델 크기에 반영됨 — 살짝 여백만 추가
+	local sizeMultiplier = 1.15
 
-	if fishWeight then
-		-- 2% increase per kg
-		local weightMultiplier = 1.0 + (fishWeight - 1) * 0.02
-		weightMultiplier = math.max(0.8, math.min(2.5, weightMultiplier))
-		sizeMultiplier = sizeMultiplier * weightMultiplier
-
+	-- 모델 전체 바운딩 박스 크기 계산 (파트가 여러 개인 모델에 대응)
+	local modelCFrame, modelSize
+	local ok = pcall(function()
+		modelCFrame, modelSize = fishModel:GetBoundingBox()
+	end)
+	if not ok or not modelSize then
+		modelCFrame = targetPart.CFrame
+		modelSize = targetPart.Size
 	end
-
 
 	local iceBlock = Instance.new("Part")
 	iceBlock.Name = "IceBlock"
@@ -45,9 +45,9 @@ local function createIceBlock(fishModel, fishInfo)
 	iceBlock.CanCollide = false
 	iceBlock.Massless = true
 
-	-- Apply weight-based size
-	iceBlock.Size = targetPart.Size * sizeMultiplier
-	iceBlock.CFrame = targetPart.CFrame
+	-- 바운딩 박스 기준으로 크기 설정
+	iceBlock.Size = modelSize * sizeMultiplier
+	iceBlock.CFrame = modelCFrame
 
 	-- Force block shape
 	iceBlock.Shape = Enum.PartType.Block

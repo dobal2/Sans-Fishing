@@ -99,6 +99,7 @@ ensureRemote(Misc, "SaveHotBarLayout")
 ensureRemote(Misc, "GetHotBarLayout", "RemoteFunction")
 ensureRemote(Misc, "GetServerAge", "RemoteFunction")
 ensureRemote(Misc, "SetSeenUpdateLog")
+ensureRemote(Misc, "SetSeenUpdateVersion")
 ensureRemote(Misc, "AutoReconnectRequest")
 ensureRemote(Misc, "SaveAutoFishing")
 ensureRemote(Misc, "GetAutoFishing", "RemoteFunction")
@@ -107,6 +108,10 @@ ensureRemote(Misc, "UnequipFishRequest")
 ensureRemote(Misc, "GetInventoryData", "RemoteFunction")
 ensureRemote(Misc, "FishDataAdded")
 ensureRemote(Misc, "InventoryDataSync")
+ensureRemote(Misc, "SaveFishHotBarPins")
+ensureRemote(Misc, "GetFishHotBarPins", "RemoteFunction")
+ensureRemote(Misc, "CollectFishTrapRemote")
+ensureRemote(Misc, "PlaceFishTrapRemote")
 
 local _serverStartClock = os.clock()
 local _getServerAge = Misc:FindFirstChild("GetServerAge")
@@ -121,6 +126,19 @@ if _setSeenUpdateLog then
 	_setSeenUpdateLog.OnServerEvent:Connect(function(player)
 		local v = player:FindFirstChild("SeenUpdateLog")
 		if v then v.Value = true end
+	end)
+end
+
+local _setSeenUpdateVersion = Misc:FindFirstChild("SetSeenUpdateVersion")
+if _setSeenUpdateVersion then
+	_setSeenUpdateVersion.OnServerEvent:Connect(function(player, version)
+		if type(version) ~= "number" then return end
+		local v = player:FindFirstChild("LastSeenUpdateVersion")
+		local dm = require(game:GetService("ServerScriptService"):WaitForChild("leaderstats"):WaitForChild("DataManager"))
+		if v and version > v.Value then
+			v.Value = version
+			dm:UpdateData(player, "LastSeenUpdateVersion", version)
+		end
 	end)
 end
 

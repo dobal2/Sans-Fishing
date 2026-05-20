@@ -1,61 +1,86 @@
---local fishTrapDataManager = require(game.ServerScriptService:WaitForChild("FishTrapManager"):WaitForChild("DataManager"))
---local mainDataManager = require(game.ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
---local fishTrapDeleteEvent = ReplicatedStorage:FindFirstChild("FishTrapDeleteEvent")
+local FishTrapDataManager = require(ServerScriptService:WaitForChild("FishTrapManager"):WaitForChild("DataManager"))
+local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 
----- Fish trap delete function
---local function deleteFishTrap(player)
---	print("=== Fish trap delete start ===", player.Name)
+local Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
+local CollectFishTrapRemote = Misc:WaitForChild("CollectFishTrapRemote")
+local ShowNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 
---	-- 1. Delete fish trap data from FishTrapManager DataManager
---	local fishTrapData = fishTrapDataManager:GetData(player)
---	if fishTrapData then
---		local deletedCount = 0
---		for key, value in pairs(fishTrapData) do
---			if string.find(key, "FishTrapData_") then
---				fishTrapDataManager:UpdateData(player, key, nil)
---				print("Deleted from FishTrapManager:", key)
---				deletedCount = deletedCount + 1
---			end
---		end
---		print("FishTrapManager delete complete:", deletedCount, "items")
---	else
---		print("No FishTrapManager data")
---	end
+local FISH_TRAP_NAMES = {
+	["BasicFishTrap"]    = true,
+	["AdvancedFishTrap"] = true,
+	["MasterFishTrap"]   = true,
+	["RobuxFishTrap"]    = true,
+}
 
---	-- 2. Remove all fish traps belonging to this player from the world
---	local removedCount = 0
---	for _, obj in pairs(workspace:GetChildren()) do
---		local ownerValue = obj:FindFirstChild("Owner")
---		if ownerValue and ownerValue.Value == player.Name then
---			local trapIdValue = obj:FindFirstChild("TrapId")
---			if trapIdValue then
---				print("Removing fish trap from world:", trapIdValue.Value)
---				obj:Destroy()
---				removedCount = removedCount + 1
---			end
---		end
---	end
---	print("Fish traps removed from world:", removedCount, "items")
+local function isFishTrap(tool)
+	if not tool or not tool:IsA("Tool") then return false end
+	return FISH_TRAP_NAMES[tool.Name] == true
+end
 
---	-- 3. Restore tool state
---	showToolParts()
---	ShowBeamEvent:FireClient(player, "hide")
+local function getEquippedFishTrap(player)
+	local char = player.Character
+	if not char then return nil end
+	local tool = char:FindFirstChildWhichIsA("Tool")
+	if isFishTrap(tool) then return tool end
+	return nil
+end
 
---	-- Restore tool animation
---	tool.RequiresHandle = true
---	tool.ManualActivationOnly = false
+local function buildFishInfo(storedFish)
+	return {
+		name      = storedFish.name or "Common",
+		fishName  = storedFish.fishName or "Unknown",
+		weight    = storedFish.weight or 1,
+		minWeight = storedFish.minWeight or 1,
+		maxWeight = storedFish.maxWeight or 1,
+		value     = storedFish.value or 0,
+	}
+end
 
---	-- 4. Notify
---	ShowNoticeEvent:FireClient(player, "FishTrap deleted successfully!")
+CollectFishTrapRemote.OnServerEvent:Connect(function(player)
+	local tool = getEquippedFishTrap(player)
+	if not tool then
+		ShowNoticeEvent:FireClient(player, "Hold a Fish Trap to collect it!")
+		return
+	end
 
---	print("=== Fish trap delete complete ===", player.Name)
---end
+	local FishCaughtBindable = ServerScriptService:FindFirstChild("FishCaughtBindable")
 
----- Delete event handler
---fishTrapDeleteEvent.OnServerEvent:Connect(function(player, action)
---	if action == "delete_fishtrap" then
---		print("Fish trap delete request received:", player.Name)
---		deleteFishTrap(player)
---	end
---end)
+	local totalFishAdded = 0
+	local removed = false
+
+	for _, obj in ipairs(workspace:GetChildren()) do
+		local ownerVal = obj:FindFirstChild("Owner")
+		local trapIdVal = obj:FindFirstChild("TrapId")
+		if ownerVal and ownerVal.Value == player.Name and trapIdVal then
+			local trapKey = "FishTrapData_" .. trapIdVal.Value
+			local allData = FishTrapDataManager:GetData(player)
+			local trapData = allData and allData[trapKey]
+
+			if trapData and trapData.storedFish and FishCaughtBindable then
+				for _, storedFish in ipairs(trapData.storedFish) do
+					local fishInfo = buildFishInfo(storedFish)
+					FishCaughtBindable:Fire(player, fishInfo)
+					totalFishAdded += 1
+				end
+			end
+
+			FishTrapDataManager:UpdateData(player, "FishTrapData_" .. trapIdVal.Value, nil)
+			obj:Destroy()
+			removed = true
+		end
+	end
+
+	if removed then
+		if totalFishAdded > 0 then
+			ShowNoticeEvent:FireClient(player, string.format("Fish Trap collected! Got %d fish.", totalFishAdded))
+		else
+			ShowNoticeEvent:FireClient(player, "Fish Trap collected! (No fish inside)")
+		end
+	else
+		ShowNoticeEvent:FireClient(player, "No placed Fish Trap found!")
+	end
+end)

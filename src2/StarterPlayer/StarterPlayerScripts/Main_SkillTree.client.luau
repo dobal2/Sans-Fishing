@@ -13,19 +13,6 @@ local notifLabel     = notification:WaitForChild("TextLabel")
 
 local getSkillData = ReplicatedStorage:WaitForChild("GetSkillData")
 
--- 현재 게임에 실제로 존재하는 스킬만 포함
-local ACTIVE_SKILLS = {
-	Root         = true,
-	AutoFish     = true,
-	LuckUp       = true,
-	FriendBonus  = true,
-	SellBonus    = true,
-	FishingPoint = true,
-	HitZoneUp    = true,
-	WeightUp     = true,
-	PowerUp      = true,
-}
-
 local isUpdating = false
 local function updateNotification()
 	if isUpdating then return end
@@ -38,16 +25,20 @@ local function updateNotification()
 	local rootUnlocked = (data.levels["Root"] or 0) >= 1
 
 	for skillName, cfg in pairs(data.skills) do
-		if not ACTIVE_SKILLS[skillName] then continue end
-
 		local curLevel = data.levels[skillName] or 0
 		if curLevel >= cfg.maxLevel then continue end
 
-		local nextStage = curLevel + 1
-
+		-- SkillTreeClient와 동일한 선행 조건 체크
 		if not rootUnlocked and skillName ~= "Root" then continue end
 		if skillName == "FriendBonus" and (data.levels["LuckUp"] or 0) < 2 then continue end
+		if (skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp")
+			and (data.levels["FishingPoint"] or 0) < 1 then continue end
+		if skillName == "HitZoneUp" and (data.levels["PowerUp"] or 0) < 1 then continue end
+		if skillName == "AutoUp" and (data.levels["AutoFish"] or 0) < 1 then continue end
+		if skillName == "QuickBite" and (data.levels["AutoFish"] or 0) < 1 then continue end
+		if skillName == "PointBoost" and (data.levels["SellBonus"] or 0) < 1 then continue end
 
+		local nextStage = curLevel + 1
 		local cost    = cfg.costs[nextStage]
 		local balance = cfg.currency == "Coins" and data.coins or data.fishingPoints
 		if cost and balance >= cost then

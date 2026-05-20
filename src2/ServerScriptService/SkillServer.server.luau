@@ -22,7 +22,7 @@ local SKILLS = {
 	AutoFish = {
 		currency = CURRENCY_COIN,
 		maxLevel = 1,
-		costs    = { 10000 },
+		costs    = { 2000 },
 		effects  = { 1 },
 	},
 	-- 코인 전용
@@ -54,9 +54,9 @@ local SKILLS = {
 	},
 	HitZoneUp = {
 		currency = CURRENCY_FISHINGPOINT,
-		maxLevel = 5,
-		costs    = { 10, 25, 50, 100, 200 },
-		effects  = { 0.06, 0.10, 0.15, 0.21, 0.28 },
+		maxLevel = 3,
+		costs    = { 10, 25, 50 },
+		effects  = { 0.06, 0.10, 0.15 },
 	},
 	WeightUp = {
 		currency = CURRENCY_FISHINGPOINT,
@@ -174,7 +174,7 @@ skillBuyEvent.OnServerEvent:Connect(function(player, skillName, targetStage)
 		return
 	end
 
-	-- FishingPoint, HitZoneUp, WeightUp, PowerUp은 FishingPoint Lv1 이상 필요
+	-- FP 화폐 사용 노드(HitZoneUp, WeightUp, PowerUp)는 FishingPoint Lv1 이상 필요
 	if (skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp")
 		and getSkillLevel(player, "FishingPoint") < 1 then
 		skillBuyEvent:FireClient(player, "fail", "REQUIREMENT_NOT_MET", skillName)

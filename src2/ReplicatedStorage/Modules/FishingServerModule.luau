@@ -10,6 +10,7 @@ local AnalyticsService = game:GetService("AnalyticsService")
 
 local SANS_BADGE_ID = 2468526859123734
 local POWER_X2_GAMEPASS_ID = 1290056221
+local FISHING_POINT_X2_GAMEPASS_ID = 1294285302
 local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 local CastSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Cast")
 local FishingSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Fishing Rod Reel")
@@ -1297,14 +1298,17 @@ function FishingServer:_resolveFishing(player, result)
 				backpackTool.Parent = player:FindFirstChild("Backpack")
 			end
 
-			-- Award SkillPoints per successful catch (base 1 + PointBoost bonus)
+			-- Award SkillPoints per successful catch (base 1 + PointBoost bonus, x2 with gamepass)
 			local skillPointsVal = player:FindFirstChild("SkillPoints")
 			if skillPointsVal then
 				local ok_p, SkillHelper_p = pcall(function()
 					return require(game:GetService("ServerScriptService"):WaitForChild("SkillHelper"))
 				end)
 				local bonus = (ok_p and SkillHelper_p) and SkillHelper_p.GetEffect(player, "PointBoost") or 0
-				skillPointsVal.Value = skillPointsVal.Value + 1 + bonus
+				local basePoints = 1 + bonus
+				local ok_gp, hasX2 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, FISHING_POINT_X2_GAMEPASS_ID)
+				if ok_gp and hasX2 then basePoints = basePoints * 2 end
+				skillPointsVal.Value = skillPointsVal.Value + basePoints
 			end
 
 			-- Economy: fish caught (sink — player receives item worth adjustedValue coins)

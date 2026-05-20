@@ -73,22 +73,20 @@ local function getCurrentDateString()
 	return string.format("%04d-%02d-%02d", date.year, date.month, date.day)
 end
 
-local function pickDailyQuest(seed)
-	math.randomseed(seed or os.time())
-	local pick = DAILY_QUEST_POOL[math.random(1, #DAILY_QUEST_POOL)]
+local function pickDailyQuest()
 	return {
-		id            = "daily_random_quest",
-		name          = pick.name,
-		description   = pick.description,
-		targetFish    = pick.targetRarity or "",
-		requiredProgress = pick.requiredProgress,
-		rewardCoins   = 0,
-		rewardFP      = pick.rewardFP,
-		isReceived    = true,
-		currentProgress = 0,
-		questType     = "daily_random",
-		subType       = pick.subType,
-		targetRarity  = pick.targetRarity or "",
+		id               = "daily_random_quest",
+		name             = "Daily Playtime",
+		description      = "Play for 10 minutes today",
+		targetFish       = "",
+		requiredProgress = 10,
+		rewardCoins      = 100000,
+		rewardFP         = 0,
+		isReceived       = true,
+		currentProgress  = 0,
+		questType        = "daily_playtime",
+		subType          = "playtime",
+		targetRarity     = "",
 	}
 end
 
@@ -459,19 +457,21 @@ Players.PlayerAdded:Connect(function(plr)
 	if lastQuestDate ~= currentDate then
 		Data.LastQuestDate = currentDate
 
-		-- Daily quest disabled: don't clear existing daily quests
-	-- if Data.Quests and Data.Quests.ActiveQuests then
-	-- 	for questId, questData in pairs(Data.Quests.ActiveQuests) do
-	-- 		if questData.questType == "daily_playtime" or questData.questType == "daily_random" then
-	-- 			Data.Quests.ActiveQuests[questId] = nil
-	-- 		end
-	-- 	end
-	-- end
+		-- 날짜 바뀌면 일일퀘 완료 기록 초기화 + 기존 일일퀘 제거
+		if Data.Quests and Data.Quests.ActiveQuests then
+			for questId, questData in pairs(Data.Quests.ActiveQuests) do
+				if questData.questType == "daily_playtime" or questData.questType == "daily_random" then
+					Data.Quests.ActiveQuests[questId] = nil
+				end
+			end
+		end
+		if Data.Quests and Data.Quests.CompletedQuests then
+			Data.Quests.CompletedQuests["daily_random_quest"] = nil
+		end
 
 		if not Data.Quests then Data.Quests = {} end
 		if not Data.Quests.ActiveQuests then Data.Quests.ActiveQuests = {} end
 
-		-- Daily quest disabled
 		datamanager:SaveData(plr)
 	end
 
@@ -518,8 +518,9 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
-	-- Daily quest fallback: 오늘 날짜인데 퀘스트가 없을 때만 생성
-	-- (이미 오늘 완료해서 ActiveQuests에서 지워진 경우는 생성하지 않음)
+	-- 오늘 이미 완료한 경우 CompletedQuests에 기록되어 있음
+	local dailyAlreadyCompleted = Data.Quests.CompletedQuests and Data.Quests.CompletedQuests["daily_random_quest"] == true
+
 	local hasDailyQuest = false
 	for _, quest in pairs(ActiveQuests:GetChildren()) do
 		if quest:IsA("Folder") then
@@ -531,19 +532,15 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
-	-- lastQuestDate == currentDate이고 Data에도 daily_random_quest가 없으면 오늘 이미 완료한 것
-	local dailyAlreadyCompleted = (lastQuestDate == currentDate)
-		and (not Data.Quests.ActiveQuests or not Data.Quests.ActiveQuests["daily_random_quest"])
-
-	-- Daily quest disabled
-	-- if not hasDailyQuest and not dailyAlreadyCompleted then
-	-- 	local dateSeed = tonumber(currentDate:gsub("-", "")) or os.time()
-	-- 	local dailyQuest = pickDailyQuest(dateSeed)
-	-- 	local questFolder = createQuest(dailyQuest, dailyQuest.id)
-	-- 	if questFolder then
-	-- 		questFolder.Parent = ActiveQuests
-	-- 	end
-	-- end
+	if not hasDailyQuest and not dailyAlreadyCompleted then
+		local dailyQuest = pickDailyQuest()
+		local questFolder = createQuest(dailyQuest, dailyQuest.id)
+		if questFolder then
+			questFolder.Parent = ActiveQuests
+			Data.Quests.ActiveQuests["daily_random_quest"] = dailyQuest
+			datamanager:SaveData(plr)
+		end
+	end
 
 	-- ── Sequential quest initialization ──────────────────────────────────────
 
@@ -618,6 +615,33 @@ Players.PlayerAdded:Connect(function(plr)
 		dataReady = true
 	end)
 
+	local function completeDailyQuest(folder)
+		local rewardCoinsVal = folder:FindFirstChild("RewardCoins")
+		local rewardCoins = rewardCoinsVal and rewardCoinsVal.Value or 100000
+		local ls = plr:FindFirstChild("leaderstats")
+		local coins = ls and ls:FindFirstChild("Coins")
+		if coins then
+			coins.Value = coins.Value + rewardCoins
+			leaderstatsDataManager:UpdateData(plr, "Coins", coins.Value)
+		end
+
+		local saveData = datamanager:GetData(plr)
+		if saveData and saveData.Quests then
+			saveData.Quests.ActiveQuests = saveData.Quests.ActiveQuests or {}
+			saveData.Quests.CompletedQuests = saveData.Quests.CompletedQuests or {}
+			saveData.Quests.ActiveQuests["daily_random_quest"] = nil
+			saveData.Quests.CompletedQuests["daily_random_quest"] = true
+			datamanager:UpdateData(plr, "Quests", saveData.Quests)
+		end
+
+		local noticeEvent = getNoticeEvent()
+		if noticeEvent then
+			noticeEvent:FireClient(plr, "Daily quest complete! +100,000 Coins")
+		end
+
+		folder:Destroy()
+	end
+
 	local function handleDailyRandomQuest(rarity)
 		local aq = getActiveQuestsFolder(plr)
 		if not aq then return end
@@ -646,34 +670,38 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 
 		if progressed and cp.Value >= rp.Value then
-			-- Give FP reward
-			local fpVal = folder:FindFirstChild("RewardFP")
-			local rewardFP = fpVal and fpVal.Value or 15
-			local sp = plr:FindFirstChild("SkillPoints")
-			if sp then
-				sp.Value = sp.Value + rewardFP
-				leaderstatsDataManager:UpdateData(plr, "SkillPoints", sp.Value)
-			end
-
-			-- Save completion
-			local saveData = datamanager:GetData(plr)
-			if saveData and saveData.Quests and saveData.Quests.ActiveQuests then
-				saveData.Quests.ActiveQuests["daily_random_quest"] = nil
-				datamanager:UpdateData(plr, "Quests", saveData.Quests)
-			end
-
-			-- Notify
-			local noticeEvent = getNoticeEvent()
-			if noticeEvent then
-				noticeEvent:FireClient(plr, "Daily quest complete! +" .. rewardFP .. " Fishing Points")
-			end
-
-			folder:Destroy()
+			completeDailyQuest(folder)
 		end
 	end
 
 	-- Register handler for external FishCaughtBindable calls
 	dailyRandomQuestHandlers[plr] = handleDailyRandomQuest
+
+	-- Playtime quest: increment every minute while player is in-game
+	task.spawn(function()
+		while plr.Parent do
+			task.wait(60)
+			if not plr.Parent then break end
+
+			local aq = getActiveQuestsFolder(plr)
+			if not aq then continue end
+			local folder = aq:FindFirstChild("daily_random_quest")
+			if not folder then break end
+			local qtVal = folder:FindFirstChild("QuestType")
+			if not qtVal or qtVal.Value ~= "daily_playtime" then break end
+
+			local cp = folder:FindFirstChild("CurrentProgress")
+			local rp = folder:FindFirstChild("RequiredProgress")
+			if not cp or not rp or cp.Value >= rp.Value then break end
+
+			cp.Value = cp.Value + 1
+
+			if cp.Value >= rp.Value then
+				completeDailyQuest(folder)
+				break
+			end
+		end
+	end)
 
 	local function connectBackpack(backpack)
 		backpack.ChildAdded:Connect(function(item)

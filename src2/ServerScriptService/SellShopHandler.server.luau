@@ -102,7 +102,7 @@ local function calculateFinalValue(baseValue, player, hasDoubleGamepass)
 	local additionalBonus = 0
 
 	if player:IsInGroup(GROUP_ID) then
-		additionalBonus += baseValue * 0.15
+		additionalBonus += baseValue * 0.50
 	end
 
 	local friendsCount = getFriendsOnlineCount(player)

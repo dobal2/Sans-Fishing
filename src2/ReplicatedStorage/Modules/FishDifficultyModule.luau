@@ -90,7 +90,7 @@ end
 function FishDifficulty.GetProgressGain(hitType, difficulty)
 	local baseGain = {
 		strong = 20,  -- Strong zone base gain
-		normal = 10,  -- Normal zone base gain
+		normal = 15,  -- Normal zone base gain
 		fail = -15    -- Miss penalty
 	}
 

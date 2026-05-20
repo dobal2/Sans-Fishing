@@ -12,76 +12,10 @@ local BUBBLE_DATA = {
 	["Luck Bubble"] = 100000
 }
 
--- Inventory expansion gamepass ID
-local INVENTORY_EXPANSION_GAMEPASS_ID = 1294285302
-
 local buyBubbleBindable = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyBubbleBindable")
 local showNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 
--- Check if item is a rod or trap
-local function IsRod(itemName)
-	itemName = itemName:lower()
-	return itemName:match("rod$") ~= nil or itemName:match("trap$") ~= nil or itemName:match("bubble$") ~= nil
-end
-
--- Check inventory expansion gamepass
-local function hasInventoryExpansionGamepass(player)
-	local success, hasGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, INVENTORY_EXPANSION_GAMEPASS_ID)
-	end)
-
-	if success then
-		return hasGamepass
-	else
-		warn("Failed to check inventory expansion gamepass:", player.Name)
-		return false
-	end
-end
-
--- Get inventory limit
-local function getInventoryLimit(player)
-	local baseLimit = 100
-	local expandedLimit = 200
-
-	if hasInventoryExpansionGamepass(player) then
-		return expandedLimit
-	else
-		return baseLimit
-	end
-end
-
--- Check inventory space
-local function checkInventorySpace(player)
-	local backpack = player:FindFirstChild("Backpack")
-	if not backpack then return true end
-
-	local itemCount = 0
-
-	-- Count all tools excluding rods/traps
-	for _, item in pairs(backpack:GetChildren()) do
-		if item:IsA("Tool") and not IsRod(item.Name) then
-			itemCount = itemCount + 1
-		end
-	end
-
-	local inventoryLimit = getInventoryLimit(player)
-
-	return itemCount < inventoryLimit
-end
-
 buyBubbleBindable.Event:Connect(function(plr, bubbleName)
-	-- Check inventory space
-	if not checkInventorySpace(plr) then
-		local hasExpansion = hasInventoryExpansionGamepass(plr)
-		local message = hasExpansion and
-			"Expanded inventory full! Go sell fish (Max 200)" or
-			"Inventory full! Go sell fish or buy expansion pass (Max 100)"
-
-		if showNoticeEvent then
-			showNoticeEvent:FireClient(plr, message)
-		end
-		return
-	end
 
 	-- Check bubble price
 	local bubblePrice = BUBBLE_DATA[bubbleName]
@@ -150,15 +84,48 @@ buyBubbleBindable.Event:Connect(function(plr, bubbleName)
 	if playerBackpack then
 		local clonedBubble = bubbleTool:Clone()
 		clonedBubble.Parent = playerBackpack
+		-- Save to DataStore
+		local Data = datamanager:GetData(plr)
+		if Data then
+			local bubbles = Data.Bubbles or {}
+			table.insert(bubbles, bubbleName)
+			datamanager:UpdateData(plr, "Bubbles", bubbles)
+		end
 		if showNoticeEvent then
 			showNoticeEvent:FireClient(plr, "Bubble purchased successfully!")
 		end
 	else
 		warn("Player backpack not found:", plr.Name)
-		-- Refund coins
 		coins.Value = coins.Value + bubblePrice
 		if showNoticeEvent then
 			showNoticeEvent:FireClient(plr, "Purchase failed - no backpack!")
 		end
 	end
+end)
+
+-- Remove bubble from saved data when it's used/lost
+local Players = game:GetService("Players")
+Players.PlayerAdded:Connect(function(plr)
+	local char = plr.Character or plr.CharacterAdded:Wait()
+	local function trackBubbleLoss(child)
+		if not child:IsA("Tool") then return end
+		if not child.Name:lower():match("bubble$") then return end
+		if child.Parent == plr.Character or child.Parent == plr.Backpack then return end
+		-- bubble lost: remove one instance from saved data
+		local Data = datamanager:GetData(plr)
+		if not Data then return end
+		local bubbles = Data.Bubbles or {}
+		for i = #bubbles, 1, -1 do
+			if bubbles[i] == child.Name then
+				table.remove(bubbles, i)
+				datamanager:UpdateData(plr, "Bubbles", bubbles)
+				break
+			end
+		end
+	end
+	char.ChildRemoved:Connect(trackBubbleLoss)
+	plr.Backpack.ChildRemoved:Connect(trackBubbleLoss)
+	plr.CharacterAdded:Connect(function(newChar)
+		newChar.ChildRemoved:Connect(trackBubbleLoss)
+	end)
 end)

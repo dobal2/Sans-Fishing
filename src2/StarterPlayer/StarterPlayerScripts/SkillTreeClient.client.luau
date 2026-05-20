@@ -96,7 +96,7 @@ local function refreshUI()
 			continue
 		end
 
-		-- HitZoneUp, WeightUp, PowerUp은 FishingPoint Lv1 필요
+		-- FP 화폐 노드(HitZoneUp, WeightUp, PowerUp)는 FishingPoint Lv1 필요
 		if (skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp")
 			and (data.levels["FishingPoint"] or 0) < 1 then
 			lockNode()

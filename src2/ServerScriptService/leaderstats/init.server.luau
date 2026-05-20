@@ -108,6 +108,11 @@ Players.PlayerAdded:Connect(function(plr)
 	SeenUpdateLog.Value = false
 	SeenUpdateLog.Parent = plr
 
+	local LastSeenUpdateVersion = Instance.new("IntValue")
+	LastSeenUpdateVersion.Name = "LastSeenUpdateVersion"
+	LastSeenUpdateVersion.Value = 0
+	LastSeenUpdateVersion.Parent = plr
+
 	local SkillPoints = Instance.new("IntValue")
 	SkillPoints.Name = "SkillPoints"
 	SkillPoints.Value = 0
@@ -230,6 +235,7 @@ Players.PlayerAdded:Connect(function(plr)
 
 		IsTutorialed.Value = Data.IsTutorialed
 		SeenUpdateLog.Value = Data.SeenUpdateLog or false
+		LastSeenUpdateVersion.Value = Data.LastSeenUpdateVersion or 0
 
 		if Coins.Value < 0 then
 			warn("Abnormal coin value detected (" .. Coins.Value .. ") - clamping to 0")
@@ -255,6 +261,20 @@ Players.PlayerAdded:Connect(function(plr)
 				end
 			elseif hasRod then
 				warn("Unknown rod:", rodName, "->", plr.Name)
+			end
+		end
+
+		-- Restore saved bubble tools to Backpack
+		local bubbleToolsFolder = ServerStorage:FindFirstChild("BubbleTools")
+		for _, savedBubbleName in ipairs(Data.Bubbles or {}) do
+			if bubbleToolsFolder then
+				local bubbleTool = bubbleToolsFolder:FindFirstChild(savedBubbleName)
+				if bubbleTool then
+					local playerBackpack = plr:FindFirstChild("Backpack")
+					if playerBackpack then
+						bubbleTool:Clone().Parent = playerBackpack
+					end
+				end
 			end
 		end
 
@@ -335,28 +355,27 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
-	-- Give rod with infinite retry until actually given
-	while true do
-		-- Check if player left
+	-- Give rod with retry (max 20s)
+	local rodGiveAttempts = 0
+	while rodGiveAttempts < 40 do
+		rodGiveAttempts += 1
+
 		if not plr.Parent then
 			warn("Player left - stopping rod give")
 			break
 		end
 
-		-- Check if StarterGear and Backpack exist
 		local starterGear = plr:FindFirstChild("StarterGear")
 		local backpack = plr:FindFirstChild("Backpack")
 
 		if rodModel and ownedRod and ownedRod.Value and starterGear and backpack then
 			local success, errorMsg = pcall(function()
-				-- Check if rod already in StarterGear
 				local existingStarterRod = starterGear:FindFirstChild(equippedRod)
 				if not existingStarterRod then
 					local gear = rodModel:Clone()
 					gear.Parent = starterGear
 				end
 
-				-- Check if rod already in Backpack
 				local existingBackpackRod = backpack:FindFirstChild(equippedRod)
 				if not existingBackpackRod then
 					local now = rodModel:Clone()
@@ -365,12 +384,11 @@ Players.PlayerAdded:Connect(function(plr)
 			end)
 
 			if success then
-				-- Verify rod was actually given
 				local finalStarterCheck = starterGear:FindFirstChild(equippedRod)
 				local finalBackpackCheck = backpack:FindFirstChild(equippedRod)
 
 				if finalStarterCheck or finalBackpackCheck then
-					break -- Exit loop only when actually given
+					break
 				else
 					warn("Rod give succeeded but not in inventory - retrying")
 				end
@@ -382,6 +400,9 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 
 		task.wait(0.5)
+	end
+	if rodGiveAttempts >= 40 then
+		warn("Rod give timed out for", plr.Name)
 	end
 
 	local equippedFishTrap = CurrentFishTrapValue.Value
@@ -406,8 +427,11 @@ Players.PlayerAdded:Connect(function(plr)
 			equippedFishTrap = ""
 			CurrentFishTrapValue.Value = ""
 		else
-			-- Give fish trap with infinite retry
-			while true do
+			-- Give fish trap with retry (max 20s)
+			local trapGiveAttempts = 0
+			while trapGiveAttempts < 40 do
+				trapGiveAttempts += 1
+
 				if not plr.Parent then
 					warn("Player left - stopping Fish Trap give")
 					break
@@ -449,6 +473,9 @@ Players.PlayerAdded:Connect(function(plr)
 
 				task.wait(0.5)
 			end
+			if trapGiveAttempts >= 40 then
+				warn("Fish Trap give timed out for", plr.Name)
+			end
 		end
 	end
 
@@ -480,7 +507,10 @@ Players.PlayerAdded:Connect(function(plr)
 			return true
 		end
 
-		while true do
+		local reGiveAttempts = 0
+		while reGiveAttempts < 40 do
+			reGiveAttempts += 1
+
 			if not plr.Parent then
 				warn("Player left - stopping Fish Trap give")
 				return false
@@ -522,6 +552,8 @@ Players.PlayerAdded:Connect(function(plr)
 
 			task.wait(0.5)
 		end
+		warn("Fish Trap re-give timed out for", plr.Name)
+		return false
 	end
 
 	playerSetupInProgress[plr.UserId] = nil

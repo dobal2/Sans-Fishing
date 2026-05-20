@@ -51,28 +51,28 @@ end
 local function showSlots()
 	for index = 1, inventoryHandler.slotAmount do
 		local toolObject = inventoryHandler.OBJECTS.HotBar[index]
-		if not toolObject and not hotBar:FindFirstChild(index) and index <= inventoryHandler.slotAmount then
-			local frame = toolButton:Clone()
-			frame.Visible = true
-			frame.toolName.Text = ""
-			local ta = frame:FindFirstChild("toolAmount")
-			if ta then ta.Text = "" end
-			frame.toolNumber.Text = index
-			frame.Name = index
-			frame.Parent = hotBar
-		end
+		local fishPinned = inventoryHandler.HotBarFish[index]
+		-- 이미 rod/bubble 슬롯이거나 fish가 핀된 슬롯은 건드리지 않음
+		if toolObject or fishPinned then continue end
+		if hotBar:FindFirstChild(tostring(index)) then continue end
+		local frame = toolButton:Clone()
+		frame.Visible = true
+		frame.toolName.Text = ""
+		local ta = frame:FindFirstChild("toolAmount")
+		if ta then ta.Text = "" end
+		frame.toolNumber.Text = index
+		frame.Name = tostring(index)
+		frame.Parent = hotBar
 	end
 end
 
 local function removeEmptySlots()
 	for index = 1, 9 do
 		local toolObject = inventoryHandler.OBJECTS.HotBar[index]
-		local toolFrame = hotBar:FindFirstChild(index)
-		if not toolObject and toolFrame then
+		local fishPinned = inventoryHandler.HotBarFish[index]
+		local toolFrame = hotBar:FindFirstChild(tostring(index))
+		if not toolObject and not fishPinned and toolFrame then
 			toolFrame:Destroy()
-			if hotBar:FindFirstChild(index) then
-				removeEmptySlots()
-			end
 		end
 	end
 end
@@ -142,8 +142,20 @@ end
 
 local function newTool(tool)
 	if tool:IsA("Tool") then
-		-- Only handle non-fish tools via the old path (rods, bubbles)
-		if tool:FindFirstChild("FishValue") then return end
+		-- Fish tools: auto-equip when server puts them in Backpack
+		if tool:FindFirstChild("FishValue") then
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				task.defer(function()
+					-- equippedFishIndex nil = 의도적 unequip (로드 장착 등), 자동장착 안 함
+					if tool.Parent == backpack and inventoryHandler.equippedFishIndex ~= nil then
+						humanoid:EquipTool(tool)
+					end
+				end)
+			end
+			return
+		end
 		inventoryHandler:newTool(tool)
 	end
 end
@@ -164,6 +176,7 @@ local function reloadInventory(character)
 
 		task.wait(0.5)
 		updateFishCount()
+		showSlots()
 	end)
 end
 
@@ -174,33 +187,80 @@ end
 task.spawn(function()
 	local Misc = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
 
-	-- Full inventory sync (on join or after sell)
-	local inventoryDataSync = Misc:WaitForChild("InventoryDataSync")
-	inventoryDataSync.OnClientEvent:Connect(function(fishList)
-		inventoryHandler:syncInventory(fishList)
+	local inventoryDataSync   = Misc:WaitForChild("InventoryDataSync")
+	local fishDataAdded       = Misc:WaitForChild("FishDataAdded")
+	local getInventoryData    = Misc:WaitForChild("GetInventoryData")
+	local getFishHotBarPins   = Misc:WaitForChild("GetFishHotBarPins")
+	local saveFishHotBarPins  = Misc:WaitForChild("SaveFishHotBarPins")
+
+	-- 초기 로드 완료 전에는 핀 저장을 막는 플래그
+	_G.hotBarPinsReady = false
+
+	-- 핀 저장: 초기 로드 완료 후에만 서버에 전송 (slot → fishIndex 숫자로 저장)
+	_G.saveFishHotBarPins = function()
+		if not _G.hotBarPinsReady then return end
+		local pins = {}
+		for slot, fishIdx in pairs(inventoryHandler.HotBarFish) do
+			if inventoryHandler.FishList[fishIdx] then
+				pins[slot] = fishIdx
+			end
+		end
+		saveFishHotBarPins:FireServer(pins)
+	end
+
+	local function restorePins(savedPins, fishList)
+		local didRestore = false
+		if savedPins and next(savedPins) then
+			for slot, fishIdx in pairs(savedPins) do
+				local s = tonumber(slot)
+				local idx = tonumber(fishIdx)
+				if not s or not idx then continue end
+				if fishList[idx] then
+					inventoryHandler:setHotBarFishSlotPublic(s, idx)
+					didRestore = true
+				end
+			end
+		end
+		return didRestore
+	end
+
+	-- 초기 로드: 인벤 + 핀 순서대로 가져오기
+	local ok1, fishList = pcall(function() return getInventoryData:InvokeServer() end)
+	local ok2, savedPins = pcall(function() return getFishHotBarPins:InvokeServer() end)
+
+	if ok1 and fishList then
+		inventoryHandler:syncInventory(fishList, false)
 		updateFishCount()
+	end
+
+	-- 저장된 핀 복원 후 남은 빈 슬롯 자동 채우기
+	restorePins(ok2 and savedPins or nil, inventoryHandler.FishList)
+	inventoryHandler:autoFillPublic()
+	inventoryHandler:rebuildFishInventoryPublic()
+
+	-- 초기 로드 완료: 이제부터 핀 변경 시 서버에 저장
+	_G.hotBarPinsReady = true
+
+	-- 판매/리셋 후 전체 동기화: 서버에서 핀을 다시 불러와 복원
+	inventoryDataSync.OnClientEvent:Connect(function(fishList2)
+		_G.hotBarPinsReady = false
+		inventoryHandler:syncInventory(fishList2, false)
+		updateFishCount()
+		local ok3, pins3 = pcall(function() return getFishHotBarPins:InvokeServer() end)
+		restorePins(ok3 and pins3 or nil, inventoryHandler.FishList)
+		inventoryHandler:rebuildFishInventoryPublic()
+		_G.hotBarPinsReady = true
 		task.spawn(function()
 			task.wait(0.1)
 			updateAllFishLockUI()
 		end)
 	end)
 
-	-- New fish added (after successful catch)
-	local fishDataAdded = Misc:WaitForChild("FishDataAdded")
+	-- 새 물고기 추가
 	fishDataAdded.OnClientEvent:Connect(function(fishItem, index)
 		inventoryHandler:addFishItem(fishItem, index)
 		updateFishCount()
 	end)
-
-	-- Request initial data in case sync fired before listeners were ready
-	local getInventoryData = Misc:WaitForChild("GetInventoryData")
-	local ok, result = pcall(function()
-		return getInventoryData:InvokeServer()
-	end)
-	if ok and result then
-		inventoryHandler:syncInventory(result)
-		updateFishCount()
-	end
 end)
 
 -- ──────────────────────────────────────────────────────────────────────────────

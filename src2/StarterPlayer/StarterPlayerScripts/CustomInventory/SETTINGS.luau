@@ -5,6 +5,7 @@ module.OBJECTS.Inventory = {}
 -- Fish inventory data (client-side mirror of server PlayerFishData)
 module.FishList = {}           -- array of fishItem tables
 module.equippedFishIndex = nil -- currently equipped fish index
+module.HotBarFish = {}         -- [slotIndex] = fishIndex (fish pinned to hotbar slots)
 
 -- SETTINGS
 local SETTINGS = module.SETTINGS
@@ -16,7 +17,7 @@ SETTINGS.EQUIPPED_IMAGEID = ""
 SETTINGS.DISABLED_IMAGEID = ""
 SETTINGS.INVENTORY_KEYBIND = Enum.KeyCode.Backquote
 SETTINGS.DRAG_OUTSIDE_TO_DROP = false
-SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR = false
+SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR = true
 SETTINGS.SCROLL_HOTBAR_WITH_WHEEL = false
 SETTINGS.EQUIP_TOUCH_SENSITIVITY = 60
 SETTINGS.OPEN_BUTTON = true
@@ -38,6 +39,10 @@ local inventoryFrame = inventoryGui:WaitForChild("Inventory")
 local toolButton = inventoryGui:WaitForChild("toolButton")
 
 local fishLockRemote = ReplicatedStorage:WaitForChild("FishLockEvent")
+
+-- Forward declarations for cross-referencing fish UI functions
+local rebuildFishInventory
+local rebuildHotBarFish
 
 -- Equip/unequip remotes (wired lazily)
 local equipFishRemote = nil
@@ -161,9 +166,17 @@ local function showDescriptionForFrame(frame, text)
 	game:GetService("Debris"):AddItem(bg, 10)
 end
 
--- ─────────────────────────────────────────────────────────────────────────────
 -- Fish slot rendering
 -- ─────────────────────────────────────────────────────────────────────────────
+
+local MAX_NAME_LEN = 18
+
+local function truncateName(name)
+	if #name > MAX_NAME_LEN then
+		return name:sub(1, MAX_NAME_LEN - 1) .. "…"
+	end
+	return name
+end
 
 local RARITY_COLORS = {
 	Common    = Color3.fromRGB(200, 200, 200),
@@ -171,11 +184,14 @@ local RARITY_COLORS = {
 	Rare      = Color3.fromRGB(100, 140, 220),
 	Epic      = Color3.fromRGB(180, 100, 220),
 	Legendary = Color3.fromRGB(255, 200, 50),
-	Mythic    = Color3.fromRGB(255, 100, 50),
+	Mystic    = Color3.fromRGB(255, 100, 50),
+	Fantasy   = Color3.fromRGB(135, 206, 235),
+	Unknown   = Color3.fromRGB(10, 10, 10),
 }
 
 local function createFishSlotFrame(fishItem, index)
 	local frame = toolButton:Clone()
+
 	frame.Visible = true
 	frame.Name = "fish_" .. index
 	frame.LayoutOrder = index
@@ -183,7 +199,7 @@ local function createFishSlotFrame(fishItem, index)
 	-- Name label
 	local nameLabel = frame:FindFirstChild("toolName")
 	if nameLabel then
-		nameLabel.Text = fishItem.name
+		nameLabel.Text = truncateName(fishItem.name)
 		nameLabel.Visible = true
 		-- Rarity color tint
 		local rarityColor = RARITY_COLORS[fishItem.rarity]
@@ -219,17 +235,412 @@ local function createFishSlotFrame(fishItem, index)
 		lockIcon.Parent = frame
 	end
 
-	-- Equipped highlight
+	-- UIStroke 확정 (두께 보장 + rarity 테두리)
+	local stroke = frame:FindFirstChildOfClass("UIStroke")
+	if stroke then stroke:Destroy() end
+	stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Thickness = 2
 	if index == module.equippedFishIndex then
-		local stroke = frame:FindFirstChildOfClass("UIStroke")
-		if stroke then stroke.Color = Color3.new(1, 1, 1) end
+		stroke.Color = Color3.new(1, 1, 1)
 		frame.Image = SETTINGS.EQUIPPED_IMAGEID
+	else
+		local rarityColor = RARITY_COLORS[fishItem.rarity]
+		stroke.Color = rarityColor and rarityColor or Color3.fromRGB(80, 80, 80)
 	end
+	stroke.Parent = frame
 
 	return frame
 end
 
-local function rebuildFishInventory()
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Drag drop helper: GUI 계층을 올라가며 hotbar/inventoryFrame 직계 ImageButton 찾기
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local function resolveDropTarget(guiObject)
+	local cur = guiObject
+	for _ = 1, 8 do
+		if cur == nil then break end
+		if cur:IsA("ImageButton") then
+			local p = cur.Parent
+			if p == hotbar or p == inventoryFrame.Frame then
+				return cur
+			end
+		end
+		cur = cur.Parent
+	end
+	return nil
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- HotBar fish slots
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local EnumKeys = {
+	Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three,
+	Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
+	Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
+}
+
+-- fish 연결 정보를 슬롯 frame에 직접 저장/읽기 (attribute 사용)
+local hotBarFishConnections = {}  -- [slotIndex] = {conn1, conn2, ...}
+
+local function disconnectHotBarFishSlot(slotIndex)
+	if not slotIndex then return end
+	ContextActionService:UnbindAction(slotIndex .. "hotBar")
+	if hotBarFishConnections[slotIndex] then
+		for _, c in ipairs(hotBarFishConnections[slotIndex]) do c:Disconnect() end
+		hotBarFishConnections[slotIndex] = nil
+	end
+end
+
+local function clearHotBarFishSlot(slotIndex)
+	disconnectHotBarFishSlot(slotIndex)
+	module.HotBarFish[slotIndex] = nil
+
+	local slotFrame = hotbar:FindFirstChild(tostring(slotIndex))
+	if not slotFrame then
+		local newFrame = toolButton:Clone()
+		newFrame.Visible = true
+		newFrame.Name = tostring(slotIndex)
+		local nameLabel = newFrame:FindFirstChild("toolName")
+		if nameLabel then nameLabel.Text = "" end
+		local numLabel = newFrame:FindFirstChild("toolNumber")
+		if numLabel then numLabel.Text = tostring(slotIndex) end
+		local ta = newFrame:FindFirstChild("toolAmount")
+		if ta then ta.Text = "" end
+		newFrame.Parent = hotbar
+		if _G.saveFishHotBarPins then _G.saveFishHotBarPins() end
+		return
+	end
+
+	local nameLabel = slotFrame:FindFirstChild("toolName")
+	if nameLabel then
+		nameLabel.Text = ""
+		nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	end
+	local iconLabel = slotFrame:FindFirstChild("toolIcon")
+	if iconLabel then iconLabel.Image = "" end
+	local lockIcon = slotFrame:FindFirstChild("FishLockIcon")
+	if lockIcon then lockIcon:Destroy() end
+	local stroke = slotFrame:FindFirstChildOfClass("UIStroke")
+	if stroke then stroke.Color = Color3.new(0, 0, 0) end
+	slotFrame.Image = SETTINGS.DEFAULT_IMAGEID
+
+	if _G.saveFishHotBarPins then _G.saveFishHotBarPins() end
+end
+
+local function setHotBarFishSlot(slotIndex, fishIndex)
+	if not slotIndex then return end
+	disconnectHotBarFishSlot(slotIndex)
+
+	local fishItem = module.FishList[fishIndex]
+	if not fishItem then
+		module.HotBarFish[slotIndex] = nil
+		return
+	end
+
+	-- 슬롯 frame 확보 (없으면 생성)
+	local slotFrame = hotbar:FindFirstChild(tostring(slotIndex))
+	if not slotFrame then
+		slotFrame = toolButton:Clone()
+		slotFrame.Visible = true
+		slotFrame.Name = tostring(slotIndex)
+		local nl = slotFrame:FindFirstChild("toolNumber"); if nl then nl.Text = tostring(slotIndex) end
+		slotFrame.Parent = hotbar
+	end
+
+	module.HotBarFish[slotIndex] = fishIndex
+
+	local nameLabel = slotFrame:FindFirstChild("toolName")
+	if nameLabel then
+		nameLabel.Text = truncateName(fishItem.name)
+		nameLabel.Visible = true
+		local rarityColor = RARITY_COLORS[fishItem.rarity]
+		nameLabel.TextColor3 = rarityColor or Color3.new(1, 1, 1)
+	end
+	local iconLabel = slotFrame:FindFirstChild("toolIcon")
+	if iconLabel then iconLabel.Image = ""; iconLabel.Visible = false end
+
+	-- UIStroke 확보: 항상 새로 생성해서 두께/모드 확정
+	local stroke = slotFrame:FindFirstChildOfClass("UIStroke")
+	if stroke then stroke:Destroy() end
+	stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Thickness = 2
+	stroke.Parent = slotFrame  -- Parent 설정 후 UIStrokeScale이 trackStroke
+
+	-- Equip highlight
+	if fishIndex == module.equippedFishIndex then
+		stroke.Color = Color3.new(1, 1, 1)
+		slotFrame.Image = SETTINGS.EQUIPPED_IMAGEID
+	else
+		local rarityColor = RARITY_COLORS[fishItem.rarity]
+		stroke.Color = rarityColor and rarityColor or Color3.fromRGB(80, 80, 80)
+		slotFrame.Image = SETTINGS.DEFAULT_IMAGEID
+	end
+
+	-- Lock icon
+	local lockIcon = slotFrame:FindFirstChild("FishLockIcon")
+	if fishItem.isLocked then
+		if not lockIcon then
+			lockIcon = Instance.new("ImageLabel")
+			lockIcon.Name = "FishLockIcon"
+			lockIcon.Size = UDim2.new(0.35, 0, 0.35, 0)
+			lockIcon.Position = UDim2.new(0.65, 0, 0, 0)
+			lockIcon.BackgroundTransparency = 1
+			lockIcon.Image = "rbxassetid://10333789558"
+			lockIcon.ScaleType = Enum.ScaleType.Fit
+			lockIcon.ZIndex = 10
+			lockIcon.Parent = slotFrame
+		end
+	else
+		if lockIcon then lockIcon:Destroy() end
+	end
+
+	-- Bind number key for this hotbar slot
+	ContextActionService:BindAction(slotIndex .. "hotBar", function(_, inputState, inputObject)
+		if inputObject and inputObject.UserInputType ~= Enum.UserInputType.Keyboard and inputObject.UserInputType ~= Enum.UserInputType.Touch then return end
+		if inputState ~= Enum.UserInputState.Begin then return end
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not humanoid or humanoid.Health <= 0 then return end
+		local currentFishIndex = module.HotBarFish[slotIndex]
+		if not currentFishIndex then return end
+		if module.equippedFishIndex == currentFishIndex then
+			module.equippedFishIndex = nil
+			if unequipFishRemote then pcall(function() unequipFishRemote:FireServer() end) end
+		else
+			module.equippedFishIndex = currentFishIndex
+			if equipFishRemote then pcall(function() equipFishRemote:FireServer(currentFishIndex) end) end
+		end
+		rebuildHotBarFish()
+		rebuildFishInventory()
+	end, false, EnumKeys[slotIndex])
+
+	local conns = {}
+	local isDraggingHB = false
+
+	table.insert(conns, slotFrame.MouseButton1Down:Connect(function()
+		local clickStartPos = Vector2.new(mouse.X, mouse.Y)
+		isDraggingHB = false
+		local dragThreshold = 10
+		local ghostFrame = nil
+		local mouseConn, mouseEnd
+
+		local function endDragHB()
+			if mouseConn then mouseConn:Disconnect() end
+			if mouseEnd then mouseEnd:Disconnect() end
+
+			if not isDraggingHB then
+				if ghostFrame then ghostFrame:Destroy() end
+				-- short click → equip/unequip
+				if module.equippedFishIndex == fishIndex then
+					module.equippedFishIndex = nil
+					if unequipFishRemote then pcall(function() unequipFishRemote:FireServer() end) end
+				else
+					module.equippedFishIndex = fishIndex
+					if equipFishRemote then pcall(function() equipFishRemote:FireServer(fishIndex) end) end
+				end
+				rebuildHotBarFish()
+				rebuildFishInventory()
+				return
+			end
+
+			-- ghost 제거 후 한 프레임 대기해야 GetGuiObjectsAtPosition이 올바르게 동작함
+			if ghostFrame then ghostFrame:Destroy(); ghostFrame = nil end
+			local dropX, dropY = mouse.X, mouse.Y
+			task.defer(function()
+
+			-- Drop detection
+			local droppedGuis = playerGui:GetGuiObjectsAtPosition(dropX, dropY)
+			local handled = false
+			for _, rawTarget in pairs(droppedGuis) do
+				if handled then break end
+				local target = resolveDropTarget(rawTarget)
+				if not target then continue end
+
+				-- 핫바 다른 슬롯으로 이동
+				if target.Parent == hotbar and target ~= slotFrame then
+					local targetSlot = tonumber(target.Name)
+					if targetSlot then
+						local rodObj = module.OBJECTS.HotBar[targetSlot]
+						local prevFish = module.HotBarFish[targetSlot]
+						if rodObj then
+							-- rod 슬롯과 스왑: rod를 현재 fish 슬롯으로, fish를 rod 슬롯으로
+							local rodTool = rodObj.Tool
+							clearHotBarFishSlot(slotIndex)
+							rodObj:DisconnectAll()
+							-- DisconnectAll이 targetSlot frame을 Destroy했을 수 있으므로 복원 후 fish 설정
+							if not hotbar:FindFirstChild(tostring(targetSlot)) then
+								local f = toolButton:Clone()
+								f.Visible = true
+								f.Name = tostring(targetSlot)
+								local nl = f:FindFirstChild("toolNumber"); if nl then nl.Text = tostring(targetSlot) end
+								f.Parent = hotbar
+							end
+							module:addTool(rodTool, "HotBar", slotIndex)
+							setHotBarFishSlot(targetSlot, fishIndex)
+						else
+							-- 빈 슬롯 또는 fish 슬롯
+							clearHotBarFishSlot(slotIndex)
+							if prevFish then
+								setHotBarFishSlot(slotIndex, prevFish)
+							end
+							setHotBarFishSlot(targetSlot, fishIndex)
+						end
+						handled = true
+					end
+				end
+
+				-- 인벤 아이템으로 드롭
+				if not handled and target.Parent == inventoryFrame.Frame then
+					local targetFishIdx = tonumber(target.Name:match("^fish_(%d+)$"))
+					if targetFishIdx then
+						-- 인벤 fish↔핫바 fish 스왑
+						clearHotBarFishSlot(slotIndex)
+						setHotBarFishSlot(slotIndex, targetFishIdx)
+					else
+						-- 인벤 rod: rod를 핫바로, 핫바 fish를 인벤으로
+						local rodObj = module.OBJECTS.Inventory[target.Name]
+						if rodObj then
+							rodObj:DisconnectAll()
+							clearHotBarFishSlot(slotIndex)
+							module:addTool(rodObj.Tool, "HotBar", slotIndex)
+						else
+							clearHotBarFishSlot(slotIndex)
+						end
+					end
+					handled = true
+				end
+			end
+			-- 핫바 fish를 인벤 빈 공간에 드롭 → 핀 해제 (인벤으로 이동)
+			if not handled then
+				local invAbsPos = inventoryFrame.AbsolutePosition
+				local invAbsSize = inventoryFrame.AbsoluteSize
+				if dropX >= invAbsPos.X and dropX <= invAbsPos.X + invAbsSize.X
+					and dropY >= invAbsPos.Y and dropY <= invAbsPos.Y + invAbsSize.Y then
+					clearHotBarFishSlot(slotIndex)
+				end
+			end
+			rebuildFishInventory()
+			end) -- task.defer
+		end
+
+		mouseEnd = UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or
+				input.UserInputType == Enum.UserInputType.Touch then
+				endDragHB()
+			end
+		end)
+
+		mouseConn = mouse.Move:Connect(function()
+			local currentPos = Vector2.new(mouse.X, mouse.Y)
+			if not isDraggingHB and (currentPos - clickStartPos).Magnitude > dragThreshold then
+				isDraggingHB = true
+				ghostFrame = toolButton:Clone()
+				ghostFrame.Visible = true
+				local gfName = ghostFrame:FindFirstChild("toolName")
+				if gfName then
+					gfName.Text = truncateName(fishItem.name)
+					local rarityColor = RARITY_COLORS[fishItem.rarity]
+					if rarityColor then gfName.TextColor3 = rarityColor end
+				end
+				ghostFrame.Size = slotFrame.Size
+				ghostFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+				ghostFrame.ZIndex = 50
+				ghostFrame.Parent = inventoryGui
+			end
+			if isDraggingHB and ghostFrame then
+				local guiPos = Vector2.new(mouse.X, mouse.Y) - inventoryGui.AbsolutePosition
+				ghostFrame.Position = UDim2.new(0, guiPos.X, 0, guiPos.Y)
+			end
+		end)
+	end))
+
+	-- 우클릭 잠금
+	table.insert(conns, slotFrame.MouseButton2Click:Connect(function()
+		local fi = module.FishList[fishIndex]
+		if not fi then return end
+		fi.isLocked = not fi.isLocked
+		pcall(function()
+			fishLockRemote:FireServer(nil, fi.isLocked, fishIndex)
+		end)
+		-- 잠금 아이콘 업데이트
+		local lockIcon = slotFrame:FindFirstChild("FishLockIcon")
+		if fi.isLocked then
+			if not lockIcon then
+				lockIcon = Instance.new("ImageLabel")
+				lockIcon.Name = "FishLockIcon"
+				lockIcon.Size = UDim2.new(0.35, 0, 0.35, 0)
+				lockIcon.Position = UDim2.new(0.65, 0, 0, 0)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.Image = "rbxassetid://10333789558"
+				lockIcon.ScaleType = Enum.ScaleType.Fit
+				lockIcon.ZIndex = 10
+				lockIcon.Parent = slotFrame
+			end
+		else
+			if lockIcon then lockIcon:Destroy() end
+		end
+		rebuildFishInventory()
+	end))
+
+	table.insert(conns, slotFrame.MouseEnter:Connect(function()
+		showDescriptionForFrame(slotFrame, fishItem.name)
+	end))
+	table.insert(conns, slotFrame.MouseLeave:Connect(function()
+		module:removeCurrentDescription()
+	end))
+	hotBarFishConnections[slotIndex] = conns
+
+	-- 핀 변경 시 서버에 저장
+	if _G.saveFishHotBarPins then _G.saveFishHotBarPins() end
+end
+
+-- Fill empty hotbar slots with random fish from FishList
+local function autoFillHotBarFish()
+	if #module.FishList == 0 then return end
+
+	-- Collect which fishIndexes are already pinned
+	local usedFishIndexes = {}
+	for _, fi in pairs(module.HotBarFish) do
+		usedFishIndexes[fi] = true
+	end
+
+	-- Build pool of available fish indexes (not yet pinned to hotbar)
+	local pool = {}
+	for i = 1, #module.FishList do
+		if not usedFishIndexes[i] then
+			table.insert(pool, i)
+		end
+	end
+
+	local poolIdx = 1
+	for slotIndex = 1, module.slotAmount do
+		-- Only fill slots that are completely empty (no rod/bubble and no fish pin)
+		if module.OBJECTS.HotBar[slotIndex] then continue end
+		if module.HotBarFish[slotIndex] then continue end
+		if poolIdx > #pool then break end
+		setHotBarFishSlot(slotIndex, pool[poolIdx])
+		poolIdx += 1
+	end
+end
+
+function rebuildHotBarFish()
+	-- Remove stale fish frames
+	for slotIndex, fishIndex in pairs(module.HotBarFish) do
+		if not module.FishList[fishIndex] then
+			clearHotBarFishSlot(slotIndex)
+		end
+	end
+	-- Re-render existing pinned slots
+	for slotIndex, fishIndex in pairs(module.HotBarFish) do
+		setHotBarFishSlot(slotIndex, fishIndex)
+	end
+end
+
+rebuildFishInventory = function()
 	-- Clear existing fish frames from inventory
 	if inventoryFrame and inventoryFrame.Frame then
 		for _, child in ipairs(inventoryFrame.Frame:GetChildren()) do
@@ -239,8 +650,17 @@ local function rebuildFishInventory()
 		end
 	end
 
+	-- 핫바에 핀된 fishIndex 목록
+	local pinnedInHotBar = {}
+	for _, fi in pairs(module.HotBarFish) do
+		pinnedInHotBar[fi] = true
+	end
+
 	for i, fishItem in ipairs(module.FishList) do
+		-- 핫바에 핀된 fish는 인벤에서 제외 (핫바가 인벤 역할 겸함)
+		if pinnedInHotBar[i] then continue end
 		local frame = createFishSlotFrame(fishItem, i)
+		frame.Visible = true
 		frame.Parent = inventoryFrame.Frame
 
 		-- Click to equip/unequip
@@ -287,25 +707,226 @@ local function rebuildFishInventory()
 		frame.MouseLeave:Connect(function()
 			module:removeCurrentDescription()
 		end)
+
+		-- Drag to reorder fish slots
+		frame.MouseButton1Down:Connect(function()
+			local clickStartTime = tick()
+			local clickStartPos = Vector2.new(mouse.X, mouse.Y)
+			local isDragging = false
+			local dragThreshold = 10
+			local ghostFrame = nil
+			local mouseConn, mouseEnd
+
+			local function endDrag()
+				if mouseConn then mouseConn:Disconnect() end
+				if mouseEnd then mouseEnd:Disconnect() end
+
+				if not isDragging then
+					-- short click: handled by MouseButton1Click above
+					if ghostFrame then ghostFrame:Destroy() end
+					return
+				end
+
+				-- ghost 제거 후 한 프레임 대기해야 GetGuiObjectsAtPosition이 올바르게 동작함
+				if ghostFrame then ghostFrame:Destroy(); ghostFrame = nil end
+				local dropX, dropY = mouse.X, mouse.Y
+				task.defer(function()
+
+				-- Find which slot we dropped onto
+				local droppedGuis = playerGui:GetGuiObjectsAtPosition(dropX, dropY)
+				local handled = false
+				for _, rawTarget in pairs(droppedGuis) do
+					if handled then break end
+					local target = resolveDropTarget(rawTarget)
+					if not target then continue end
+
+					-- 핫바 슬롯으로 드롭
+					if target.Parent == hotbar then
+						local slotIndex = tonumber(target.Name)
+						if slotIndex then
+							local rodObj = module.OBJECTS.HotBar[slotIndex]
+							if rodObj then
+								-- rod 슬롯 → rod를 인벤으로, fish를 그 슬롯에 핀
+								local mySlot = nil
+								for s, fi in pairs(module.HotBarFish) do
+									if fi == i then mySlot = s; break end
+								end
+								rodObj:DisconnectAll()
+								module:addTool(rodObj.Tool, "Inventory")
+								if mySlot then clearHotBarFishSlot(mySlot) end
+								setHotBarFishSlot(slotIndex, i)
+								handled = true
+							else
+								-- 빈 슬롯 또는 fish 슬롯 → 기존 로직
+								local prevFish = module.HotBarFish[slotIndex]
+								local mySlot = nil
+								for s, fi in pairs(module.HotBarFish) do
+									if fi == i then mySlot = s; break end
+								end
+								if mySlot then
+									clearHotBarFishSlot(mySlot)
+									if prevFish then setHotBarFishSlot(mySlot, prevFish) end
+								end
+								setHotBarFishSlot(slotIndex, i)
+								handled = true
+							end
+						end
+					end
+
+					-- 인벤 아이템으로 드롭
+					if not handled and target.Parent == inventoryFrame.Frame then
+						local targetFishIdx = tonumber(target.Name:match("^fish_(%d+)$"))
+						if targetFishIdx and targetFishIdx ~= i then
+							-- 인벤 fish↔인벤 fish: FishList 인덱스 교환
+							module.FishList[i], module.FishList[targetFishIdx] = module.FishList[targetFishIdx], module.FishList[i]
+							-- 핫바 핀 업데이트: 루프 중 값 오염 방지를 위해 먼저 수집 후 적용
+							local slotA, slotB = nil, nil
+							for s, fi in pairs(module.HotBarFish) do
+								if fi == targetFishIdx then slotA = s
+								elseif fi == i then slotB = s end
+							end
+							if slotA then module.HotBarFish[slotA] = i; setHotBarFishSlot(slotA, i) end
+							if slotB then module.HotBarFish[slotB] = targetFishIdx; setHotBarFishSlot(slotB, targetFishIdx) end
+							handled = true
+						-- fish→rod 드롭은 무시 (타입 혼합 스왑 미지원)
+						end
+					end
+				end
+				rebuildFishInventory()
+				end) -- task.defer
+			end
+
+			mouseEnd = UserInputService.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or
+					input.UserInputType == Enum.UserInputType.Touch then
+					endDrag()
+				end
+			end)
+
+			mouseConn = mouse.Move:Connect(function()
+				local currentPos = Vector2.new(mouse.X, mouse.Y)
+				if not isDragging and (currentPos - clickStartPos).Magnitude > dragThreshold then
+					isDragging = true
+					ghostFrame = toolButton:Clone()
+					ghostFrame.Visible = true
+					local gfName = ghostFrame:FindFirstChild("toolName")
+					if gfName then
+						gfName.Text = truncateName(fishItem.name)
+						local rarityColor = RARITY_COLORS[fishItem.rarity]
+						if rarityColor then gfName.TextColor3 = rarityColor end
+					end
+					ghostFrame.Size = frame.Size
+					ghostFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+					ghostFrame.ZIndex = 50
+					ghostFrame.Parent = inventoryGui
+				end
+				if isDragging and ghostFrame then
+					local guiPos = Vector2.new(mouse.X, mouse.Y) - inventoryGui.AbsolutePosition
+					ghostFrame.Position = UDim2.new(0, guiPos.X, 0, guiPos.Y)
+				end
+			end)
+		end)
 	end
 
 	updateInventorySize()
+
+	-- 검색 텍스트가 있으면 rebuild 후 필터 재적용
+	if inventoryFrame and inventoryFrame.SearchBox and inventoryFrame.SearchBox.Text ~= "" then
+		local raw = inventoryFrame.SearchBox.Text:lower():gsub("%s+", "")
+		if raw ~= "" then
+			-- 검색 함수를 직접 인라인 호출 (module:searchTool()은 순환 참조 위험)
+			local weightMin, weightMax = nil, nil
+			local rangeA, rangeB = raw:match("^(%d+%.?%d*)%-(%d+%.?%d*)$")
+			if rangeA and rangeB then
+				weightMin, weightMax = tonumber(rangeA), tonumber(rangeB)
+			else
+				local numPlus = raw:match("^(%d+%.?%d*)%+$")
+				if numPlus then
+					weightMin = tonumber(numPlus); weightMax = math.huge
+				else
+					local numOnly = raw:match("^(%d+%.?%d*)$")
+					if numOnly then
+						local v = tonumber(numOnly); weightMin = v - 2; weightMax = v + 2
+					end
+				end
+			end
+			for i, fishItem in ipairs(module.FishList) do
+				local frame = inventoryFrame.Frame:FindFirstChild("fish_" .. i)
+				if not frame then continue end
+				local matchFound = false
+				if weightMin then
+					local w = fishItem.weight or 0
+					matchFound = w >= weightMin and w <= weightMax
+				else
+					local cleanName = fishItem.name:lower():gsub("%s+", "")
+					cleanName = cleanName:gsub("%[.-%]", ""):gsub("%-[%d%.]+kg", "")
+					cleanName = cleanName:gsub("^%s*", ""):gsub("%s*$", "")
+					local rarityLower = (fishItem.rarity or ""):lower()
+					matchFound = cleanName:find(raw, 1, true) ~= nil or rarityLower:find(raw, 1, true) ~= nil
+				end
+				frame.Visible = matchFound
+			end
+		end
+	end
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Public API: sync / add fish
 -- ─────────────────────────────────────────────────────────────────────────────
 
-function module:syncInventory(fishList)
+function module:syncInventory(fishList, doAutoFill)
 	self.FishList = fishList or {}
+	self.equippedFishIndex = nil
+	-- 각 핀 슬롯을 clearHotBarFishSlot으로 정리 (UI 초기화 포함)
+	for slotIndex in pairs(self.HotBarFish) do
+		clearHotBarFishSlot(slotIndex)
+	end
+	self.HotBarFish = {}
+	if doAutoFill then
+		autoFillHotBarFish()
+	end
+	rebuildFishInventory()
+end
+
+function module:autoFillPublic()
+	autoFillHotBarFish()
+end
+
+function module:setHotBarFishSlotPublic(slotIndex, fishIndex)
+	setHotBarFishSlot(slotIndex, fishIndex)
+end
+
+function module:rebuildFishInventoryPublic()
 	rebuildFishInventory()
 end
 
 function module:addFishItem(fishItem, index)
 	self.FishList[index] = fishItem
+	-- 빈 핫바 슬롯이 있으면 자동 핀
+	local freeHotBarSlot = nil
+	for s = 1, self.slotAmount do
+		if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
+			freeHotBarSlot = s; break
+		end
+	end
+	if freeHotBarSlot then
+		setHotBarFishSlot(freeHotBarSlot, index)
+		updateInventorySize()
+		return
+	end
 	-- Append new frame to inventory
 	if inventoryFrame and inventoryFrame.Frame then
+		-- 핫바에 이미 핀된 fish는 인벤에 추가하지 않음
+		local isPinned = false
+		for _, fi in pairs(module.HotBarFish) do
+			if fi == index then isPinned = true; break end
+		end
+		if isPinned then
+			updateInventorySize()
+			return
+		end
 		local frame = createFishSlotFrame(fishItem, index)
+		frame.Visible = true
 		frame.Parent = inventoryFrame.Frame
 
 		frame.MouseButton1Click:Connect(function()
@@ -350,7 +971,8 @@ end
 -- ─────────────────────────────────────────────────────────────────────────────
 
 function module:searchTool()
-	local searchText = inventoryFrame.SearchBox.Text:lower():gsub("%s+", "")
+	local raw = inventoryFrame.SearchBox.Text:lower()
+	local searchText = raw:gsub("%s+", "")
 
 	if not inventoryFrame or not inventoryFrame.Frame then return end
 
@@ -365,27 +987,49 @@ function module:searchTool()
 		return
 	end
 
+	-- 숫자 입력이면 무게 검색 (예: "30" → 30kg 근처, "30+" → 30kg 이상, "30-50" → 범위)
+	local weightMin, weightMax = nil, nil
+	local rangeA, rangeB = searchText:match("^(%d+%.?%d*)%-(%d+%.?%d*)$")
+	if rangeA and rangeB then
+		weightMin, weightMax = tonumber(rangeA), tonumber(rangeB)
+	else
+		local numPlus = searchText:match("^(%d+%.?%d*)%+$")
+		if numPlus then
+			weightMin = tonumber(numPlus)
+			weightMax = math.huge
+		else
+			local numOnly = searchText:match("^(%d+%.?%d*)$")
+			if numOnly then
+				local v = tonumber(numOnly)
+				weightMin = v - 2
+				weightMax = v + 2
+			end
+		end
+	end
+
 	-- Fish frames
 	for i, fishItem in ipairs(module.FishList) do
 		local frame = inventoryFrame.Frame:FindFirstChild("fish_" .. i)
 		if not frame then continue end
 
-		local toolName = fishItem.name:lower():gsub("%s+", "")
-		local cleanName = toolName
-		cleanName = cleanName:gsub("frozen", "")
-		cleanName = cleanName:gsub("%[.-%]", "")
-		cleanName = cleanName:gsub("%-[%d%.]+kg", "")
-		cleanName = cleanName:gsub("^%s*", ""):gsub("%s*$", "")
-
-		local priority = 0
 		local matchFound = false
 
-		if cleanName == searchText then
-			priority = 1000; matchFound = true
-		elseif cleanName:find("^" .. searchText) then
-			priority = 500; matchFound = true
-		elseif cleanName:find(searchText) then
-			priority = 300; matchFound = true
+		if weightMin then
+			-- 무게 검색
+			local w = fishItem.weight or 0
+			matchFound = w >= weightMin and w <= weightMax
+		else
+			-- 이름 검색
+			local cleanName = fishItem.name:lower():gsub("%s+", "")
+			cleanName = cleanName:gsub("%[.-%]", "")
+			cleanName = cleanName:gsub("%-[%d%.]+kg", "")
+			cleanName = cleanName:gsub("^%s*", ""):gsub("%s*$", "")
+
+			-- rarity 검색도 지원
+			local rarityLower = (fishItem.rarity or ""):lower()
+
+			matchFound = cleanName:find(searchText, 1, true) ~= nil
+				or rarityLower:find(searchText, 1, true) ~= nil
 		end
 
 		frame.Visible = matchFound
@@ -396,7 +1040,7 @@ function module:searchTool()
 		local toolName = toolObject.Name:lower():gsub("%s+", "")
 		local frame_ref = toolObject.Frame
 		if frame_ref then
-			frame_ref.Visible = toolName:find(searchText) ~= nil
+			frame_ref.Visible = toolName:find(searchText, 1, true) ~= nil
 		end
 	end
 
@@ -478,12 +1122,6 @@ function toolObjectMetatable:DisconnectAll()
 	self = nil
 end
 
-local EnumKeys = {
-	Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three,
-	Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
-	Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
-}
-
 function toolObjectMetatable:updateIcon()
 	local tool = self.Tool
 	local frame = self.Frame
@@ -546,10 +1184,20 @@ function module:newTool(tool)
 	if tool:GetAttribute("toolAdded") or not tool:IsA("Tool") then return end
 	if tool:FindFirstChild("FishValue") then return end  -- fish handled separately
 
-	local length = 0
-	for _ in pairs(module.OBJECTS.HotBar) do length += 1 end
+	-- 빈 핫바 슬롯 탐색 (rod/bubble + fish 핀 모두 점유 슬롯으로 간주)
+	local freeSlot = nil
+	for s = 1, self.slotAmount do
+		if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
+			freeSlot = s; break
+		end
+	end
 
-	module:addTool(tool, length == self.slotAmount and "Inventory" or "HotBar", tool:GetAttribute("position"))
+	local savedPosition = tool:GetAttribute("position")
+	if savedPosition and not module.OBJECTS.HotBar[savedPosition] and not module.HotBarFish[savedPosition] then
+		freeSlot = savedPosition
+	end
+
+	module:addTool(tool, freeSlot and "HotBar" or "Inventory", freeSlot)
 end
 
 function module:addTool(tool, parent, position)
@@ -558,9 +1206,20 @@ function module:addTool(tool, parent, position)
 
 	if not position and parent == "HotBar" then
 		for index = 1, self.slotAmount do
-			if self.OBJECTS.HotBar[index] == nil then
+			-- fish가 핀된 슬롯은 건너뜀 (rod/bubble 전용 슬롯 찾기)
+			if self.OBJECTS.HotBar[index] == nil and not module.HotBarFish[index] then
 				position = index
 				break
+			end
+		end
+		-- fish 슬롯만 남아있으면 fish 슬롯을 밀어내고 첫 번째 빈 슬롯 사용
+		if not position then
+			for index = 1, self.slotAmount do
+				if self.OBJECTS.HotBar[index] == nil then
+					clearHotBarFishSlot(index)
+					position = index
+					break
+				end
 			end
 		end
 	end
@@ -570,6 +1229,7 @@ function module:addTool(tool, parent, position)
 	end
 
 	local frame = toolButton:Clone()
+
 	frame.Visible = true
 	local amount = tool:GetAttribute("amount") or 1
 	local toolAmountLabel = frame:FindFirstChild("toolAmount")
@@ -588,7 +1248,7 @@ function module:addTool(tool, parent, position)
 		frame.Name = position
 	end
 
-	frame.toolNumber.Text = parent == "Inventory" and "" or position
+	frame.toolNumber.Text = parent == "Inventory" and "" or tostring(position or "")
 
 	local object = {}
 	setmetatable(object, toolObjectMetatable)
@@ -623,8 +1283,14 @@ function module:addTool(tool, parent, position)
 			if stroke then stroke.Color = Color3.new(0, 0, 0) end
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
 			module.currentlyEquipped = nil
-		elseif tool.Enabled then
-			humanoid:EquipTool(tool)
+		else
+			-- Unequip any held fish before equipping a rod/bubble
+			if module.equippedFishIndex then
+				module.equippedFishIndex = nil
+				if unequipFishRemote then pcall(function() unequipFishRemote:FireServer() end) end
+				task.defer(function() rebuildHotBarFish(); rebuildFishInventory() end)
+			end
+			-- updateEquipped가 EquipTool 도중 간섭하지 못하도록 미리 상태 설정
 			if module.currentlyEquipped and module.currentlyEquipped.Parent then
 				local prevStroke = module.currentlyEquipped:FindFirstChildOfClass("UIStroke")
 				if prevStroke then prevStroke.Color = Color3.new(0, 0, 0) end
@@ -634,6 +1300,7 @@ function module:addTool(tool, parent, position)
 			local stroke = frame:FindFirstChildOfClass("UIStroke")
 			if stroke then stroke.Color = Color3.new(1, 1, 1) end
 			frame.Image = SETTINGS.EQUIPPED_IMAGEID
+			humanoid:EquipTool(tool)
 		end
 	end
 
@@ -652,7 +1319,10 @@ function module:addTool(tool, parent, position)
 			local stroke = frame:FindFirstChildOfClass("UIStroke")
 			if stroke then stroke.Color = Color3.new(0, 0, 0) end
 			frame.Image = SETTINGS.DEFAULT_IMAGEID
-			module.currentlyEquipped = nil
+			-- 이 frame이 currentlyEquipped일 때만 초기화 (다른 rod 장착 중에는 건드리지 않음)
+			if module.currentlyEquipped == frame then
+				module.currentlyEquipped = nil
+			end
 		end
 	end
 
@@ -747,37 +1417,94 @@ function module:addTool(tool, parent, position)
 				end
 			end
 
-			local droppedGuis = playerGui:GetGuiObjectsAtPosition(mouse.X, mouse.Y)
+			-- ghost/원본 frame 숨기고 한 프레임 후 GetGuiObjectsAtPosition 호출
+			if newFrame then newFrame:Destroy(); newFrame = nil end
+			frame.Visible = false
+			local dropX, dropY = mouse.X, mouse.Y
+			task.defer(function()
+			frame.Visible = true
+			local droppedGuis = playerGui:GetGuiObjectsAtPosition(dropX, dropY)
 			local wasSwapped = false
 
-			for _, newSlot in pairs(droppedGuis) do
-				if newSlot:IsA("ImageButton") and (newSlot.Parent == hotbar or newSlot.Parent == inventoryFrame.Frame) then
-					local newSlotObject = self.OBJECTS[newSlot.Parent == hotbar and "HotBar" or "Inventory"][newSlot.Parent == hotbar and tonumber(newSlot.Name) or newSlot.Name]
-					if newSlotObject == object then
-						if newFrame then newFrame:Destroy() end
-						continue
-					end
-					if newSlotObject then
-						wasSwapped = true
+			for _, rawSlot in pairs(droppedGuis) do
+				if wasSwapped then break end
+				local newSlot = resolveDropTarget(rawSlot)
+				if newSlot then
+					local targetSlotNum = newSlot.Parent == hotbar and tonumber(newSlot.Name) or nil
+					-- fish 슬롯으로 드롭: fish와 rod 스왑
+					if targetSlotNum and module.HotBarFish[targetSlotNum] then
+						local fishIdx = module.HotBarFish[targetSlotNum]
+						clearHotBarFishSlot(targetSlotNum)
 						object:DisconnectAll()
-						newSlotObject:DisconnectAll()
-						self:addTool(newSlotObject.Tool, parent, position)
-						self:addTool(tool, newSlotObject.Parent, newSlotObject.Position)
-						if newFrame then newFrame:Destroy() end
-					elseif newSlot.Parent == hotbar then
+						self:addTool(tool, "HotBar", targetSlotNum)
+						-- position이 nil이면 (인벤→핫바 드롭) fish는 인벤에 남김
+						if position then
+							-- DisconnectAll이 position 슬롯 frame을 Destroy했을 수 있으므로 복원
+							if not hotbar:FindFirstChild(tostring(position)) then
+								local f = toolButton:Clone()
+								f.Visible = true
+								f.Name = tostring(position)
+								local nl = f:FindFirstChild("toolNumber"); if nl then nl.Text = tostring(position) end
+								f.Parent = hotbar
+							end
+							setHotBarFishSlot(position, fishIdx)
+						end
+						rebuildFishInventory()
 						wasSwapped = true
-						object:DisconnectAll()
-						self:addTool(tool, "HotBar", tonumber(newSlot.Name))
-						if parent == "Inventory" and newFrame then newFrame:Destroy() end
-						newSlot:Destroy()
+						if newFrame then newFrame:Destroy() end
+					else
+						-- 인벤 fish로 드롭: rod↔fish 스왑 미지원, 무시
+						local invFishIdx = newSlot.Parent == inventoryFrame.Frame
+							and tonumber(newSlot.Name:match("^fish_(%d+)$"))
+							or nil
+						if invFishIdx then
+							-- 아무것도 안 함
+						else
+							local newSlotObject = self.OBJECTS[newSlot.Parent == hotbar and "HotBar" or "Inventory"][targetSlotNum or newSlot.Name]
+							if newSlotObject == object then
+								if newFrame then newFrame:Destroy() end
+								continue
+							end
+							if newSlotObject then
+								wasSwapped = true
+								-- 인벤↔인벤 스왑 시 LayoutOrder 교환을 위해 미리 기록
+								local myOrder  = object.Frame and object.Frame.LayoutOrder
+								local hisOrder = newSlotObject.Frame and newSlotObject.Frame.LayoutOrder
+								object:DisconnectAll()
+								newSlotObject:DisconnectAll()
+								local myNewObj  = self:addTool(newSlotObject.Tool, parent, position)
+								local hisNewObj = self:addTool(tool, newSlotObject.Parent, newSlotObject.Position)
+								-- 인벤토리끼리 스왑이면 LayoutOrder 교환
+								if parent == "Inventory" and newSlotObject.Parent == "Inventory" then
+									if myNewObj  and myNewObj.Frame  and myOrder  then myNewObj.Frame.LayoutOrder  = myOrder  end
+									if hisNewObj and hisNewObj.Frame and hisOrder then hisNewObj.Frame.LayoutOrder = hisOrder end
+								end
+							elseif newSlot.Parent == hotbar then
+								wasSwapped = true
+								object:DisconnectAll()
+								self:addTool(tool, "HotBar", tonumber(newSlot.Name))
+								if newFrame then newFrame:Destroy() end
+								newSlot:Destroy()
+							end
+						end
 					end
 				end
 			end
 
 			if not wasSwapped then
-				if newFrame then newFrame:Destroy() end
-				frame.Parent = object:getParentInstance()
+				-- 인벤토리 영역 빈 곳에 드롭 → 핫바 아이템이면 인벤으로 이동
+				local invAbsPos = inventoryFrame.AbsolutePosition
+				local invAbsSize = inventoryFrame.AbsoluteSize
+				local isOverInv = dropX >= invAbsPos.X and dropX <= invAbsPos.X + invAbsSize.X
+					and dropY >= invAbsPos.Y and dropY <= invAbsPos.Y + invAbsSize.Y
+				if isOverInv and parent == "HotBar" then
+					object:DisconnectAll()
+					self:addTool(tool, "Inventory")
+				else
+					frame.Parent = object:getParentInstance()
+				end
 			end
+			end) -- task.defer
 		end
 
 		mouseEnd = UserInputService.InputEnded:Connect(function(inputObject)
@@ -827,6 +1554,7 @@ function module:addTool(tool, parent, position)
 	if parent == "Inventory" then
 		updateInventorySize()
 	end
+	return object
 end
 
 return module

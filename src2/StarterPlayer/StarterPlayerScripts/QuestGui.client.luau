@@ -101,9 +101,7 @@ local function createQuestFrame(questData)
 			end
 
 			if questData.questType == "daily_playtime" then
-				local currentTime = formatTime(questData.currentProgress)
-				local requiredTime = formatTime(questData.requiredProgress)
-				progressText.Text = currentTime .. "/" .. requiredTime
+				progressText.Text = questData.currentProgress .. "m / " .. questData.requiredProgress .. "m"
 			else
 				progressText.Text = questData.currentProgress .. "/" .. questData.requiredProgress
 			end

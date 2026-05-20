@@ -145,6 +145,9 @@
       },
       "AutoReconnectServer": {
         "$path": "src2/ServerScriptService/AutoReconnectServer.server.luau"
+      },
+      "FishTrapCore": {
+        "$path": "src2/ServerScriptService/FishTrapCore.luau"
       }
     },
 
@@ -339,6 +342,9 @@
         },
         "LeaderboardYourStats": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/LeaderboardYourStats.client.luau"
+        },
+        "CollectFishTrapClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/CollectFishTrapClient.client.luau"
         }
       },
       "StarterCharacterScripts": {

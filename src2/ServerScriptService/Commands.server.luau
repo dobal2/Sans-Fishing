@@ -9,8 +9,10 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 local ItemSaveDataManager = require(ServerScriptService:WaitForChild("ItemSave"):WaitForChild("DataManager"))
+local FishTrapDataManager = require(ServerScriptService:WaitForChild("FishTrapManager"):WaitForChild("DataManager"))
 local SkillHelper = require(ServerScriptService:WaitForChild("SkillHelper"))
 local RodDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
+local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
 
 -- Create/get announcement remote event
 local announceRemote = ReplicatedStorage:FindFirstChild("AnnounceRemote")
@@ -38,8 +40,10 @@ local Permissions = {
 		SlapBattleAll = true,
 		DevRod = true,
 		DevRodAll = true,
+		givefriendrod = true,
 		forcefish = true,
 		forcerandomfish = true,
+		giverandom = true,
 		reset = true,
 		coinreset = true,
 		invenreset = true,
@@ -51,7 +55,10 @@ local Permissions = {
 		updatelogreset = true,
 		questreset = true,
 		dailyquestreset = true,
+		dailyquestcomplete = true,
+		dailyquestgive = true,
 		afkreconnect = true,
+		trapfill = true,
 	},
 	Moderator = {
 		kick = true,
@@ -63,6 +70,7 @@ local Permissions = {
 		DevRodAll = true,
 		forcefish = true,
 		forcerandomfish = true,
+		giverandom = true,
 		reset = true,
 		coinreset = true,
 		invenreset = true,
@@ -147,6 +155,43 @@ local function giveSlapBattleToAllInServer(senderName)
 		giveSlapBattle(player, senderName)
 		announceRemote:FireClient(player, string.format("Received SlapBattle from developer %s", senderName), "SYSTEM")
 	end
+end
+
+-- FriendRod functions
+local function giveFriendRod(targetPlayer, executorName)
+	local friendRodTool = ServerStorage:FindFirstChild("FriendRod")
+	if not friendRodTool then
+		warn("FriendRod tool not found in ServerStorage!")
+		return false
+	end
+
+	local backpack = targetPlayer:FindFirstChild("Backpack")
+	if not backpack then return false end
+
+	-- Rods 폴더에 FriendRod BoolValue true로 세팅 (저장 포함)
+	local ls = targetPlayer:FindFirstChild("leaderstats")
+	local rodsFolder = ls and ls:FindFirstChild("Rods")
+	local friendBool = rodsFolder and rodsFolder:FindFirstChild("FriendRod")
+	if friendBool then
+		friendBool.Value = true
+	end
+
+	-- ProfileService에 즉시 저장
+	local data = LeaderstatsDataManager:GetData(targetPlayer)
+	if data then
+		if not data.Rods then data.Rods = {} end
+		data.Rods["FriendRod"] = true
+		LeaderstatsDataManager:UpdateData(targetPlayer, "Rods", data.Rods)
+	end
+
+	-- Backpack에 없으면 지급
+	if not backpack:FindFirstChild("FriendRod") then
+		local clone = friendRodTool:Clone()
+		clone.Parent = backpack
+	end
+
+	announceRemote:FireClient(targetPlayer, string.format("FriendRod granted by %s", executorName), "SYSTEM")
+	return true
 end
 
 -- DevRod functions
@@ -319,18 +364,18 @@ local function command(plr, chat)
 			local message = chat:sub(11)
 			if message and message:len() > 0 then
 				if RunService:IsStudio() then
-					sendAnnounceToServer(message, plr.Name, getPlayerRank(plr.Name))
+					sendAnnounceToServer(message, plr.Name, getPlayerRank(plr))
 				else
 					local success = pcall(function()
 						MessagingService:PublishAsync("GlobalAnnouncement", {
 							message = message,
 							senderName = plr.Name,
-							senderRank = getPlayerRank(plr.Name),
+							senderRank = getPlayerRank(plr),
 							timestamp = os.time()
 						})
 					end)
 					if not success then
-						sendAnnounceToServer(message, plr.Name, getPlayerRank(plr.Name))
+						sendAnnounceToServer(message, plr.Name, getPlayerRank(plr))
 					end
 				end
 			end
@@ -350,7 +395,7 @@ local function command(plr, chat)
 					MessagingService:PublishAsync("GlobalCoinGive", {
 						amount = amount,
 						senderName = plr.Name,
-						senderRank = getPlayerRank(plr.Name),
+						senderRank = getPlayerRank(plr),
 						timestamp = os.time()
 					})
 				end)
@@ -370,7 +415,7 @@ local function command(plr, chat)
 				local success = pcall(function()
 					MessagingService:PublishAsync("GlobalSlapBattleGive", {
 						senderName = plr.Name,
-						senderRank = getPlayerRank(plr.Name),
+						senderRank = getPlayerRank(plr),
 						timestamp = os.time()
 					})
 				end)
@@ -403,13 +448,26 @@ local function command(plr, chat)
 				local success = pcall(function()
 					MessagingService:PublishAsync("GlobalDevRodGive", {
 						senderName = plr.Name,
-						senderRank = getPlayerRank(plr.Name),
+						senderRank = getPlayerRank(plr),
 						timestamp = os.time()
 					})
 				end)
 				if not success then
 					giveDevRodToAllInServer(plr.Name)
 				end
+			end
+		end
+	end
+
+	-- :givefriendrod [player]
+	if chat:sub(1, 14) == Prefix.."givefriendrod" then
+		if hasPermission(plr, "givefriendrod") then
+			local args = string.split(chat, " ")
+			local targetName = args[2]
+			if not targetName then return end
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				giveFriendRod(v, plr.Name)
 			end
 		end
 	end
@@ -468,6 +526,48 @@ local function command(plr, chat)
 				for _, v in pairs(foundPlayers) do
 					v:SetAttribute("ForcedRandomFish", forcedRarity)
 				end
+			end
+		end
+	end
+
+	-- :giverandom [count] [rarity] [target]
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "giverandom" then
+		if hasPermission(plr, "giverandom") then
+			local args = string.split(chat, " ")
+			local GACHA_RARITIES = {
+				epic="Epic", legendary="Legendary", mystic="Mystic",
+				fantasy="Fantasy", unknown="Unknown"
+			}
+			local count = 1
+			local forcedRarity = nil
+			local targetName = plr.Name
+			local parsedCount = false
+
+			-- Parse remaining args: count (number), rarity (string), target (player name)
+			for i = 2, #args do
+				local arg = args[i]
+				local asNum = tonumber(arg)
+				if asNum and not parsedCount then
+					count = math.clamp(math.floor(asNum), 1, 100)
+					parsedCount = true
+				elseif GACHA_RARITIES[arg:lower()] and not forcedRarity then
+					forcedRarity = GACHA_RARITIES[arg:lower()]
+				else
+					targetName = arg
+				end
+			end
+
+			local giveRandomBindable = ServerScriptService:FindFirstChild("GiveRandomFishBindable")
+			if not giveRandomBindable then
+				warn(":giverandom — GiveRandomFishBindable not found")
+				return
+			end
+
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				pcall(function()
+					giveRandomBindable:Invoke(v, count, forcedRarity)
+				end)
 			end
 		end
 	end
@@ -582,7 +682,8 @@ local function command(plr, chat)
 	end
 
 	-- :reset [target] — full data reset (leaderstats + inventory)
-	if chat:lower():sub(1, #Prefix + 5) == Prefix .. "reset" and not chat:lower():find("coinreset") and not chat:lower():find("invenreset") and not chat:lower():find("indexreset") then
+	local resetWord = chat:lower():match("^" .. Prefix .. "(%a+)")
+	if resetWord == "reset" then
 		if hasPermission(plr, "reset") then
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
@@ -911,7 +1012,184 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :updatelogreset [target] — reset SeenUpdateLog so update log shows again
+	-- :dailyquestcomplete [target] — instantly complete the daily quest and give reward
+	if chat:lower():sub(1, #Prefix + 18) == Prefix .. "dailyquestcomplete" then
+		if hasPermission(plr, "dailyquestcomplete") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local QuestDataManager = require(ServerScriptService:WaitForChild("QuestSaver"):WaitForChild("DataManager"))
+			local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+			for _, v in pairs(foundPlayers) do
+				local ls = v:FindFirstChild("leaderstats")
+				local quests = ls and ls:FindFirstChild("Quests")
+				local aq = quests and quests:FindFirstChild("ActiveQuests")
+				local folder = aq and aq:FindFirstChild("daily_random_quest")
+				if folder then
+					local rewardCoinsVal = folder:FindFirstChild("RewardCoins")
+					local rewardCoins = rewardCoinsVal and rewardCoinsVal.Value or 100000
+					local coins = ls and ls:FindFirstChild("Coins")
+					if coins then
+						coins.Value = coins.Value + rewardCoins
+						LeaderstatsDataManager:UpdateData(v, "Coins", coins.Value)
+					end
+					local data = QuestDataManager:GetData(v)
+					if data and data.Quests then
+						data.Quests.ActiveQuests = data.Quests.ActiveQuests or {}
+						data.Quests.CompletedQuests = data.Quests.CompletedQuests or {}
+						data.Quests.ActiveQuests["daily_random_quest"] = nil
+						data.Quests.CompletedQuests["daily_random_quest"] = true
+						QuestDataManager:UpdateData(v, "Quests", data.Quests)
+						QuestDataManager:SaveData(v)
+					end
+					-- leaderstats CompletedQuests 폴더에도 기록 (SafeSavePlayer가 이 폴더를 읽어 저장하기 때문)
+					local completedQuestsFolder = quests and quests:FindFirstChild("CompletedQuests")
+					if completedQuestsFolder then
+						local bv = completedQuestsFolder:FindFirstChild("daily_random_quest") or Instance.new("BoolValue")
+						bv.Name = "daily_random_quest"
+						bv.Value = true
+						bv.Parent = completedQuestsFolder
+					end
+					folder:Destroy()
+					announceRemote:FireClient(v, "Daily quest completed! +" .. tostring(rewardCoins) .. " Coins", "SYSTEM")
+				else
+					announceRemote:FireClient(plr, v.Name .. " has no active daily quest.", "SYSTEM")
+				end
+			end
+		end
+	end
+
+	-- :dailyquestgive [target] — remove existing daily quest and give a fresh one immediately
+	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "dailyquestgive" then
+		if hasPermission(plr, "dailyquestgive") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local QuestDataManager = require(ServerScriptService:WaitForChild("QuestSaver"):WaitForChild("DataManager"))
+			for _, v in pairs(foundPlayers) do
+				-- 데이터에서 완료 기록 + 기존 퀘 제거
+				local data = QuestDataManager:GetData(v)
+				if data then
+					if not data.Quests then data.Quests = {} end
+					if not data.Quests.ActiveQuests then data.Quests.ActiveQuests = {} end
+					if not data.Quests.CompletedQuests then data.Quests.CompletedQuests = {} end
+					data.Quests.ActiveQuests["daily_random_quest"] = nil
+					data.Quests.CompletedQuests["daily_random_quest"] = nil
+					QuestDataManager:UpdateData(v, "Quests", data.Quests)
+				end
+
+				-- leaderstats 폴더에서도 제거
+				local ls = v:FindFirstChild("leaderstats")
+				local quests = ls and ls:FindFirstChild("Quests")
+				local aq = quests and quests:FindFirstChild("ActiveQuests")
+				local cq = quests and quests:FindFirstChild("CompletedQuests")
+				if aq then
+					local old = aq:FindFirstChild("daily_random_quest")
+					if old then old:Destroy() end
+				end
+				if cq then
+					local oldC = cq:FindFirstChild("daily_random_quest")
+					if oldC then oldC:Destroy() end
+				end
+
+				-- 새 퀘스트 즉시 생성
+				if aq then
+					local newQuest = {
+						id               = "daily_random_quest",
+						name             = "Daily Playtime",
+						description      = "Play for 10 minutes today",
+						targetFish       = "",
+						requiredProgress = 10,
+						rewardCoins      = 100000,
+						rewardFP         = 0,
+						isReceived       = true,
+						currentProgress  = 0,
+						questType        = "daily_playtime",
+						subType          = "playtime",
+						targetRarity     = "",
+					}
+					local questFolder = Instance.new("Folder")
+					questFolder.Name = "daily_random_quest"
+					local function sv(n, val) local o = Instance.new("StringValue") o.Name = n o.Value = val o.Parent = questFolder end
+					local function iv(n, val) local o = Instance.new("IntValue")  o.Name = n o.Value = val o.Parent = questFolder end
+					local function bv(n, val) local o = Instance.new("BoolValue")  o.Name = n o.Value = val o.Parent = questFolder end
+					sv("QuestName", "Daily Playtime")
+					sv("QuestDescription", "Play for 10 minutes today")
+					sv("TargetFish", "")
+					sv("QuestType", "daily_playtime")
+					sv("SubType", "playtime")
+					sv("TargetRarity", "")
+					iv("CurrentProgress", 0)
+					iv("RequiredProgress", 10)
+					iv("RewardCoins", 100000)
+					iv("RewardFP", 0)
+					bv("IsReceived", true)
+					questFolder.Parent = aq
+
+					if data then
+						data.Quests.ActiveQuests["daily_random_quest"] = newQuest
+						QuestDataManager:UpdateData(v, "Quests", data.Quests)
+						QuestDataManager:SaveData(v)
+					end
+				end
+
+				announceRemote:FireClient(v, "Daily quest given!", "SYSTEM")
+			end
+		end
+	end
+
+	-- :trapfill [target] — fill player's fish trap with fish to max capacity
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "trapfill" then
+		if hasPermission(plr, "trapfill") then
+			local FISHTRAP_CONFIGS = {
+				["BasicFishTrap"]    = { maxCapacity = 30, rodType = "BasicRod" },
+				["AdvancedFishTrap"] = { maxCapacity = 40, rodType = "SteelRod" },
+				["MasterFishTrap"]   = { maxCapacity = 50, rodType = "GoldRod" },
+				["RobuxFishTrap"]    = { maxCapacity = 100, rodType = "RobuxRod" },
+			}
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local trapData = FishTrapDataManager:GetData(v)
+				if not trapData then
+					announceRemote:FireClient(plr, v.Name .. ": no trap data", "SYSTEM")
+					continue
+				end
+				local filled = false
+				for key, trap in pairs(trapData) do
+					if type(trap) ~= "table" or not key:find("FishTrapData_") then continue end
+					local trapType = trap.trapType or "BasicFishTrap"
+					local config = FISHTRAP_CONFIGS[trapType] or FISHTRAP_CONFIGS["BasicFishTrap"]
+					local storedFish = trap.storedFish or {}
+					local toFill = config.maxCapacity - #storedFish
+					for _ = 1, toFill do
+						local fishInfo = FishDataModule.GetRandomFish(config.rodType, nil)
+						if fishInfo then
+							table.insert(storedFish, {
+								name      = fishInfo.name,
+								fishName  = fishInfo.fishName,
+								value     = fishInfo.value,
+								minWeight = fishInfo.minWeight,
+								maxWeight = fishInfo.maxWeight,
+								weight    = fishInfo.weight,
+								chance    = fishInfo.chance,
+							})
+						end
+					end
+					trap.storedFish = storedFish
+					FishTrapDataManager:UpdateData(v, key, trap)
+					filled = true
+					announceRemote:FireClient(plr, string.format("%s trap filled: %d fish", v.Name, #storedFish), "SYSTEM")
+				end
+				if not filled then
+					announceRemote:FireClient(plr, v.Name .. ": no active trap found", "SYSTEM")
+				end
+			end
+		end
+	end
+
+	-- :updatelogreset [target] — reset LastSeenUpdateVersion so update log shows again
 	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "updatelogreset" then
 		if hasPermission(plr, "updatelogreset") then
 			local args = string.split(chat, " ")
@@ -920,11 +1198,14 @@ local function command(plr, chat)
 			for _, v in pairs(foundPlayers) do
 				local seenFlag = v:FindFirstChild("SeenUpdateLog")
 				if seenFlag then seenFlag.Value = false end
+				local lastSeen = v:FindFirstChild("LastSeenUpdateVersion")
+				if lastSeen then lastSeen.Value = 0 end
 				local data = LeaderstatsDataManager:GetData(v)
 				if data then
 					LeaderstatsDataManager:UpdateData(v, "SeenUpdateLog", false)
+					LeaderstatsDataManager:UpdateData(v, "LastSeenUpdateVersion", 0)
 				end
-				announceRemote:FireClient(v, "Your update log has been reset.", "SYSTEM")
+				announceRemote:FireClient(v, "Update log reset — rejoin to see it.", "SYSTEM")
 			end
 		end
 	end

@@ -66,6 +66,11 @@ local function rollFish()
 	return FISH_POOL[1]
 end
 
+local FishCaughtBindable = nil
+task.spawn(function()
+	FishCaughtBindable = ServerScriptService:WaitForChild("FishCaughtBindable", 30)
+end)
+
 local function grantFish(player, fish)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
@@ -92,46 +97,46 @@ local function grantFish(player, fish)
 	local valueRatio = math.clamp((weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
 	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
-	-- Grant fish tool to backpack
-	local model = fishModuleData and fishModuleData.model
-	if model then
-		local toolClone = model:Clone()
-		toolClone.Name = string.format("%s [%s] - %.1fkg", fish.name, fish.rarity, weight)
-
-		local valueObj = toolClone:FindFirstChild("FishValue") or Instance.new("IntValue")
-		valueObj.Name = "FishValue"
-		valueObj.Value = adjustedValue
-		valueObj.Parent = toolClone
-
-		local weightObj = toolClone:FindFirstChild("FishWeight") or Instance.new("NumberValue")
-		weightObj.Name = "FishWeight"
-		weightObj.Value = weight
-		weightObj.Parent = toolClone
-
-		local rarityObj = toolClone:FindFirstChild("FishRarity") or Instance.new("StringValue")
-		rarityObj.Name = "FishRarity"
-		rarityObj.Value = fish.rarity
-		rarityObj.Parent = toolClone
-
-		-- Apply weight-based size scaling (same as FishingServerModule, maxScale=5)
-		local handle = toolClone:FindFirstChild("Handle")
-		if handle and handle:IsA("BasePart") then
-			local t = math.clamp((weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
-			local ratio = 1 + (5 - 1) * t
-			if ratio ~= 1 then
-				handle.Size = handle.Size * ratio
-			end
-		end
-
-		local backpack = player:FindFirstChild("Backpack")
-		if backpack then
-			toolClone.Parent = backpack
+	-- Route through FishCaughtBindable so ItemSave handles inventory storage
+	-- fishInfo structure must match what buildFishItemData expects:
+	--   fishName = plain fish name, name = rarity string, value = base value,
+	--   weight, minWeight, maxWeight
+	if FishCaughtBindable then
+		local fishInfo = {
+			fishName  = fish.name,
+			name      = fish.rarity,
+			value     = baseValue,
+			weight    = weight,
+			minWeight = minW,
+			maxWeight = maxW,
+		}
+		FishCaughtBindable:Fire(player, fishInfo)
+	else
+		-- Fallback: grant directly to Backpack (legacy path)
+		local model = fishModuleData and fishModuleData.model
+		if model then
+			local toolName = string.format("%s [%s] - %.1fkg", fish.name, fish.rarity, weight)
+			local toolClone = model:Clone()
+			toolClone.Name = toolName
+			local valueObj = Instance.new("IntValue")
+			valueObj.Name = "FishValue"
+			valueObj.Value = adjustedValue
+			valueObj.Parent = toolClone
+			local weightObj = Instance.new("NumberValue")
+			weightObj.Name = "FishWeight"
+			weightObj.Value = weight
+			weightObj.Parent = toolClone
+			local rarityObj = Instance.new("StringValue")
+			rarityObj.Name = "FishRarity"
+			rarityObj.Value = fish.rarity
+			rarityObj.Parent = toolClone
+			local backpack = player:FindFirstChild("Backpack")
+			if backpack then toolClone.Parent = backpack end
 		end
 	end
 
-	-- Update fish discovery catalog (claim은 Index UI에서 별도로)
-	local leaderstatsInner = player:FindFirstChild("leaderstats")
-	local fishFolder = leaderstatsInner and leaderstatsInner:FindFirstChild("Fish")
+	-- Update fish discovery catalog
+	local fishFolder = leaderstats:FindFirstChild("Fish")
 	if fishFolder then
 		local fishBool = fishFolder:FindFirstChild(fish.name)
 		if fishBool and not fishBool.Value then
@@ -183,6 +188,15 @@ local function processRandomFish(player, count)
 end
 
 local purchaseLogEvent = ServerScriptService:WaitForChild("PurchaseLogEvent", 10)
+
+-- Expose processRandomFish to other server scripts (e.g. Commands)
+local GiveRandomFishBindable = Instance.new("BindableFunction")
+GiveRandomFishBindable.Name = "GiveRandomFishBindable"
+GiveRandomFishBindable.Parent = ServerScriptService
+GiveRandomFishBindable.OnInvoke = function(player, count, forcedRarity)
+	if forcedRarity then player:SetAttribute("ForcedRandomFish", forcedRarity) end
+	processRandomFish(player, count or 1)
+end
 
 local triggerRandomFish = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("TriggerRandomFish")
 triggerRandomFish.Event:Connect(function(player)
