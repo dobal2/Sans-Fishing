@@ -67,14 +67,6 @@ buyBubbleBindable.Event:Connect(function(plr, bubbleName)
 		return
 	end
 
-	-- Re-check before purchase (prevent concurrent purchases)
-	if not checkInventorySpace(plr) then
-		if showNoticeEvent then
-			showNoticeEvent:FireClient(plr, "Inventory became full!")
-		end
-		return
-	end
-
 	-- Process purchase
 	coins.Value = coins.Value - bubblePrice
 	datamanager:UpdateData(plr, "Coins", coins.Value)
