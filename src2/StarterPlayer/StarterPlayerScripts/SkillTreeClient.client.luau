@@ -2,8 +2,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
+local blur = Lighting:WaitForChild("ShopBlur")
+local camera = workspace.CurrentCamera
+local FOV_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local playerGui = player:WaitForChild("PlayerGui")
 local skillTreeGui = playerGui:WaitForChild("SkillTree")
 
@@ -157,6 +161,14 @@ local function refreshUI()
 					and Color3.fromRGB(255, 48, 51)
 					or  Color3.fromRGB(255, 255, 255)
 			end
+			-- 화폐 종류에 맞지 않는 아이콘 숨기기
+			local coinIcon = btn:FindFirstChild("CoinIcon")
+			local fishIcon = btn:FindFirstChild("FishIcon")
+			if cfg.currency == "Coins" then
+				if fishIcon then fishIcon.Visible = false end
+			else
+				if coinIcon then coinIcon.Visible = false end
+			end
 		else
 			-- 아직 잠긴 단계
 			lockNode()
@@ -242,7 +254,7 @@ skillBuyEvent.OnClientEvent:Connect(function(result)
 	if result == "success" then
 		robuxBuySound:Play()
 		if lastClickedBtn then playBuyTween(lastClickedBtn) end
-		refreshUI()
+		task.spawn(refreshUI)
 	end
 end)
 
@@ -274,6 +286,7 @@ end
 
 -- ── 닫기: 축소 트윈 후 Enabled=false ─────────────────────────────────────────
 local function closeSkillTree()
+	player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
 	local scales = getNodeScales()
 	for _, uiScale in ipairs(scales) do
 		TweenService:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = 0}):Play()
@@ -502,10 +515,14 @@ skillTreeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 		end
 		player.PlayerGui:SetAttribute("ActiveLargeUI", "SkillTree")
 		applyInitialCanvasScale()
-		refreshUI()
+		task.spawn(refreshUI)
 		playOpenTween()
+		blur.Enabled = true
+		TweenService:Create(camera, FOV_TWEEN, {FieldOfView = 60}):Play()
 	else
 		player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
+		blur.Enabled = false
+		TweenService:Create(camera, FOV_TWEEN, {FieldOfView = 70}):Play()
 	end
 end)
 

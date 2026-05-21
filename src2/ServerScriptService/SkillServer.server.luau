@@ -49,25 +49,25 @@ local SKILLS = {
 	FishingPoint = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 1,
-		costs    = { 5 },
+		costs    = { 10 },
 		effects  = { 1 },
 	},
 	HitZoneUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 3,
-		costs    = { 10, 25, 50 },
+		costs    = { 20, 50, 100 },
 		effects  = { 0.06, 0.10, 0.15 },
 	},
 	WeightUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 4,
-		costs    = { 20, 80, 200, 500 },
+		costs    = { 40, 160, 400, 1000 },
 		effects  = { 0.04, 0.10, 0.18, 0.28 },
 	},
 	PowerUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 3,
-		costs    = { 20, 80, 200 },
+		costs    = { 40, 160, 400 },
 		effects  = { 0.05, 0.10, 0.20 },
 	},
 	QuickBite = {
@@ -147,8 +147,10 @@ Players.PlayerRemoving:Connect(function(player) skillBuyCooldowns[player] = nil 
 -- targetStage 는 구매하려는 단계 번호 (currentLevel + 1 이어야 함)
 skillBuyEvent.OnServerEvent:Connect(function(player, skillName, targetStage)
 	local now = tick()
-	if skillBuyCooldowns[player] and now - skillBuyCooldowns[player] < 0.5 then return end
-	skillBuyCooldowns[player] = now
+	-- 스킬별 쿨다운 (동시 다른 스킬 요청으로 잔액 음수 방지)
+	if not skillBuyCooldowns[player] then skillBuyCooldowns[player] = {} end
+	if skillBuyCooldowns[player][skillName] and now - skillBuyCooldowns[player][skillName] < 0.5 then return end
+	skillBuyCooldowns[player][skillName] = now
 	local cfg = SKILLS[skillName]
 	if not cfg then
 		warn("SkillServer: 알 수 없는 스킬:", skillName, player.Name)

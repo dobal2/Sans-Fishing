@@ -10,6 +10,24 @@ local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitFor
 local RANDOM_FISH_1  = 3591644219
 local RANDOM_FISH_3  = 0
 local FISH_TRAP_HARVEST_PRODUCT_ID = 3381869322
+local RECOVER_PRODUCT_ID = 3596255843
+
+-- 서버 테이블로 관리 (클라이언트 Attribute 조작 방지)
+local pendingRecoverData = {}
+
+-- FishingServerModule이 실패 시 fire하는 BindableEvent
+local setPendingRecover = Instance.new("BindableEvent")
+setPendingRecover.Name = "SetPendingRecover"
+setPendingRecover.Parent = ServerScriptService
+setPendingRecover.Event:Connect(function(userId, fishName, fishRarity, fishWeight, fishMinW, fishMaxW)
+	pendingRecoverData[userId] = {
+		fishName   = fishName,
+		fishRarity = fishRarity,
+		fishWeight = fishWeight,
+		fishMinW   = fishMinW,
+		fishMaxW   = fishMaxW,
+	}
+end)
 
 local SERVER_BOOST_PRODUCTS = {
 	[3591613623] = true,
@@ -264,6 +282,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	elseif productId == FISH_TRAP_HARVEST_PRODUCT_ID then
 		local storage = ReplicatedStorage:FindFirstChild("FishTrapPurchases")
+		local found = false
 		if storage then
 			for _, purchaseData in pairs(storage:GetChildren()) do
 				if purchaseData:IsA("ObjectValue") and purchaseData.Value == player then
@@ -275,10 +294,52 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 						signal.Parent = ReplicatedStorage
 						Debris:AddItem(signal, 3)
 						purchaseData:Destroy()
+						found = true
 					end
 					break
 				end
 			end
+		end
+		if not found then return Enum.ProductPurchaseDecision.NotProcessedYet end
+		logPurchase()
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+
+	elseif productId == RECOVER_PRODUCT_ID then
+		local pending = pendingRecoverData[player.UserId]
+		pendingRecoverData[player.UserId] = nil
+		local fishName   = pending and pending.fishName
+		local fishRarity = pending and pending.fishRarity
+		local fishWeight = pending and pending.fishWeight
+		local fishMinW   = pending and pending.fishMinW
+		local fishMaxW   = pending and pending.fishMaxW
+		if fishName and fishName ~= "" then
+			local fishInfo = {
+				fishName  = fishName,
+				name      = fishRarity or "Common",
+				value     = 0,
+				weight    = fishWeight or 1,
+				minWeight = fishMinW or 1,
+				maxWeight = fishMaxW or 1,
+			}
+			-- Resolve base value from FishDataModule
+			for _, rg in ipairs(FishDataModule.Rarities) do
+				for _, f in ipairs(rg.fishes) do
+					if f.fishName == fishName then
+						fishInfo.value = f.value or 0
+						break
+					end
+				end
+			end
+			if FishCaughtBindable then
+				FishCaughtBindable:Fire(player, fishInfo)
+			end
+			local recoverNotice = ReplicatedStorage:FindFirstChild("Remotes")
+				and ReplicatedStorage.Remotes:FindFirstChild("Fishing")
+				and ReplicatedStorage.Remotes.Fishing:FindFirstChild("RecoverEvent")
+			if recoverNotice then
+				recoverNotice:FireClient(player, "granted")
+			end
+			noticeEvent:FireClient(player, string.format("Recovered: %s [%s] - %.1fkg!", fishName, fishRarity or "Common", fishWeight or 1))
 		end
 		logPurchase()
 		return Enum.ProductPurchaseDecision.PurchaseGranted
@@ -298,6 +359,10 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	pendingRecoverData[player.UserId] = nil
+end)
 
 local function waitForDataAndReset(player)
 	while player:IsDescendantOf(Players) do

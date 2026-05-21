@@ -103,7 +103,8 @@ src2/
     StarterPlayerScripts/
       # --- Fishing ---
       FishingClientStarter.client.luau        # Attaches FishingClientModule to rod tools
-      AutoFishing.client.luau                 # Auto fishing controller
+      AutoFishing.client.luau                 # Auto fishing controller; monitors IsFishing attribute; re-casts after AUTO_CAST_COOLDOWN (1.1s) on failure
+      RecoverGui.client.luau                  # Recover GUI: shown on fishing failure; Keep button buys RECOVER_PRODUCT_ID to reclaim lost fish
 
       # --- Main GUI ---
       Main.client.luau                        # Main GUI init (shop open, click sound)
@@ -201,7 +202,7 @@ src2/
       FishingServerModule.luau   # Core fishing server: cast, rope, fish selection, minigame, inventory
       FishingClientModule.luau   # Core fishing client: slider minigame, animations, GUI
       FishDataModule.luau        # Fish data tables, random fish selection, ice/festival effects
-      FishDifficultyModule.luau  # Difficulty scaling per rarity (hit size, speed, attempts)
+      FishDifficultyModule.luau  # Difficulty scaling per rarity (hit size, speed, drain); weight penalty normalized to fish's own min-max range: at max weight drain ×1.8, hit zone ×0.80
       FishingConfigModule.luau   # Per-rod config (RodPower, DifficultyMod)
       FishIceEffectModule.luau   # Applies/removes ice block overlay on frozen fish models
       WeatherSystemModule.luau   # Server-authoritative weather state machine
@@ -221,7 +222,7 @@ All Remotes live under `ReplicatedStorage.Remotes.[Category]`:
 
 | Category | Remotes |
 |---|---|
-| `Fishing` | ShowBeamEvent, BaitLandedEvent, BaitSplashEvent, RandomFishResult, FishDiscoverReward, TriggerRandomFish (Bindable), SetFavoriteRemote |
+| `Fishing` | ShowBeamEvent, BaitLandedEvent, BaitSplashEvent, RandomFishResult, FishDiscoverReward, TriggerRandomFish (Bindable), SetFavoriteRemote, RecoverEvent |
 | `Shop` | BuyFishingRod, OpenShop, OpenBoatShop, OpenRobuxShop, BuyBoat, SpawnBoat, ShopSellerDialog, OpenGearShop, codeEvent, OpenShopLocal (Bindable), OpenRobuxShopLocal (Bindable), BuyFishTrapBindable (Bindable), BuyBubbleBindable (Bindable) |
 | `Sell` | SellChoiceEvent, SellGuiEvent, SetPromptEvent, SoldNotification, TalkEvent, GambleChoiceEvent, GambleGuiEvent, GambleNotification |
 | `Notice` | ShowNoticeEvent, FishNoticeEvent, NoticeEventForClient (Bindable), TutorialEvent (Bindable), DiscoverNoticeEvent |
@@ -231,6 +232,7 @@ All Remotes live under `ReplicatedStorage.Remotes.[Category]`:
 
 **RS root (created at runtime by server scripts, not in Remotes folder)**:
 - `FishLockEvent` — fish lock toggle (Lock.server.luau)
+- `SetPendingRecover` (BindableEvent) — fired by FishingServerModule on fail; ProcessReceipt listens and stores pending recover data in server-side `pendingRecoverData[userId]` table (prevents client Attribute exploit)
 - `FishReceiveNoticeEvent` — fish give notification (GiveFish.server.luau)
 - `CodeResponseEvent` — code redeem result (plrCodes.server.luau)
 - `AnnounceRemote` — global announcement (Commands.server.luau)
@@ -282,14 +284,18 @@ The fishing system is split across server and client modules.
 - `FishingServerStarter` attaches one `FishingServer` instance per rod tool.
 - On `CastRod` fire: creates a bait `Part` (name `"Bait"`) in workspace, sets up a `Beam` fishing line, launches bait toward target.
 - Bait landing: Heartbeat loop detects `bait.Position.Y <= WATER_SURFACE_Y (-3.4)`. On landing: anchors bait, fires `BaitLandedEvent:FireClient(player, restPos, baitPart)` to fishing player, fires `BaitSplashEvent` to all others.
-- After landing: waits 2–3 seconds, selects fish via `FishDataModule`, fires fish data to client, starts minigame session.
+- After landing: waits 2–3 seconds, selects fish via `FishDataModule`, fires fish data to client, starts minigame session. `gameStartTime` is set just before `FireClient` (not at bait landing).
 - On `progress_success`: validates timing and inventory, awards fish tool to backpack.
-- Security checks: session ID validation, minimum game time, inventory limit, player ownership.
+- On fail: fires `SetPendingRecover` BindableEvent with fish info → ProcessReceipt stores in `pendingRecoverData[userId]`; fires `RecoverEvent` to client to show RecoverGui.
+- Security checks: session ID validation, minimum game time, inventory limit, player ownership. `typeof(targetPos) ~= "Vector3"` guard on cast.
 - Retry gamepass (`RETRY_GAMEPASS_ID = 1290056221`): grants one retry per catch attempt.
+- `_resolveFishing` grabs `local fishInfo = self.fishInfo` then immediately sets `self.fishInfo = nil`; all downstream code uses the local variable.
+- `getScaleRatio` guards against division by zero: `if range <= 0 then return 1 end`.
+- Notice billboard (`FishingNoticeSurface`): studs-based Size (not pixel), `AlwaysOnTop = false` so it scales naturally with camera distance.
 
 **Client** (`FishingClientModule.luau`):
 - Slider minigame: a tween-animated slider must land inside a hit zone.
-- Hit zones: normal zone (+10 progress) and strong zone (+20 progress); miss subtracts 15.
+- Hit zones: normal zone (+15 progress) and strong zone (+20 progress); miss subtracts 15.
 - Minigame starts at 30% progress. Passive drain: 4 progress/second. Fail when progress hits 0.
 - `_drainFired` flag prevents double-fire from drain + miss click.
 - `BaitLandedEvent` listener: receives exact `baitPart` Instance from server, anchors it locally + plays splash effect.
@@ -368,6 +374,7 @@ Skills are split into two currencies: **Coins** and **FishingPoints** (earned 1 
 **Server** (`SkillServer.server.luau`):
 - Creates `SkillBuyEvent` (RemoteEvent) and `GetSkillData` (RemoteFunction) at RS root.
 - Validates purchase: Root must be unlocked first; FriendBonus requires LuckUp Lv2; must buy stages sequentially (no skipping); currency balance check.
+- Per-skill cooldown (`skillBuyCooldowns[player][skillName]`) prevents concurrent purchase exploits making balance negative.
 - On success: deducts currency, increments `player.Skills.[SkillName]` IntValue, fires `"success"` to client.
 
 **Shared helper** (`SkillHelper.luau` — ModuleScript, required by FishDataModule and SellShopHandler):
@@ -387,10 +394,9 @@ Skills are split into two currencies: **Coins** and **FishingPoints** (earned 1 
 | QuickBite | Coins | 3 | 50K/300K/1.5M | fish bite wait -0.5/1.5/2.5s | AutoFish |
 | AutoUp (Rapid Auto) | Coins | 3 | 100K/1M/5M | auto click cooldown -0.1/0.4/0.8s | AutoFish |
 | PointBoost | Coins | 3 | 5M/20M/100M | +1/2/3 FishingPoints per catch | — |
-| HitZoneUp | FishingPoints | 3 | 10/25/50 | hit zone size +6/10/15% | PowerUp Lv1 |
-| InvenUp | FishingPoints | 4 | 10/40/80/200 | +10/20/35/55 inventory slots | — |
-| WeightUp | FishingPoints | 4 | 20/80/200/500 | heavy fish chance +4/10/18/28% | InvenUp Lv1 |
-| PowerUp | FishingPoints | 3 | 20/80/200 | rod power +5/10/20% | InvenUp Lv1 |
+| HitZoneUp | FishingPoints | 3 | 20/50/100 | hit zone size +6/10/15% | PowerUp Lv1 |
+| WeightUp | FishingPoints | 4 | 40/160/400/1000 | heavy fish chance +4/10/18/28% | FishingPoint Lv1 |
+| PowerUp | FishingPoints | 3 | 40/160/400 | rod power +5/10/20% | FishingPoint Lv1 |
 
 **Client** (`SkillTreeClient.client.luau`):
 - Node naming: `SkillNode_SkillName_Stage` (e.g. `SkillNode_LuckUp_2`) inside `SkillTree > BackGround > Viewport > Canvas`
@@ -413,7 +419,8 @@ Skills are split into two currencies: **Coins** and **FishingPoints** (earned 1 
 - **Comments**: English only; keep only comments that explain non-obvious logic; remove noise comments.
 - **Early returns**: validate and return early rather than deep nesting.
 - **Constants**: magic numbers go in named constants at the top of the file (e.g. `RETRY_GAMEPASS_ID`, `WEATHER_CYCLE_TIME`).
-- **Security**: all purchases and fishing events are server-validated; client input is never trusted for economy changes.
+- **Security**: all purchases and fishing events are server-validated; client input is never trusted for economy changes. Recover pending data is stored in a server-side table (not Player Attributes) to prevent client exploitation.
+- **FriendRod equip**: the FriendRod branch in `Shop.server.luau` must `return` after equipping — it does not go through normal rod logic below.
 - **OOP pattern**: `FishingServerModule` and `FishingClientModule` use `setmetatable({}, Class)` instances with `__index`, one instance per tool.
 - **ProfileService**: data is accessed via `DataManager:GetData(player)` and modified via `DataManager:UpdateData(player, key, value)`. Economy-changing purchases (rods, skills) must call `UpdateData` immediately — not just at `PlayerRemoving`.
 - **File naming**: server scripts end in `.server.luau`, client scripts in `.client.luau`, module scripts in `.luau`.

@@ -70,16 +70,31 @@ local function hasCompletedVoidQuest(player)
 end
 
 remote.OnServerEvent:Connect(function(plr, itemname)
-	-- FriendRod: special rod not in RodData, given directly from backpack
+	if type(itemname) ~= "string" then return end
+
+	-- FriendRod: special rod not in RodData, handled separately
 	if itemname == "FriendRod" then
-		-- FriendRod는 Rods 폴더에 BoolValue가 있는 special user만 장착 가능
 		local ls = plr:FindFirstChild("leaderstats")
 		if not ls then return end
-		local rodsFolder = ls:FindFirstChild("Rods")
-		local friendBool = rodsFolder and rodsFolder:FindFirstChild("FriendRod")
+		local rodsFolder2 = ls:FindFirstChild("Rods")
+		local friendBool = rodsFolder2 and rodsFolder2:FindFirstChild("FriendRod")
 		if not (friendBool and friendBool.Value) then return end
-		-- 이후 일반 로드와 동일한 로직으로 처리
-		-- (itemname이 RodData에 있으므로 아래 일반 흐름으로 fall-through)
+		for _, container in ipairs({ plr:FindFirstChild("Backpack"), plr:FindFirstChild("StarterGear"), plr.Character }) do
+			if container then
+				for _, tool in ipairs(container:GetChildren()) do
+					if tool:IsA("Tool") and (RodData.Rods[tool.Name] or tool.Name == "FriendRod") then
+						tool:Destroy()
+					end
+				end
+			end
+		end
+		local currentRod2 = ls:FindFirstChild("CurrentRod")
+		if currentRod2 then currentRod2.Value = "FriendRod" end
+		local storageItem = ServerStorage:FindFirstChild("FriendRod")
+		local backpack = plr:FindFirstChild("Backpack")
+		if storageItem and backpack then storageItem:Clone().Parent = backpack end
+		if currentRod2 then datamanager:UpdateData(plr, "CurrentRod", currentRod2.Value) end
+		return
 	end
 
 	local item = RodData.Rods[itemname]

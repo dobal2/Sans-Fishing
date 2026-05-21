@@ -20,7 +20,6 @@ local function getOrCreateOwnedLabel(frame, buyFrame)
 	local owned = frame:FindFirstChild("Owned") or frame:FindFirstChild("OwnedLabel")
 	if owned then return owned end
 
-	-- Owned 라벨 없으면 Buy 프레임과 같은 위치/크기로 생성
 	owned = Instance.new("TextLabel")
 	owned.Name = "Owned"
 	owned.Text = "Owned!"
@@ -49,10 +48,25 @@ local function setupGamePass(frame, gamePassId)
 
 	if not button and not buyFrameBtn then return end
 
+	-- ownedLabel은 buyFrame 자리에만 생성 (BuyButton에는 생성 안 함)
 	local ownedLabel = getOrCreateOwnedLabel(frame, buyFrame)
+
+	-- 가격 텍스트에 로벅스 아이콘 붙이기
+	if buyFrame then
+		local priceLbl = buyFrame:FindFirstChildOfClass("TextLabel")
+		if priceLbl then
+			local ok, info = pcall(function()
+				return MarketplaceService:GetProductInfo(gamePassId, Enum.InfoType.GamePass)
+			end)
+			if ok and info and info.PriceInRobux then
+				priceLbl.Text = string.format("\u{E002}%d", info.PriceInRobux)
+			end
+		end
+	end
 
 	local function setOwned(has)
 		if buyFrame then buyFrame.Visible = not has end
+		-- BuyButton은 그냥 숨기기만 (별도 Owned 레이블 없음)
 		if button then
 			button.Visible = not has
 			button.Active = not has

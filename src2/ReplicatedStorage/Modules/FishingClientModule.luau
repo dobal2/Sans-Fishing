@@ -54,6 +54,8 @@ function FishingClient.init(tool)
 	self.preloadedFishFailAnimation = nil
 	self.fishFailAnimationTrack = nil
 	self.lastFishWeight = 0
+	self.lastFishMinWeight = 0
+	self.lastFishMaxWeight = 0
 
 	-- Preload animations
 	self:_preloadAnimations()
@@ -1196,6 +1198,8 @@ function FishingClient:_bind()
 		end
 
 		self.lastFishWeight = data.fishWeight or 0
+		self.lastFishMinWeight = data.fishMinWeight or 0
+		self.lastFishMaxWeight = data.fishMaxWeight or 0
 		self:_openGui(data.rarity, data.toolName, data.difficultyMod)
 	end)
 
@@ -1250,7 +1254,7 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	local powerBonus = (powerUpLevel > 0 and POWER_UP_EFFECTS[powerUpLevel]) or 0
 	self.rodPower = self.rodPower * (1 + powerBonus)
 
-	local difficulty = FishDifficulty.GetModifiedSetting(rarity, self.rodPower)
+	local difficulty = FishDifficulty.GetModifiedSetting(rarity, self.rodPower, self.lastFishWeight, self.lastFishMinWeight, self.lastFishMaxWeight)
 
 	self.maxProgress = difficulty.targetProgress
 	self.strongZoneProgress = FishDifficulty.GetProgressGain("strong", difficulty)

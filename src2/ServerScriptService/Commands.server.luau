@@ -59,6 +59,7 @@ local Permissions = {
 		dailyquestgive = true,
 		afkreconnect = true,
 		trapfill = true,
+		setstreak = true,
 	},
 	Moderator = {
 		kick = true,
@@ -782,9 +783,11 @@ local function command(plr, chat)
 			for _, v in pairs(foundPlayers) do
 				local data = LeaderstatsDataManager:GetData(v)
 				local hadVoidRod = false
+				local hadFriendRod = false
 				if data and data.Rods then
 					hadVoidRod = data.Rods["VoidRod"] == true
-					data.Rods = { FishingRod = true, VoidRod = hadVoidRod }
+					hadFriendRod = data.Rods["FriendRod"] == true
+					data.Rods = { FishingRod = true, VoidRod = hadVoidRod, FriendRod = hadFriendRod }
 					data.CurrentRod = "FishingRod"
 					LeaderstatsDataManager:UpdateData(v, "Rods", data.Rods)
 					LeaderstatsDataManager:UpdateData(v, "CurrentRod", "FishingRod")
@@ -797,7 +800,7 @@ local function command(plr, chat)
 							if rod:IsA("BoolValue") then
 								if rod.Name == "FishingRod" then
 									rod.Value = true
-								elseif rod.Name == "VoidRod" then
+								elseif rod.Name == "VoidRod" or rod.Name == "FriendRod" then
 									-- keep as-is
 								else
 									rod.Value = false
@@ -808,12 +811,12 @@ local function command(plr, chat)
 					local currentRod = leaderstats:FindFirstChild("CurrentRod")
 					if currentRod then currentRod.Value = "FishingRod" end
 				end
-				-- Remove all rods from backpack/character except VoidRod
+				-- Remove all rods from backpack/character except VoidRod and FriendRod
 				for _, container in ipairs({ v:FindFirstChild("Backpack"), v.Character }) do
 					if container then
 						for _, tool in ipairs(container:GetChildren()) do
-							if tool:IsA("Tool") and tool.Name ~= "VoidRod" then
-								if RodDataModule.Rods[tool.Name] or tool.Name == "FriendRod" then
+							if tool:IsA("Tool") and tool.Name ~= "VoidRod" and tool.Name ~= "FriendRod" then
+								if RodDataModule.Rods[tool.Name] then
 									tool:Destroy()
 								end
 							end
@@ -821,6 +824,28 @@ local function command(plr, chat)
 					end
 				end
 				announceRemote:FireClient(v, "Your rods have been reset to FishingRod.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :setstreak [target] [count] — set a player's catch streak (server + display)
+	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "setstreak" then
+		if hasPermission(plr, "setstreak") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local count = tonumber(args[3]) or 0
+			local streakEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("StreakUpdateEvent")
+			local ok_fs, FishingServerModule = pcall(function()
+				return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishingServerModule"))
+			end)
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				if ok_fs and FishingServerModule then
+					FishingServerModule.playerStreaks[v.UserId] = count
+					LeaderstatsDataManager:UpdateData(v, "FishStreak", count)
+				end
+				streakEvent:FireClient(v, count)
+				announceRemote:FireClient(plr, string.format("Set %s streak to %d.", v.Name, count), "SYSTEM")
 			end
 		end
 	end

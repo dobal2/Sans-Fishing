@@ -31,6 +31,7 @@ local function openShop()
 end
 
 local function closeShop()
+	player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
 	TweenService:Create(uiScale, CLOSE_TWEEN, {Scale = 0}):Play()
 	task.delay(0.2, function() shopFrame.Visible = false end)
 	blur.Enabled = false

@@ -210,6 +210,9 @@
         "AutoFishing": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/AutoFishing.client.luau"
         },
+        "EventRsvpPrompt": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/EventRsvpPrompt.client.luau"
+        },
         "CustomInventory": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/CustomInventory"
         },
@@ -345,6 +348,12 @@
         },
         "CollectFishTrapClient": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/CollectFishTrapClient.client.luau"
+        },
+        "StreakDisplay": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/StreakDisplay.client.luau"
+        },
+        "RecoverGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/RecoverGui.client.luau"
         }
       },
       "StarterCharacterScripts": {

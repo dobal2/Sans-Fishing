@@ -61,28 +61,43 @@ FishDifficulty.Settings = {
 	},
 }
 
--- Adjust difficulty settings based on rod power
-function FishDifficulty.GetModifiedSetting(rarityName, rodPower)
+-- Adjust difficulty settings based on rod power and fish weight.
+-- fishWeight: actual weight of the fish (optional).
+-- minWeight/maxWeight: the fish's natural weight range (optional, used for normalization).
+-- Heavier fish (relative to their max weight) increase drainRate and reduce hitSize.
+function FishDifficulty.GetModifiedSetting(rarityName, rodPower, fishWeight, minWeight, maxWeight)
 	local base = FishDifficulty.Settings[rarityName] or FishDifficulty.Settings["Common"]
 	local power = rodPower or 1.0
 
-
 	-- Higher rod power = easier game
-	local adjustedTargetProgress = math.max(50, base.targetProgress / power) -- Minimum 50%
-	local adjustedProgressMultiplier = base.progressMultiplier * power        -- More gain with higher power
+	local adjustedTargetProgress = math.max(50, base.targetProgress / power)
+	local adjustedProgressMultiplier = base.progressMultiplier * power
+
+	-- Weight difficulty: normalize weight within the fish's min-max range.
+	-- weightRatio 0 = lightest, 1 = heaviest. Apply up to +80% drainRate and -20% hitSize at max weight.
+	local weightPenalty = 0
+	if fishWeight and fishWeight > 0 then
+		local lo = minWeight or fishWeight
+		local hi = maxWeight or fishWeight
+		if hi > lo then
+			weightPenalty = math.clamp((fishWeight - lo) / (hi - lo), 0, 1)
+		end
+	end
+	local drainMult  = 1 + weightPenalty * 0.8   -- up to 1.8x drain at heaviest
+	local hitShrink  = 1 - weightPenalty * 0.20   -- down to 0.80x hitSize at heaviest
 
 	return {
 		targetProgress = math.floor(adjustedTargetProgress),
 		hitSize = {
-			min = math.min(0.3, base.hitSize.min * (1 + (power - 1) * 0.3)),
-			max = math.min(0.35, base.hitSize.max * (1 + (power - 1) * 0.3))
+			min = math.min(0.3,  base.hitSize.min * (1 + (power - 1) * 0.3) * hitShrink),
+			max = math.min(0.35, base.hitSize.max * (1 + (power - 1) * 0.3) * hitShrink)
 		},
 		speed = {
 			min = base.speed.min,
 			max = base.speed.max
 		},
 		progressMultiplier = math.min(3.0, adjustedProgressMultiplier),
-		drainRate = base.drainRate or 4,
+		drainRate = (base.drainRate or 4) * drainMult,
 	}
 end
 

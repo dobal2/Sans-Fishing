@@ -1,22 +1,26 @@
-local clone = game.ReplicatedStorage:WaitForChild("NameTag"):Clone()
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local clone = ReplicatedStorage:WaitForChild("NameTag"):Clone()
 clone.Parent = script.Parent.Head
 script.Parent = clone
 
-local plr = game.Players:GetPlayerFromCharacter(script.Parent.Parent.Parent)
-script.Parent.Parent.Parent:WaitForChild("Humanoid").DisplayDistanceType = "None"
+local nameTag = script.Parent
+local character = nameTag.Parent.Parent  -- Head.NameTag → Head → Character
+local plr = game.Players:GetPlayerFromCharacter(character)
+character:WaitForChild("Humanoid").DisplayDistanceType = "None"
 
-script.Parent.name.Text = plr.DisplayName
+nameTag.name.Text = plr.DisplayName
 
 local creator = "tallmo_bim"
 local creator2 = "mkdoingsu"
 local stupid = "Domald_tlump"
 
 if plr.Name == creator then
-	script.Parent.player.Text = "Developer"
+	nameTag.player.Text = "Developer"
 elseif plr.Name == creator2 then
-	script.Parent.player.Text = "Modeler"
+	nameTag.player.Text = "Modeler"
 elseif plr.Name == stupid then
-	script.Parent.player.Text = "Stupid"
-elseif plr.Name ~= creator and plr.Name ~= creator2 then
-	script.Parent.player.Text = ""
+	nameTag.player.Text = "Stupid"
+else
+	nameTag.player.Text = ""
 end

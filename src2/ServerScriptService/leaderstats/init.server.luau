@@ -94,6 +94,10 @@ Players.PlayerAdded:Connect(function(plr)
 	Coins.Name = "Coins"
 	Coins.Value = 0
 
+	local TotalCatches = Instance.new("IntValue")
+	TotalCatches.Name = "TotalCatches"
+	TotalCatches.Value = 0
+
 	local CurrentRod = Instance.new("StringValue")
 	CurrentRod.Name = "CurrentRod"
 	CurrentRod.Value = "FishingRod"
@@ -206,6 +210,7 @@ Players.PlayerAdded:Connect(function(plr)
 	Rods.Parent = leaderstats
 	Boats.Parent = leaderstats
 	Fish.Parent = leaderstats  -- Add Fish folder to leaderstats
+	TotalCatches.Parent = leaderstats
 	leaderstats.Parent = plr
 	CurrentFishTrap.Parent = leaderstats
 	FishTraps.Parent = leaderstats
@@ -221,6 +226,20 @@ Players.PlayerAdded:Connect(function(plr)
 	-- Apply data
 	if Data then
 		Coins.Value = Data.Coins or 0
+		TotalCatches.Value = Data.TotalCatches or 0
+
+		-- Restore fishing streak
+		local savedStreak = Data.FishStreak or 0
+		if savedStreak > 0 then
+			local ok_fs, FishingServerModule = pcall(function()
+				return require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("FishingServerModule"))
+			end)
+			if ok_fs and FishingServerModule then
+				FishingServerModule.playerStreaks[plr.UserId] = savedStreak
+				local streakEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("StreakUpdateEvent")
+				streakEvent:FireClient(plr, savedStreak)
+			end
+		end
 
 		-- RealisticRod → BlockyRod 마이그레이션
 		local savedRod = Data.CurrentRod or "FishingRod"

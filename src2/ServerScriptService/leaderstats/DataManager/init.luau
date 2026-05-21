@@ -19,6 +19,8 @@ local DATA_TEMPLATE = {
 	Skills = {};
 	AutoFishingOn = false;
 	Bubbles = {};
+	TotalCatches = 0;
+	FishStreak = 0;
 }
 
 local sessionStartTimes = {}

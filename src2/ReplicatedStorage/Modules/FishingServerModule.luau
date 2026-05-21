@@ -25,6 +25,22 @@ if not baitSplashEvent then
 	baitSplashEvent.Parent = ReplicatedStorage
 end
 
+-- Streak tracking: consecutive successful catches per player
+local playerStreaks = {}
+local streakUpdateEvent  = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("StreakUpdateEvent")
+local streakEndBroadcast = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("StreakEndBroadcast")
+local recoverEvent       = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("RecoverEvent")
+
+local _streakDM = nil
+local function getStreakDM()
+	if _streakDM then return _streakDM end
+	local ok, dm = pcall(function()
+		return require(game:GetService("ServerScriptService"):WaitForChild("leaderstats"):WaitForChild("DataManager"))
+	end)
+	if ok and dm then _streakDM = dm end
+	return _streakDM
+end
+
 
 -- Sent only to the fishing player so their client freezes the bait without lag
 local baitLandedEvent = ReplicatedStorage:FindFirstChild("BaitLandedEvent")
@@ -57,6 +73,7 @@ function FishingServer.init(tool)
 	self:_bindEvents()
 
 	self.playerLeavingConnection = Players.PlayerRemoving:Connect(function(leavingPlayer)
+		playerStreaks[leavingPlayer.UserId] = nil
 		if self.player == leavingPlayer then
 			if self.hookedFishHandle then
 				self.hookedFishHandle:Destroy()
@@ -152,6 +169,7 @@ end
 
 function FishingServer:_bindEvents()
 	self.castEvent.OnServerEvent:Connect(function(player, targetPos)
+		if typeof(targetPos) ~= "Vector3" then return end
 		if self.activated or self.isReeling then return end
 
 		self.player = player
@@ -384,7 +402,7 @@ function FishingServer:_validateAttempt(player, payload)
 		self.currentDifficultyMod = difficultyMod
 
 		local difficulty = require(ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
-			.GetModifiedSetting(self.fishInfo.name, difficultyMod)
+			.GetModifiedSetting(self.fishInfo.name, difficultyMod, self.fishInfo.weight, self.fishInfo.minWeight, self.fishInfo.maxWeight)
 
 		if self.successCount >= difficulty.attempts then
 			self:_resolveFishing(player, "success")
@@ -402,6 +420,8 @@ function FishingServer:_validateAttempt(player, payload)
 				toolName = self.tool.Name,
 				difficultyMod = difficultyMod,
 				fishWeight = self.fishInfo.weight or 0,
+				fishMinWeight = self.fishInfo.minWeight or 0,
+				fishMaxWeight = self.fishInfo.maxWeight or 0,
 			})
 		end
 	else
@@ -559,8 +579,10 @@ function FishingServer:_moveBaitTo(targetPos)
 end
 
 local function getScaleRatio(weight, minWeight, maxWeight, maxScale)
+	local range = maxWeight - minWeight
+	if range <= 0 then return 1 end
 	local clampedWeight = math.clamp(weight, minWeight, maxWeight)
-	local t = (clampedWeight - minWeight) / (maxWeight - minWeight)
+	local t = (clampedWeight - minWeight) / range
 	return 1 + (maxScale - 1) * t
 end
 
@@ -822,8 +844,6 @@ function FishingServer:_checkMaterial()
 				end
 			end
 
-			self.gameStartTime = tick()
-
 			-- Start minigame after random wait (fish biting delay)
 			task.spawn(function()
 			local sessionId = HttpService:GenerateGUID(false)
@@ -952,12 +972,15 @@ function FishingServer:_checkMaterial()
 			end
 			self.currentDifficultyMod = difficultyMod
 
+			self.gameStartTime = tick()
 			self.remote:FireClient(self.player, {
 				rarity = fishInfo.rarity,
 				sessionId = sessionId,
 				toolName = self.tool.Name,
 				difficultyMod = difficultyMod,
 				fishWeight = fishInfo.weight or 0,
+				fishMinWeight = fishInfo.minWeight or 0,
+				fishMaxWeight = fishInfo.maxWeight or 0,
 			})
 		end) -- end minigame task.spawn
 		end) -- end settle task.spawn
@@ -1298,6 +1321,26 @@ function FishingServer:_resolveFishing(player, result)
 				backpackTool.Parent = player:FindFirstChild("Backpack")
 			end
 
+			-- Update consecutive catch streak
+			local userId = player.UserId
+			playerStreaks[userId] = (playerStreaks[userId] or 0) + 1
+			streakUpdateEvent:FireClient(player, playerStreaks[userId])
+			local dm = getStreakDM()
+			if dm then dm:UpdateData(player, "FishStreak", playerStreaks[userId]) end
+
+			-- Increment total catch counter
+			local leaderstats = player:FindFirstChild("leaderstats")
+			local totalCatches = leaderstats and leaderstats:FindFirstChild("TotalCatches")
+			if totalCatches then
+				totalCatches.Value = totalCatches.Value + 1
+				local ok_lc, LeaderstatsDataManager_lc = pcall(function()
+					return require(game:GetService("ServerScriptService"):WaitForChild("leaderstats"):WaitForChild("DataManager"))
+				end)
+				if ok_lc and LeaderstatsDataManager_lc then
+					LeaderstatsDataManager_lc:UpdateData(player, "TotalCatches", totalCatches.Value)
+				end
+			end
+
 			-- Award SkillPoints per successful catch (base 1 + PointBoost bonus, x2 with gamepass)
 			local skillPointsVal = player:FindFirstChild("SkillPoints")
 			if skillPointsVal then
@@ -1370,13 +1413,28 @@ function FishingServer:_resolveFishing(player, result)
 		end
 
 	elseif result == "cancel" then
-		-- Cancelled
+		-- Cancelled — reset streak
+		playerStreaks[player.UserId] = 0
+		streakUpdateEvent:FireClient(player, 0)
+		local dmc = getStreakDM()
+		if dmc then dmc:UpdateData(player, "FishStreak", 0) end
 		self:_resetPlayer()
 		self:_cleanup()
 		return
 
 	else
 		-- Failed (result == 0 or other)
+
+		-- Reset streak on fail; broadcast if it was >= 100
+		local userId = player.UserId
+		local prevStreak = playerStreaks[userId] or 0
+		playerStreaks[userId] = 0
+		streakUpdateEvent:FireClient(player, 0)
+		local dm2 = getStreakDM()
+		if dm2 then dm2:UpdateData(player, "FishStreak", 0) end
+		if prevStreak >= 100 then
+			streakEndBroadcast:FireAllClients(player.DisplayName, prevStreak)
+		end
 
 		-- Send fail message to client (to close UI)
 		self.remote:FireClient(player, "fail")
@@ -1385,6 +1443,23 @@ function FishingServer:_resolveFishing(player, result)
 		if self.hookedFishHandle then
 			self.hookedFishHandle:Destroy()
 			self.hookedFishHandle = nil
+		end
+
+		-- Send recover prompt with lost fish info
+		if fishInfo then
+			local fi = fishInfo
+			-- 서버 테이블에 저장 (클라이언트 Attribute 조작 방지)
+			local setPendingRecover = game:GetService("ServerScriptService"):FindFirstChild("SetPendingRecover")
+			if setPendingRecover then
+				setPendingRecover:Fire(player.UserId, fi.fishName or "", fi.name or "Common", fi.weight or 1, fi.minWeight or 1, fi.maxWeight or 1)
+			end
+			recoverEvent:FireClient(player, {
+				fishName  = fi.fishName,
+				rarity    = fi.name,
+				weight    = fi.weight,
+				minWeight = fi.minWeight,
+				maxWeight = fi.maxWeight,
+			})
 		end
 
 		-- Fail notification
@@ -1450,14 +1525,15 @@ function FishingServer:_showFishCaughtNotice(rarity)
 	local noticeGui = noticeTemplate:Clone()
 	noticeGui.Parent = head
 
-	-- Size in studs: small base so it looks right up-close, not huge from far away.
-	-- Rarity scale adds a modest boost for rarer fish.
+	-- Pixel-based size so the billboard appears the same size regardless of distance.
+	-- Rarity scale boosts the pixel size slightly for rarer fish.
 	local scale = RARITY_SCALE[rarity] or 1.0
 	if noticeGui:IsA("BillboardGui") then
-		local baseStuds = 1.4  -- studs wide for Common
-		local studs = baseStuds * scale
+		local studs = 2.4 * scale
 		noticeGui.Size = UDim2.new(studs, 0, studs * 1.25, 0)
-		noticeGui.MaxDistance = 20  -- only visible within 20 studs
+		noticeGui.StudsOffset = Vector3.new(0, 6, 0)
+		noticeGui.MaxDistance = 40
+		noticeGui.AlwaysOnTop = false
 	end
 
 	local startColor = RARITY_EXCLAMATION_COLOR[rarity] or Color3.fromRGB(255, 255, 255)
@@ -1509,5 +1585,7 @@ function FishingServer:_resetPlayer()
 	end
 end
 
+
+FishingServer.playerStreaks = playerStreaks
 
 return FishingServer

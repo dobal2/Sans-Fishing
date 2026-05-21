@@ -54,6 +54,18 @@ local function playBigFishAnim(character)
 	currentTrack = track
 end
 
+local function hasBigFishEquipped(character)
+	for _, child in ipairs(character:GetChildren()) do
+		if child:IsA("Tool") then
+			local fw = child:FindFirstChild("FishWeight")
+			if fw and fw.Value >= BIG_FISH_THRESHOLD then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function watchCharacter(character)
 	stopBigFishAnim()
 
@@ -61,7 +73,7 @@ local function watchCharacter(character)
 
 	character.ChildAdded:Connect(function(child)
 		if not child:IsA("Tool") then return end
-		if toolConnections[child] then return end -- 이미 연결됨
+		if toolConnections[child] then return end
 
 		local conn = child.Unequipped:Connect(function()
 			stopBigFishAnim()
@@ -82,6 +94,14 @@ local function watchCharacter(character)
 		if toolConnections[child] then
 			toolConnections[child]:Disconnect()
 			toolConnections[child] = nil
+		end
+		-- 캐릭터에서 도구가 제거될 때 big fish가 더 없으면 애니 중단
+		if child:IsA("Tool") then
+			task.defer(function()
+				if not hasBigFishEquipped(character) then
+					stopBigFishAnim()
+				end
+			end)
 		end
 	end)
 end

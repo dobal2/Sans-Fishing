@@ -33,6 +33,9 @@ ensureRemote(Fishing, "RandomFishResult")
 ensureRemote(Fishing, "FishDiscoverReward")
 ensureRemote(Fishing, "GetDiscoveryClaimed", "RemoteFunction")
 ensureRemote(Fishing, "TriggerRandomFish", "BindableEvent")
+ensureRemote(Fishing, "StreakUpdateEvent")
+ensureRemote(Fishing, "StreakEndBroadcast")
+ensureRemote(Fishing, "RecoverEvent")
 
 -- Shop
 local Shop = ensureFolder(Remotes, "Shop")

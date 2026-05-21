@@ -328,6 +328,7 @@ local function openShop(voidMode)
 end
 
 local function closeShop()
+	player.PlayerGui:SetAttribute("ActiveLargeUI", nil)
 	buyframe.Visible = false
 	setCharacterTransparency(player.Character, 0)
 	cam.CameraType = Enum.CameraType.Custom
