@@ -55,19 +55,19 @@ local SKILLS = {
 	HitZoneUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 3,
-		costs    = { 20, 50, 100 },
+		costs    = { 20, 100, 400 },
 		effects  = { 0.06, 0.10, 0.15 },
 	},
 	WeightUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 4,
-		costs    = { 40, 160, 400, 1000 },
+		costs    = { 40, 200, 800, 3000 },
 		effects  = { 0.04, 0.10, 0.18, 0.28 },
 	},
 	PowerUp = {
 		currency = CURRENCY_FISHINGPOINT,
 		maxLevel = 3,
-		costs    = { 40, 160, 400 },
+		costs    = { 40, 200, 800 },
 		effects  = { 0.05, 0.10, 0.20 },
 	},
 	QuickBite = {
