@@ -266,6 +266,59 @@ All Remotes live under `ReplicatedStorage.Remotes.[Category]`:
 
 ---
 
+## Bobber System
+
+### Data & Config
+- **`ReplicatedStorage.Modules.BobberDataModule`** — all bobber definitions (`BobberData.Bobbers`) and shop rotation list (`BobberData.ShopList`). `BobberData.GetEffects(name)` returns a full effect table with defaults filled in.
+- Bobber effects: `luckBonus`, `sellBonus`, `heavyBonus`, `rodPowerBonus`, `frozenChance`, `sansChance`, `festivalBonus`, `stormLuckBonus`, `doubleCatchChance`
+
+### Studio Assets (NOT in Rojo sync — must exist manually in Studio)
+- **`ReplicatedStorage.Bobbers`** — folder containing one `Part` per bobber (e.g. "Basic Bobber", "Lucky Bobber"). Used by BobberShopServer to place models in workspace and by RodsGui to show in ViewportFrame.
+- **`ReplicatedStorage.Particle.Sans`** — folder with 3 `ParticleEmitter` children (Sparks ×2, Star Sparks). Cloned into fish tool Handle when `isSansVariant = true`.
+
+### Workspace
+- **`workspace.BobberShop`** — shop model with:
+  - `gui` (SurfaceGui) → `name` (TextLabel): shows restock countdown
+  - `BobberPos1/2/3` — Parts where rotating shop bobbers are placed
+  - `BobberPos4` — permanent slot for the Robux Bobber
+
+### Server
+- **`ServerScriptService.BobberShopServer`** — manages the rotating bobber shop:
+  - Picks 3 random bobbers from `ShopList` (weighted) every 600s
+  - Syncs across servers via `MessagingService` topic `"BobberShopSync"`
+  - `RunService:IsStudio()` bypass: skips DataStore/MessagingService, calls `applyState` directly
+  - `doRestock(force)`: `force=true` skips the RESTOCK_INTERVAL-5 time guard (used by `:bobberrestock` admin command)
+  - Creates remotes at RS root: `EquipBobberRemote`, `BuyBobberRemote`, `OpenBobberShopRemote`
+  - Robux Bobber: permanent slot at BobberPos4; granted via gamepass `ROBUX_BOBBER_GAMEPASS_ID = 1853589181`
+  - Admin restock: `ServerScriptService.BobberShopRestockBE` BindableEvent
+
+### Leaderstats (set up in `leaderstats/init.server.luau`)
+- `player.leaderstats.EquippedBobber` (StringValue) — currently equipped bobber name
+- `player.leaderstats.OwnedBobbers` (Folder) — one `BoolValue` per owned bobber; `Value = true` means owned
+- Default owned bobber on join: `"Basic Bobber"`
+- `BOBBER_LIST` constant in init.server.luau must match all bobber names in BobberDataModule
+
+### Equip flow
+1. Client (RodsGui) fires `EquipBobberRemote:FireServer(bobberName)`
+2. Server validates ownership, calls `DataManager:UpdateData(player, "EquippedBobber", bobberName)`, updates leaderstats StringValue
+
+### Effects applied in FishingServerModule
+Bobber effects are read via `BobberData.GetEffects(equippedBobber)` at the start of fish selection:
+- `luckBonus` → added to luck multiplier
+- `sellBonus` → added to sell multiplier (also shown in CoinLabel via Main_StatLabels)
+- `heavyBonus` → heavy fish weight bonus
+- `frozenChance` → roll for Frozen variant (×`frozenMultiplier` value)
+- `sansChance` → roll for Sans variant (×`sansMultiplier` value); also see `ForcedSansVariant` attribute
+- `festivalBonus` → festival fish bonus (always active)
+- `stormLuckBonus` → extra luck during Rain weather
+- `doubleCatchChance` → chance to award 2 fish
+- `rodPowerBonus` → added to rod power
+
+### Stat display (Main_StatLabels)
+`Main_StatLabels.client.luau` reads `EquippedBobber` from leaderstats and adds `bobberFx.luckBonus` to LuckLabel and `bobberFx.sellBonus` to CoinLabel every 5s.
+
+---
+
 ## Disabled Systems
 
 These are present in codebase but disabled in `default.project.json`:

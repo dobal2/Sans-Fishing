@@ -1,19 +1,34 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage = game:GetService("ServerStorage")
 local datamanager = require(script.DataManager)
 local leaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
 -- Per-player daily random quest handler registry (populated in PlayerAdded, cleared on leave)
 local dailyRandomQuestHandlers = {}
-Players.PlayerRemoving:Connect(function(plr) dailyRandomQuestHandlers[plr] = nil end)
+local dailyGiveQuestHandlers = {}
+Players.PlayerRemoving:Connect(function(plr)
+	dailyRandomQuestHandlers[plr] = nil
+	dailyGiveQuestHandlers[plr] = nil
+end)
+
+-- FishGaveBindable: created here, fired by ItemSave after successful fish give
+local FishGaveBindable = Instance.new("BindableEvent")
+FishGaveBindable.Name = "FishGaveBindable"
+FishGaveBindable.Parent = ServerScriptService
+
+FishGaveBindable.Event:Connect(function(giverPlayer)
+	local handler = dailyGiveQuestHandlers[giverPlayer]
+	if handler then handler() end
+end)
 
 -- ── Sequential quest definitions ──────────────────────────────────────────────
 
 local SEQUENTIAL_QUESTS = {
 	{ id="seq_01", name="First Catch",        description="Catch 3 Common fish",                  questType="rarity",      targetRarity="Common",    requiredProgress=3,  rewardCoins=300    },
 	{ id="seq_02", name="Getting Started",     description="Catch 10 fish",                        questType="count",                                  requiredProgress=10, rewardCoins=500    },
-	{ id="seq_03", name="Upgrade Your Rod",    description="Buy the Silver Rod",                   questType="rod",         targetRod="SliverRod",    requiredProgress=1,  rewardCoins=800    },
+	{ id="seq_03", name="Upgrade Your Rod",    description="Buy the Silver Rod",                   questType="rod",         targetRod="Silver Rod",    requiredProgress=1,  rewardCoins=800    },
 	{ id="seq_04", name="Better Fish",         description="Catch 3 Uncommon fish",                questType="rarity",      targetRarity="Uncommon",  requiredProgress=3,  rewardCoins=1500   },
 	{ id="seq_05", name="Common Collector",    description="Register all 3 Common species",        questType="all_species", targetRarity="Common",    requiredProgress=3,  rewardCoins=2000   },
 	{ id="seq_06", name="Gold Standard",       description="Buy the Gold Rod",                     questType="rod",         targetRod="GoldRod",      requiredProgress=1,  rewardCoins=2000   },
@@ -86,6 +101,24 @@ local function pickDailyQuest()
 		currentProgress  = 0,
 		questType        = "daily_playtime",
 		subType          = "playtime",
+		targetRarity     = "",
+	}
+end
+
+local function createDailyGiveQuest()
+	return {
+		id               = "daily_give_quest",
+		name             = "Generous Fisher",
+		description      = "Give 3 fish to other players today",
+		targetFish       = "",
+		requiredProgress = 3,
+		rewardCoins      = 0,
+		rewardFP         = 0,
+		rewardBubble     = "Strength Bubble",
+		isReceived       = true,
+		currentProgress  = 0,
+		questType        = "daily_give",
+		subType          = "give",
 		targetRarity     = "",
 	}
 end
@@ -167,10 +200,13 @@ local checkSequentialQuestComplete
 local giveSequentialQuest
 
 checkSequentialQuestComplete = function(plr, questFolder, questData)
+	if questFolder:GetAttribute("_completing") then return end
+	questFolder:SetAttribute("_completing", true)
+
 	local progress = questFolder:FindFirstChild("CurrentProgress")
 	local required = questFolder:FindFirstChild("RequiredProgress")
-	if not progress or not required then return end
-	if progress.Value < required.Value then return end
+	if not progress or not required then questFolder:SetAttribute("_completing", false) return end
+	if progress.Value < required.Value then questFolder:SetAttribute("_completing", false) return end
 
 	-- Give reward coins
 	local ls = plr:FindFirstChild("leaderstats")
@@ -403,6 +439,13 @@ local function createQuest(questData, questId)
 	rewardFP.Value = questData.rewardFP or 0
 	rewardFP.Parent = questFolder
 
+	if questData.rewardBubble and questData.rewardBubble ~= "" then
+		local rewardBubble = Instance.new("StringValue")
+		rewardBubble.Name = "RewardBubble"
+		rewardBubble.Value = questData.rewardBubble
+		rewardBubble.Parent = questFolder
+	end
+
 	if questData.subType and questData.subType ~= "" then
 		local subType = Instance.new("StringValue")
 		subType.Name = "SubType"
@@ -450,6 +493,15 @@ Players.PlayerAdded:Connect(function(plr)
 		Data = datamanager:GetData(plr)
 	until Data
 
+	-- Migration: SliverRod → Silver Rod in quest data
+	if Data.Quests and Data.Quests.ActiveQuests then
+		for _, questData in pairs(Data.Quests.ActiveQuests) do
+			if type(questData) == "table" and questData.targetRod == "SliverRod" then
+				questData.targetRod = "Silver Rod"
+			end
+		end
+	end
+
 	-- Daily quest reset
 	local currentDate = getCurrentDateString()
 	local lastQuestDate = Data.LastQuestDate
@@ -460,13 +512,14 @@ Players.PlayerAdded:Connect(function(plr)
 		-- 날짜 바뀌면 일일퀘 완료 기록 초기화 + 기존 일일퀘 제거
 		if Data.Quests and Data.Quests.ActiveQuests then
 			for questId, questData in pairs(Data.Quests.ActiveQuests) do
-				if questData.questType == "daily_playtime" or questData.questType == "daily_random" then
+				if questData.questType == "daily_playtime" or questData.questType == "daily_random" or questData.questType == "daily_give" then
 					Data.Quests.ActiveQuests[questId] = nil
 				end
 			end
 		end
 		if Data.Quests and Data.Quests.CompletedQuests then
 			Data.Quests.CompletedQuests["daily_random_quest"] = nil
+			Data.Quests.CompletedQuests["daily_give_quest"] = nil
 		end
 
 		if not Data.Quests then Data.Quests = {} end
@@ -479,6 +532,12 @@ Players.PlayerAdded:Connect(function(plr)
 	if not Data.Quests then Data.Quests = {} end
 	if not Data.Quests.ActiveQuests then Data.Quests.ActiveQuests = {} end
 	if not Data.Quests.CompletedQuests then Data.Quests.CompletedQuests = {} end
+
+	-- Patch: existing daily_give_quest may be missing rewardBubble (saved before the field was added)
+	local existingGive = Data.Quests.ActiveQuests["daily_give_quest"]
+	if existingGive and not existingGive.rewardBubble then
+		existingGive.rewardBubble = "Strength Bubble"
+	end
 
 	-- Void quest check
 	local hasVoidQuest = Data.Quests.ActiveQuests["void_unknown_challenge"] ~= nil
@@ -538,6 +597,20 @@ Players.PlayerAdded:Connect(function(plr)
 		if questFolder then
 			questFolder.Parent = ActiveQuests
 			Data.Quests.ActiveQuests["daily_random_quest"] = dailyQuest
+			datamanager:SaveData(plr)
+		end
+	end
+
+	-- Daily give quest: assign if not active/completed
+	local dailyGiveAlreadyCompleted = Data.Quests.CompletedQuests and Data.Quests.CompletedQuests["daily_give_quest"] == true
+	local hasDailyGiveQuest = Data.Quests.ActiveQuests and Data.Quests.ActiveQuests["daily_give_quest"] ~= nil
+
+	if not hasDailyGiveQuest and not dailyGiveAlreadyCompleted then
+		local giveQuest = createDailyGiveQuest()
+		local giveFolder = createQuest(giveQuest, giveQuest.id)
+		if giveFolder then
+			giveFolder.Parent = ActiveQuests
+			Data.Quests.ActiveQuests["daily_give_quest"] = giveQuest
 			datamanager:SaveData(plr)
 		end
 	end
@@ -634,6 +707,20 @@ Players.PlayerAdded:Connect(function(plr)
 			datamanager:UpdateData(plr, "Quests", saveData.Quests)
 		end
 
+		-- SafeSavePlayer reads from the leaderstats CompletedQuests folder, so
+		-- we must add the BoolValue there too or the completion is lost on rejoin.
+		local questsFolder = ls and ls:FindFirstChild("Quests")
+		local completedQuestsFolder = questsFolder and questsFolder:FindFirstChild("CompletedQuests")
+		if completedQuestsFolder then
+			local existing = completedQuestsFolder:FindFirstChild("daily_random_quest")
+			if not existing then
+				local bv = Instance.new("BoolValue")
+				bv.Name = "daily_random_quest"
+				bv.Value = true
+				bv.Parent = completedQuestsFolder
+			end
+		end
+
 		local noticeEvent = getNoticeEvent()
 		if noticeEvent then
 			noticeEvent:FireClient(plr, "Daily quest complete! +100,000 Coins")
@@ -674,8 +761,76 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
+	local function completeDailyGiveQuest(folder)
+		local rewardBubbleVal = folder:FindFirstChild("RewardBubble")
+		local bubbleName = rewardBubbleVal and rewardBubbleVal.Value or "Strength Bubble"
+
+		local bubbleToolsFolder = ServerStorage:FindFirstChild("BubbleTools")
+		local bubbleTool = bubbleToolsFolder and bubbleToolsFolder:FindFirstChild(bubbleName)
+		if bubbleTool then
+			local clone = bubbleTool:Clone()
+			clone.Parent = plr.Backpack
+			local lsData = leaderstatsDataManager:GetData(plr)
+			if lsData then
+				local bubbles = lsData.Bubbles or {}
+				table.insert(bubbles, bubbleName)
+				leaderstatsDataManager:UpdateData(plr, "Bubbles", bubbles)
+			end
+		end
+
+		local saveData = datamanager:GetData(plr)
+		if saveData and saveData.Quests then
+			saveData.Quests.ActiveQuests = saveData.Quests.ActiveQuests or {}
+			saveData.Quests.CompletedQuests = saveData.Quests.CompletedQuests or {}
+			saveData.Quests.ActiveQuests["daily_give_quest"] = nil
+			saveData.Quests.CompletedQuests["daily_give_quest"] = true
+			datamanager:UpdateData(plr, "Quests", saveData.Quests)
+		end
+
+		-- SafeSavePlayer reads from the leaderstats CompletedQuests folder.
+		local ls = plr:FindFirstChild("leaderstats")
+		local questsFolder = ls and ls:FindFirstChild("Quests")
+		local completedQuestsFolder = questsFolder and questsFolder:FindFirstChild("CompletedQuests")
+		if completedQuestsFolder then
+			local existing = completedQuestsFolder:FindFirstChild("daily_give_quest")
+			if not existing then
+				local bv = Instance.new("BoolValue")
+				bv.Name = "daily_give_quest"
+				bv.Value = true
+				bv.Parent = completedQuestsFolder
+			end
+		end
+
+		local noticeEvent = getNoticeEvent()
+		if noticeEvent then
+			noticeEvent:FireClient(plr, "Daily quest complete! You received a Strength Bubble!")
+		end
+
+		folder:Destroy()
+	end
+
+	local function handleDailyGiveQuest()
+		local aq = getActiveQuestsFolder(plr)
+		if not aq then return end
+		local folder = aq:FindFirstChild("daily_give_quest")
+		if not folder then return end
+		local qtVal = folder:FindFirstChild("QuestType")
+		if not qtVal or qtVal.Value ~= "daily_give" then return end
+
+		local cp = folder:FindFirstChild("CurrentProgress")
+		local rp = folder:FindFirstChild("RequiredProgress")
+		if not cp or not rp or cp.Value >= rp.Value then return end
+
+		cp.Value = cp.Value + 1
+
+		if cp.Value >= rp.Value then
+			completeDailyGiveQuest(folder)
+		end
+	end
+
 	-- Register handler for external FishCaughtBindable calls
 	dailyRandomQuestHandlers[plr] = handleDailyRandomQuest
+	dailyGiveQuestHandlers[plr] = handleDailyGiveQuest
 
 	-- Playtime quest: increment every minute while player is in-game
 	task.spawn(function()
@@ -740,6 +895,7 @@ task.spawn(function()
 		local fishBaseName = fishInfo.fishName
 		fishBaseName = fishBaseName:gsub("^Frozen Festival ", ""):gsub("^Festival Frozen ", "")
 		fishBaseName = fishBaseName:gsub("^Frozen ", ""):gsub("^Festival ", "")
+		fishBaseName = fishBaseName:gsub("^Sans ", "")
 
 		local rarity = fishInfo.name
 		local weight = fishInfo.weight

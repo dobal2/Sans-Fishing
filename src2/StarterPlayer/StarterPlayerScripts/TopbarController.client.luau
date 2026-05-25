@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local Icon = require(ReplicatedStorage:WaitForChild("TopbarPlus"):WaitForChild("Icon"))
 local player = Players.LocalPlayer
@@ -39,6 +40,10 @@ local function getDonationFrame()
 	return main and main:FindFirstChild("Donation")
 end
 
+local blur = Lighting:WaitForChild("ShopBlur")
+local camera = workspace.CurrentCamera
+local FOV_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
 local function openDonation()
 	local frame = getDonationFrame()
 	if not frame then return end
@@ -48,6 +53,8 @@ local function openDonation()
 		uiScale.Scale = 0
 		TweenService:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
 	end
+	blur.Enabled = true
+	TweenService:Create(camera, FOV_TWEEN, {FieldOfView = 60}):Play()
 	donationRefreshEvent:FireServer()
 end
 
@@ -61,6 +68,8 @@ local function closeDonation()
 	else
 		frame.Visible = false
 	end
+	blur.Enabled = false
+	TweenService:Create(camera, FOV_TWEEN, {FieldOfView = 70}):Play()
 end
 
 donationIcon:bindEvent("selected", openDonation)

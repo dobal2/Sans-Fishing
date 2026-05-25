@@ -236,9 +236,9 @@ function FishingServer:_bindEvents()
 			end
 
 			local gameTime = tick() - self.gameStartTime
-			if gameTime < 0.5 then
+			if gameTime < 0.3 then
 				warn("Security: Game completed too quickly:", gameTime, "seconds by", player.Name)
-				player:Kick("Suspicious fishing behavior detected")
+				self:_resolveFishing(player, "fail")
 				return
 			end
 
@@ -325,20 +325,37 @@ local WATER_SURFACE_Y = -3.69   -- actual water surface Y (top of Water part)
 local BAIT_REST_Y    = -3.69   -- final resting Y at water surface
 
 function FishingServer:_createBait()
-	self.baitPart = Instance.new("Part")
-	self.baitPart.Name = "Bait"
-	self.baitPart.Size = Vector3.new(0.4, 0.4, 0.4)
-	self.baitPart.Shape = Enum.PartType.Ball
-	self.baitPart.Anchored = false
-	self.baitPart.CanCollide = false
-	self.baitPart.BrickColor = BrickColor.new("Bright red")
-	self.baitPart.Material = Enum.Material.SmoothPlastic
-	self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
-	self.baitPart.Massless = true
-	self.baitPart.Parent = workspace
-	-- Server owns physics — ensures Anchor + CFrame snap is authoritative with no client override
-	self.baitPart:SetNetworkOwner(nil)
-	-- baitLandConn is set in _checkMaterial which starts the Heartbeat loop
+	local ls = self.player:FindFirstChild("leaderstats")
+	local equippedBobber = ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
+	local bobberModels = ReplicatedStorage:FindFirstChild("Bobbers")
+	local bobberTemplate = bobberModels and bobberModels:FindFirstChild(equippedBobber)
+
+	if bobberTemplate then
+		-- Use equipped bobber model as bait
+		local clone = bobberTemplate:Clone()
+		clone.Name = "Bait"
+		clone.Anchored = false
+		clone.CanCollide = false
+		clone.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
+		clone.Massless = true
+		clone.Parent = workspace
+		clone:SetNetworkOwner(nil)
+		self.baitPart = clone
+	else
+		-- Fallback: default red ball
+		self.baitPart = Instance.new("Part")
+		self.baitPart.Name = "Bait"
+		self.baitPart.Size = Vector3.new(0.4, 0.4, 0.4)
+		self.baitPart.Shape = Enum.PartType.Ball
+		self.baitPart.Anchored = false
+		self.baitPart.CanCollide = false
+		self.baitPart.BrickColor = BrickColor.new("Bright red")
+		self.baitPart.Material = Enum.Material.SmoothPlastic
+		self.baitPart.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0, 0.3)
+		self.baitPart.Massless = true
+		self.baitPart.Parent = workspace
+		self.baitPart:SetNetworkOwner(nil)
+	end
 end
 
 
@@ -555,6 +572,7 @@ function FishingServer:_cleanup()
 	self.gameStartTime = nil
 	self.sessionId = nil
 	self.originalPhysicalProperties = nil
+	self._resolving = false
 end
 
 local CAST_PITCH_DEG = 55
@@ -879,8 +897,44 @@ function FishingServer:_checkMaterial()
 			self.fishingSoundLoop.Looped = true
 			self.fishingSoundLoop:Play()
 
+			local isTutorialed = self.player:FindFirstChild("IsTutorialed")
+			if isTutorialed and isTutorialed.Value == false then
+				self.player:SetAttribute("ForcedRarity", "Common")
+			end
 			local fishInfo = FishData.GetRandomFish(self.tool.Name, self.player)
 			fishInfo.rarity = fishInfo.name
+
+			-- Apply equipped bobber effects
+			if not self.player or not self.player:IsDescendantOf(game.Players) then return end
+			do
+				local ls = self.player:FindFirstChild("leaderstats")
+				local equippedBobber = ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
+				local BobberData = require(ReplicatedStorage.Modules:WaitForChild("BobberDataModule"))
+				local fx = BobberData.GetEffects(equippedBobber)
+
+				-- Sans variant (forced by admin command or bobber chance)
+				local forcedSans = self.player:GetAttribute("ForcedSansVariant")
+				if forcedSans then
+					self.player:SetAttribute("ForcedSansVariant", nil)
+					fishInfo.fishName = "Sans " .. fishInfo.fishName
+					fishInfo.value = math.floor((fishInfo.value or 0) * (fx.sansMultiplier > 0 and fx.sansMultiplier or 2))
+					fishInfo.isSansVariant = true
+				elseif fx.sansChance > 0 and math.random() < fx.sansChance then
+					fishInfo.fishName = "Sans " .. fishInfo.fishName
+					fishInfo.value = math.floor((fishInfo.value or 0) * fx.sansMultiplier)
+					fishInfo.isSansVariant = true
+				end
+
+				-- Frozen variant (only if not already Sans or Frozen from weather)
+				local alreadyFrozen = fishInfo.fishName and fishInfo.fishName:find("^Frozen ") ~= nil
+				if not fishInfo.isSansVariant and not alreadyFrozen and fx.frozenChance > 0 and math.random() < fx.frozenChance then
+					fishInfo.fishName = "Frozen " .. fishInfo.fishName
+					fishInfo.value = math.floor((fishInfo.value or 0) * fx.frozenMultiplier)
+				end
+
+				fishInfo.bobberFx = fx
+			end
+
 			self.fishInfo = fishInfo
 
 			local toolModel = fishInfo.model
@@ -1013,6 +1067,10 @@ end
 
 
 function FishingServer:_resolveFishing(player, result)
+	-- Prevent concurrent re-entry (two progress_success packets arriving in the same frame)
+	if self._resolving then return end
+	self._resolving = true
+
 	-- Grab and immediately nil fishInfo/sessionId so any concurrent re-entry
 	-- (from packet replay during BadgeService/WaitForChild yields) finds nothing.
 	local fishInfo = self.fishInfo
@@ -1175,6 +1233,21 @@ function FishingServer:_resolveFishing(player, result)
 			end
 		end
 
+		-- Apply Sans variant particle effect
+		if fishInfo.isSansVariant then
+			local handle = toolClone:FindFirstChild("Handle")
+			if handle then
+				local sansParticles = ReplicatedStorage:FindFirstChild("Particle") and ReplicatedStorage.Particle:FindFirstChild("Sans")
+				if sansParticles then
+					for _, p in ipairs(sansParticles:GetChildren()) do
+						if p:IsA("ParticleEmitter") then
+							p:Clone().Parent = handle
+						end
+					end
+				end
+			end
+		end
+
 		-- Handle setup and size adjustment
 		local handle = toolClone:FindFirstChild("Handle")
 		if handle then
@@ -1324,7 +1397,7 @@ function FishingServer:_resolveFishing(player, result)
 			-- Update consecutive catch streak
 			local userId = player.UserId
 			playerStreaks[userId] = (playerStreaks[userId] or 0) + 1
-			streakUpdateEvent:FireClient(player, playerStreaks[userId])
+			streakUpdateEvent:FireAllClients(userId, playerStreaks[userId])
 			local dm = getStreakDM()
 			if dm then dm:UpdateData(player, "FishStreak", playerStreaks[userId]) end
 
@@ -1351,6 +1424,8 @@ function FishingServer:_resolveFishing(player, result)
 				local basePoints = 1 + bonus
 				local ok_gp, hasX2 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, FISHING_POINT_X2_GAMEPASS_ID)
 				if ok_gp and hasX2 then basePoints = basePoints * 2 end
+				local EventState = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("EventStateModule"))
+				basePoints = math.floor(basePoints * EventState.FPMultiplier)
 				skillPointsVal.Value = skillPointsVal.Value + basePoints
 			end
 
@@ -1414,8 +1489,9 @@ function FishingServer:_resolveFishing(player, result)
 
 	elseif result == "cancel" then
 		-- Cancelled — reset streak
-		playerStreaks[player.UserId] = 0
-		streakUpdateEvent:FireClient(player, 0)
+		local userId = player.UserId
+		playerStreaks[userId] = 0
+		streakUpdateEvent:FireAllClients(userId, 0)
 		local dmc = getStreakDM()
 		if dmc then dmc:UpdateData(player, "FishStreak", 0) end
 		self:_resetPlayer()
@@ -1429,7 +1505,7 @@ function FishingServer:_resolveFishing(player, result)
 		local userId = player.UserId
 		local prevStreak = playerStreaks[userId] or 0
 		playerStreaks[userId] = 0
-		streakUpdateEvent:FireClient(player, 0)
+		streakUpdateEvent:FireAllClients(userId, 0)
 		local dm2 = getStreakDM()
 		if dm2 then dm2:UpdateData(player, "FishStreak", 0) end
 		if prevStreak >= 100 then

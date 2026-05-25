@@ -1,5 +1,6 @@
 local WeatherSystem = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local serverStorage = game:GetService("ServerStorage")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -44,11 +45,26 @@ local function createFireworkEffect()
 	end
 end
 
+-- Pause/resume DayCycleServer and set clock to night for firework
+local function setFireworkNight()
+	local pauseEvent = ServerScriptService:FindFirstChild("DayCyclePause")
+	if pauseEvent then pauseEvent:Fire(true) end
+	-- Force night sky immediately so fireworks look good
+	Lighting.ClockTime = 21
+end
+
+local function restoreDayCycle()
+	local pauseEvent = ServerScriptService:FindFirstChild("DayCyclePause")
+	if pauseEvent then pauseEvent:Fire(false) end
+end
+
 -- Start/stop the periodic firework signal loop
 local function startFireworkEffects()
 	if fireworkConnection then
 		task.cancel(fireworkConnection)
 	end
+
+	setFireworkNight()
 
 	fireworkConnection = task.spawn(function()
 		while SecureWeatherState.currentWeather == "Firework" and SecureWeatherState.isWeatherActive do
@@ -63,6 +79,7 @@ local function stopFireworkEffects()
 		task.cancel(fireworkConnection)
 		fireworkConnection = nil
 	end
+	restoreDayCycle()
 end
 
 -- Add/remove the SnowPart in workspace based on current weather
@@ -237,6 +254,12 @@ end
 function WeatherSystem.GetCurrentWeatherInfo()
 	return WeatherSystem.GetSecureWeatherInfo()
 end
+
+function WeatherSystem.ReduceWeatherTime(seconds)
+	if not SecureWeatherState.isWeatherActive then return false end
+	SecureWeatherState.weatherEndTime = math.max(tick(), SecureWeatherState.weatherEndTime - seconds)
+	return true
+end
 function WeatherSystem.ApplyWeatherEffects(fishInfo)
 	return WeatherSystem.ApplySecureWeatherEffects(fishInfo)
 end
@@ -278,20 +301,11 @@ function WeatherSystem.Initialize()
 	local weatherChangedEvent = weatherRemotes:WaitForChild("WeatherChangedEvent")
 	local fireworkEffectEvent = weatherRemotes:WaitForChild("FireworkEffectEvent")
 
-	local savedClockTime = nil
-
 	WeatherSystem.WeatherChanged.Event:Connect(function(newWeather)
 		updateSnowPartState(newWeather)
 
-		if newWeather == "Firework" then
-			savedClockTime = Lighting.ClockTime
-			Lighting.ClockTime = 22
-		else
+		if newWeather ~= "Firework" then
 			stopFireworkEffects()
-			if savedClockTime then
-				Lighting.ClockTime = savedClockTime
-				savedClockTime = nil
-			end
 		end
 
 		for _, player in pairs(Players:GetPlayers()) do

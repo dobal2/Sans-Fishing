@@ -7,7 +7,7 @@ local SKILL_EFFECTS = {
 	PowerUp     = { 0.05, 0.10, 0.20 },
 	AutoUp      = { 0.1, 0.4, 0.8 },
 	PointBoost  = { 1, 2, 3 },
-	QuickBite   = { 0.5, 1.5, 2.5 },
+	QuickBite   = { 0.5, 1.0, 2.0 },
 }
 
 local SkillHelper = {}

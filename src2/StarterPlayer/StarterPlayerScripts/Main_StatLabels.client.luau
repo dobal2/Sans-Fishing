@@ -9,6 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local getSkillData          = ReplicatedStorage:WaitForChild("GetSkillData")
 local getFriendsCountRemote = ReplicatedStorage:WaitForChild("GetFriendsCountRemote")
+local BobberData            = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BobberDataModule"))
 
 local GROUP_ID             = 9744474
 local LUCK_X2_PASS         = 1289569606
@@ -31,37 +32,32 @@ local function checkPasses()
 	end)
 end
 
-local LUCK_BY_ROD = {
-	FishingRod  = 0,
-	SliverRod   = 15,
-	GoldRod     = 30,
-	CrystalRod  = 50,
-	MagneticRod = 70,
-	BoneRod     = 100,
-	CloverRod   = 140,
-	RainbowRod  = 190,
-	UnknownRod  = 250,
-	RobuxRod    = 320,
-	ElectricRod = 400,
-	BlockyRod   = 500,
-	ArcaneRod   = 600,
-	VoidRod     = 800,
-}
+local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
 
 local function getRodLuckPercent()
+	local function luckFromRodName(toolName)
+		for _, data in pairs(RodData.Rods) do
+			if data.storageName == toolName then
+				local s = tostring(data.luck or "+0%")
+				return tonumber(s:match("([%d%.]+)")) or 0
+			end
+		end
+		return 0
+	end
+
 	local char = player.Character or player.CharacterAdded:Wait()
 	for _, tool in ipairs(char:GetChildren()) do
 		if tool:IsA("Tool") then
-			local pct = LUCK_BY_ROD[tool.Name]
-			if pct then return pct end
+			local pct = luckFromRodName(tool.Name)
+			if pct > 0 then return pct end
 		end
 	end
 	local backpack = player:FindFirstChild("Backpack")
 	if backpack then
 		for _, tool in ipairs(backpack:GetChildren()) do
 			if tool:IsA("Tool") then
-				local pct = LUCK_BY_ROD[tool.Name]
-				if pct then return pct end
+				local pct = luckFromRodName(tool.Name)
+				if pct > 0 then return pct end
 			end
 		end
 	end
@@ -116,26 +112,35 @@ local function updateLabels()
 	local friendsCount = getFriendsCount()
 
 	-- LuckLabel: 낚싯대 + LuckUp 스킬 + FriendBonus×친구수, Luck x2 패스면 2배, 서버부스트 배율 추가
+	local eventLuckMult = player:GetAttribute("EventLuckMult") or 1
+	local eventCoinMult = player:GetAttribute("EventCoinMult") or 1
+
+	-- Bobber bonuses
+	local ls = player:FindFirstChild("leaderstats")
+	local equippedBobber = ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
+	local bobberFx = BobberData.GetEffects(equippedBobber)
+	local bobberLuckPct = math.floor((bobberFx.luckBonus or 0) * 100)
+	local bobberSellPct = math.floor((bobberFx.sellBonus or 0) * 100)
+
 	if luckLabel then
 		local rodLuck       = getRodLuckPercent()
 		local luckUpPct     = math.floor(getEffect("LuckUp") * 100)
 		local friendLuckPct = math.floor(getEffect("FriendBonus") * friendsCount * 100)
-		local baseLuck      = rodLuck + luckUpPct + friendLuckPct
+		local baseLuck      = rodLuck + luckUpPct + friendLuckPct + bobberLuckPct
 		local afterPass     = cachedLuckPass and (baseLuck * 2) or baseLuck
-
-		local afterBoost = afterPass * lastBoostMult
-		local hasBubble = player:GetAttribute("LuckBubbleBuff") == true
-		local totalLuck = math.floor(hasBubble and (afterBoost + 200) or afterBoost)
+		local afterBoost    = afterPass * lastBoostMult * eventLuckMult
+		local hasBubble     = player:GetAttribute("LuckBubbleBuff") == true
+		local totalLuck     = math.floor(hasBubble and (afterBoost + 200) or afterBoost)
 		luckLabel.Text = "+" .. totalLuck .. "%"
 	end
 
-	-- CoinLabel: SellBonus 스킬 + 그룹 50% + 친구수×5%, Coin x2 패스면 전체 2배
 	if coinLabel then
 		local sellBonusPct  = math.floor(getEffect("SellBonus") * 100)
 		local groupPct      = isInGroup() and 50 or 0
 		local friendCoinPct = friendsCount * 5
-		local baseCoin      = sellBonusPct + groupPct + friendCoinPct
-		local totalCoin     = cachedCoinPass and (baseCoin * 2) or baseCoin
+		local baseCoin      = sellBonusPct + groupPct + friendCoinPct + bobberSellPct
+		local afterPass     = cachedCoinPass and (baseCoin * 2) or baseCoin
+		local totalCoin     = math.floor(afterPass * eventCoinMult)
 		coinLabel.Text = "+" .. totalCoin .. "%"
 	end
 end

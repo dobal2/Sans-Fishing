@@ -29,7 +29,7 @@ end
 -- RodProgression funnel: each rod = one milestone step
 local ROD_FUNNEL_STEP = {
 	["FishingRod"]  = 1,
-	["SliverRod"]   = 2,
+	["Silver Rod"]   = 2,
 	["GoldRod"]     = 3,
 	["CrystalRod"]  = 4,
 	["MagneticRod"] = 5,
@@ -42,6 +42,7 @@ local ROD_FUNNEL_STEP = {
 	["RealisticRod"]= 12,
 	["ArcaneRod"]   = 13,
 	["VoidRod"]     = 14,
+	["FlameRod"]    = 15,
 }
 
 local ServerScriptService = game:GetService("ServerScriptService")

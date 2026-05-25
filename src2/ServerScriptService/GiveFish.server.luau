@@ -2,6 +2,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local fishGiveLogEvent = nil
+task.spawn(function()
+	fishGiveLogEvent = ServerScriptService:WaitForChild("FishGiveLogEvent", 30)
+end)
+
 local FishReceiveNoticeEvent = Instance.new("RemoteEvent")
 FishReceiveNoticeEvent.Name = "FishReceiveNoticeEvent"
 FishReceiveNoticeEvent.Parent = ReplicatedStorage
@@ -54,6 +59,9 @@ local function addPromptToCharacter(char, owner)
 		if ok and success then
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "Fish given to " .. owner.Name .. "!")
 			FishReceiveNoticeEvent:FireClient(owner, "Received fish from " .. fromPlayer.Name .. "!")
+			if fishGiveLogEvent then
+				fishGiveLogEvent:Fire(fromPlayer.Name, fromPlayer.UserId, owner.Name, tool.Name)
+			end
 		else
 			FishReceiveNoticeEvent:FireClient(fromPlayer, "Failed to give fish to " .. owner.Name)
 		end

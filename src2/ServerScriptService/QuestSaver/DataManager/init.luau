@@ -83,13 +83,15 @@ local function OnPlayerAdded(player)
 end
 Players.PlayerAdded:Connect(OnPlayerAdded)
 
-local function OnPlayerRemoving(player)
-	local profile = Profiles[player]
-	if profile and profile:IsActive() then
-		profile:EndSession()
-	end
-end
-Players.PlayerRemoving:Connect(OnPlayerRemoving)
+-- Session is ended by QuestSaver:SafeSavePlayer (called from init.server.luau PlayerRemoving).
+-- Do NOT end the session or clear Profiles here — SafeSavePlayer must update
+-- profile.Data.Quests from Instance folders first, then call EndSession.
+-- If EndSession fires here (before SafeSavePlayer), the latest in-game quest
+-- progress (playtime minutes, give count) is discarded because it lives only
+-- in Instance folders, not in profile.Data until SafeSavePlayer writes it.
+Players.PlayerRemoving:Connect(function(_player)
+	-- intentionally empty: SafeSavePlayer handles EndSession + Profiles cleanup
+end)
 
 -----------------------Module-------------------------
 
@@ -193,6 +195,7 @@ function DataManager:SafeSavePlayer(player)
 	if profile:IsActive() then
 		profile:EndSession()
 	end
+	Profiles[player] = nil
 end
 
 function DataManager:SaveData(player)

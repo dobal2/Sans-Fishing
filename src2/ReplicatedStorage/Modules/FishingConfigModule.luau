@@ -7,7 +7,7 @@ return {
 		DifficultyMod = 1.0,
 		HitZoneBonus = 1.2
 	},
-	SliverRod = {
+	["Silver Rod"] = {
 		Distance = 80,
 		Rarity = "Uncommon",
 		RodPower = 1.2,
@@ -85,6 +85,12 @@ return {
 		Rarity = "Unobtainable",
 		RodPower = 1.7,
 		DifficultyMod = 0.15
+	},
+	FlameRod = {
+		Distance = 130,
+		Rarity = "Unobtainable",
+		RodPower = 1.75,
+		DifficultyMod = 0.12
 	},
 	VoidRod = {
 		Distance = 125,

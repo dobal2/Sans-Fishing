@@ -143,5 +143,5 @@ connectEvent(RemotesNotice, "DiscoverNoticeEvent",    function(msg) showNotice(m
 connectEvent(ReplicatedStorage, "FishReceiveNoticeEvent", function(msg) showNotice(msg, Color3.fromRGB(100, 220, 255)) end)
 connectEvent(ReplicatedStorage, "AnnounceRemote",     function(msg, sender)
 	local text = sender and (sender .. ": " .. msg) or msg
-	showNotice(text, Color3.fromRGB(255, 100, 100))
+	showNotice(text, Color3.fromRGB(100, 220, 100))
 end)

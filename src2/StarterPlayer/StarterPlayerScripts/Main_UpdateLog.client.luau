@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local LATEST_VERSION = 2
+local LATEST_VERSION = 3
 
 local UPDATE_DATA = {
 	[1] = {
@@ -31,6 +31,24 @@ local UPDATE_DATA = {
 <font color="#00ff88">• All Fish Traps buffed — online catch interval reduced to 5 minutes</font>
 <font color="#00ff88">• Fish Trap steal system added — purchase to steal all fish from another player's trap</font>
 <font color="#00ff88">• FishingPoint x2 gamepass added</font>]],
+	},
+	[3] = {
+		label = "Update 3",
+		desc = [[🎣 Update Notes
+
+<font color="#00ff88">• Flame Rod added</font>
+<font color="#00ff88">• Bobber Shop added — 11 bobbers with unique effects</font>
+<font color="#00ff88">• Lucky Bobber — Luck +30%</font>
+<font color="#00ff88">• Frost Bobber — 10% chance: Frozen variant (×2.0 value)</font>
+<font color="#00ff88">• Heavyweight Bobber — Heavy fish +18% | Sell +10%</font>
+<font color="#00ff88">• Festival Bobber — Festival fish +30%</font>
+<font color="#00ff88">• Gold Bobber — Sell value +20%</font>
+<font color="#00ff88">• Coin Bobber — Sell value +35%</font>
+<font color="#00ff88">• Sans Bobber — 5% chance: Sans variant (×3.0 value)</font>
+<font color="#00ff88">• Storm Bobber — During Rain: Luck +200%</font>
+<font color="#00ff88">• Black Hole Bobber — Rod Power +25%</font>
+<font color="#00ff88">• Double Catch Bobber — 40% chance to catch 2 fish</font>
+<font color="#ffaa00">• Robux Bobber available via gamepass</font>]],
 	},
 }
 

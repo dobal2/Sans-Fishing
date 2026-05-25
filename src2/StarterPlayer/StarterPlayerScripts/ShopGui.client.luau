@@ -80,7 +80,7 @@ if not nameGradient.Parent then nameGradient.Parent = nameText end
 nameGradient.Rotation = 90
 
 local ROD_NAME_GRADIENTS = {
-	SliverRod    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 220, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 160, 220)) }),
+	["Silver Rod"]    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 220, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 160, 220)) }),
 	GoldRod      = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 80)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 140, 20))  }),
 	CrystalRod   = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 240, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 180, 255))  }),
 	MagneticRod  = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 0, 200))    }),
@@ -92,6 +92,7 @@ local ROD_NAME_GRADIENTS = {
 	ElectricRod  = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 200, 255))  }),
 	RealisticRod = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 120, 60))   }),
 	ArcaneRod    = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 100, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 0, 200))   }),
+	FlameRod     = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 60)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 60, 0))    }),
 	VoidRod      = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 80, 255)),  ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 0, 120))    }),
 }
 buyButton.MouseEnter:Connect(function()
@@ -135,9 +136,9 @@ local function checkGroupMembership()
 end
 
 local rodKeys = {
-	"SliverRod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod",
+	"Silver Rod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod",
 	"CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
-	"ElectricRod", "RealisticRod", "ArcaneRod"
+	"ElectricRod", "RealisticRod", "ArcaneRod", "FlameRod"
 }
 
 local voidRodKeys = {"VoidRod"}

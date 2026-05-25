@@ -10,6 +10,7 @@ local WELCOME_WEBHOOK_URL  = "https://webhook.lewisakura.moe/api/webhooks/150555
 local LEFT_WEBHOOK_URL     = "https://webhook.lewisakura.moe/api/webhooks/1505557810765893712/UgekshEu0uwRW0EaprAAErn2vQH-BKvqeOWKqgh_3w9FWktX_55PCku_NbYwrf1gp8-u"
 local ERROR_WEBHOOK_URL    = "https://webhook.lewisakura.moe/api/webhooks/1505557856924209234/njV0XIR1EuT0UGp7d3o_HI9CHmHjd5vu0EG0vMHDYl6iui65IFQ2ndvd_7rqoG2VfsnO"
 local PURCHASE_WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1505561651749982268/p5vbjsLvNEH14ufj1Ynvxc51ckrpH6S9v-w6Z93UUzgimpekC4rdeWm_MJy_R6JrUb7X"
+local FISH_GIVE_WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1507595695622721547/GpcMcrPmLIFLKBmZw5QD2wr1X22k84Uqz6n6EcNQ4oZH5VYFWdEhQpkd5DMg25S5OaZD"
 
 local GAMEPASS_NAMES = {
 	[1293430515] = "Coin x2",
@@ -186,5 +187,22 @@ purchaseLogEvent.Event:Connect(function(playerName, productId)
 		PURCHASE_WEBHOOK_URL, "🛒 상품 구매", 0xF1C40F,
 		playerName, nil, nil,
 		{ { name = "상품", value = name, inline = true } }
+	)
+end)
+
+-- Fish give log (fired from GiveFish.server.luau on successful give)
+local fishGiveLogEvent = Instance.new("BindableEvent")
+fishGiveLogEvent.Name = "FishGiveLogEvent"
+fishGiveLogEvent.Parent = ServerScriptService
+
+fishGiveLogEvent.Event:Connect(function(giverName, giverId, receiverName, fishName)
+	if RunService:IsStudio() then return end
+	sendWebhook(
+		FISH_GIVE_WEBHOOK_URL, "🐟 물고기 선물", 0x3498DB,
+		giverName, getProfileUrl(giverId), getAvatarUrl(giverId),
+		{
+			{ name = "받는 사람", value = receiverName, inline = true },
+			{ name = "물고기",   value = fishName,     inline = true },
+		}
 	)
 end)

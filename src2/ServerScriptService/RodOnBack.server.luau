@@ -2,10 +2,10 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local ROD_SET = {
-	FishingRod=true, SliverRod=true, GoldRod=true, CrystalRod=true, MagneticRod=true,
+	FishingRod=true, ["Silver Rod"]=true, GoldRod=true, CrystalRod=true, MagneticRod=true,
 	BoneRod=true, CloverRod=true, RainbowRod=true, UnknownRod=true, RobuxRod=true,
 	ElectricRod=true, RealisticRod=true, BlockyRod=true, ArcaneRod=true, VoidRod=true,
-	FriendRod=true,
+	FriendRod=true, FlameRod=true,
 }
 
 local function removeBackRod(character)

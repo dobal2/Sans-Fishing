@@ -1185,10 +1185,16 @@ function module:newTool(tool)
 	if tool:FindFirstChild("FishValue") then return end  -- fish handled separately
 
 	-- 빈 핫바 슬롯 탐색 (rod/bubble + fish 핀 모두 점유 슬롯으로 간주)
+	local isRod = tool:FindFirstChild("CastRod") ~= nil
 	local freeSlot = nil
-	for s = 1, self.slotAmount do
-		if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
-			freeSlot = s; break
+	-- Rod tools always prefer slot 1
+	if isRod and not module.OBJECTS.HotBar[1] and not module.HotBarFish[1] then
+		freeSlot = 1
+	else
+		for s = 1, self.slotAmount do
+			if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
+				freeSlot = s; break
+			end
 		end
 	end
 
@@ -1212,15 +1218,9 @@ function module:addTool(tool, parent, position)
 				break
 			end
 		end
-		-- fish 슬롯만 남아있으면 fish 슬롯을 밀어내고 첫 번째 빈 슬롯 사용
+		-- all hotbar slots occupied by fish — send to inventory instead of displacing fish
 		if not position then
-			for index = 1, self.slotAmount do
-				if self.OBJECTS.HotBar[index] == nil then
-					clearHotBarFishSlot(index)
-					position = index
-					break
-				end
-			end
+			parent = "Inventory"
 		end
 	end
 
@@ -1483,6 +1483,16 @@ function module:addTool(tool, parent, position)
 								wasSwapped = true
 								object:DisconnectAll()
 								self:addTool(tool, "HotBar", tonumber(newSlot.Name))
+								-- restore original position slot as empty frame
+								if position and not hotbar:FindFirstChild(tostring(position)) then
+									local f = toolButton:Clone()
+									f.Visible = true
+									f.Name = tostring(position)
+									local nl = f:FindFirstChild("toolNumber"); if nl then nl.Text = tostring(position) end
+									local ta = f:FindFirstChild("toolAmount"); if ta then ta.Text = "" end
+									local tn = f:FindFirstChild("toolName"); if tn then tn.Text = "" end
+									f.Parent = hotbar
+								end
 								if newFrame then newFrame:Destroy() end
 								newSlot:Destroy()
 							end

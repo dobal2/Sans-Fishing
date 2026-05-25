@@ -160,12 +160,17 @@ local function newTool(tool)
 	end
 end
 
+local backpackConn = nil
+local characterConn = nil
+
 local function reloadInventory(character)
 	inventoryHandler.currentlyEquipped = nil
 	backpack = player:WaitForChild("Backpack")
 
-	backpack.ChildAdded:Connect(newTool)
-	character.ChildAdded:Connect(newTool)
+	if backpackConn then backpackConn:Disconnect() end
+	if characterConn then characterConn:Disconnect() end
+	backpackConn = backpack.ChildAdded:Connect(newTool)
+	characterConn = character.ChildAdded:Connect(newTool)
 
 	task.spawn(function()
 		for _, tool in pairs(backpack:GetChildren()) do
@@ -228,13 +233,17 @@ task.spawn(function()
 	local ok1, fishList = pcall(function() return getInventoryData:InvokeServer() end)
 	local ok2, savedPins = pcall(function() return getFishHotBarPins:InvokeServer() end)
 
+	-- Cache pins for use if initial fish list arrives late (via InventoryDataSync)
+	local pendingInitialPins = ok2 and savedPins or nil
+
 	if ok1 and fishList then
 		inventoryHandler:syncInventory(fishList, false)
 		updateFishCount()
 	end
 
 	-- 저장된 핀 복원 후 남은 빈 슬롯 자동 채우기
-	restorePins(ok2 and savedPins or nil, inventoryHandler.FishList)
+	local pinsRestored = restorePins(pendingInitialPins, inventoryHandler.FishList)
+	if pinsRestored then pendingInitialPins = nil end
 	inventoryHandler:autoFillPublic()
 	inventoryHandler:rebuildFishInventoryPublic()
 
@@ -244,10 +253,41 @@ task.spawn(function()
 	-- 판매/리셋 후 전체 동기화: 서버에서 핀을 다시 불러와 복원
 	inventoryDataSync.OnClientEvent:Connect(function(fishList2)
 		_G.hotBarPinsReady = false
+
+		-- If initial pins weren't restored yet (server sent fish data late), restore now
+		if pendingInitialPins then
+			inventoryHandler:syncInventory(fishList2, false)
+			updateFishCount()
+			restorePins(pendingInitialPins, inventoryHandler.FishList)
+			pendingInitialPins = nil
+			inventoryHandler:autoFillPublic()
+			inventoryHandler:rebuildFishInventoryPublic()
+			_G.hotBarPinsReady = true
+			task.spawn(function() task.wait(0.1); updateAllFishLockUI() end)
+			return
+		end
+
+		-- Normal sync after sell/give: restore pins by fish identity (indices may shift)
+		local savedPinsBySlot = {}
+		for slot, fishIdx in pairs(inventoryHandler.HotBarFish) do
+			local fi = inventoryHandler.FishList[fishIdx]
+			if fi then
+				savedPinsBySlot[slot] = {name = fi.name, weight = fi.weight}
+			end
+		end
 		inventoryHandler:syncInventory(fishList2, false)
 		updateFishCount()
-		local ok3, pins3 = pcall(function() return getFishHotBarPins:InvokeServer() end)
-		restorePins(ok3 and pins3 or nil, inventoryHandler.FishList)
+		local used = {}
+		for slot, saved in pairs(savedPinsBySlot) do
+			for newIdx, fi in ipairs(inventoryHandler.FishList) do
+				if not used[newIdx] and fi.name == saved.name
+					and math.abs((fi.weight or 0) - (saved.weight or 0)) < 0.001 then
+					inventoryHandler:setHotBarFishSlotPublic(slot, newIdx)
+					used[newIdx] = true
+					break
+				end
+			end
+		end
 		inventoryHandler:rebuildFishInventoryPublic()
 		_G.hotBarPinsReady = true
 		task.spawn(function()

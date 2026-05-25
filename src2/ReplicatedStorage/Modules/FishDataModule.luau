@@ -10,6 +10,7 @@ local fishFolder = serverStorage:WaitForChild("Fishes")
 
 -- Load WeatherSystem module
 local WeatherSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
+local EventState = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("EventStateModule"))
 
 local RunService = game:GetService("RunService")
 local SkillServer = nil
@@ -346,7 +347,7 @@ end
 -- Higher tier rods push probability toward heavier brackets.
 local ROD_WEIGHT_TIER = {
 	FishingRod   = 0,
-	SliverRod    = 1,
+	["Silver Rod"]    = 1,
 	GoldRod      = 2,
 	CrystalRod   = 3,
 	MagneticRod  = 4,
@@ -534,7 +535,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	-- Rod-based max weight bonus (adds to maxW cap, up to 200kg)
 	local ROD_MAX_WEIGHT_BONUS = {
 		FishingRod  = 0,
-		SliverRod   = 10,
+		["Silver Rod"]   = 10,
 		GoldRod     = 20,
 		CrystalRod  = 30,
 		MagneticRod = 40,
@@ -565,7 +566,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	-- Common absorbs the reduction naturally after normalization.
 	local ROD_LUCK_BONUS = {
 		FishingRod   = 0,
-		SliverRod    = 0.15,
+		["Silver Rod"]    = 0.15,
 		GoldRod      = 0.30,
 		CrystalRod   = 0.50,
 		MagneticRod  = 0.60,  -- 너프 (기존 0.75)
@@ -617,6 +618,11 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 				luckBonus = luckBonus * boostMult
 			end
 		end
+	end
+
+	-- Developer event luck multiplier
+	if EventState.LuckMultiplier > 1 then
+		luckBonus = luckBonus * EventState.LuckMultiplier
 	end
 
 	local finalChances = {}
@@ -696,6 +702,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 					local minW = selectedFish.minWeight or 1
 					local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
 					local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
+					weight = math.min(maxW, weight * EventState.WeightMultiplier)
 					weight = math.floor(weight * 10 + 0.5) / 10
 					local fishInfo = {
 						name = rarity.name,
@@ -728,6 +735,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 			local minW = selectedFish.minWeight or 1
 			local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
 			local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
+			weight = math.min(maxW, weight * EventState.WeightMultiplier)
 			weight = math.floor(weight * 10 + 0.5) / 10
 
 			-- Build fishInfo structure (backward compatible)

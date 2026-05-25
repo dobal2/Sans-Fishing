@@ -134,11 +134,13 @@ Players.PlayerAdded:Connect(function(plr)
 		sv.Parent = Skills
 	end
 
-	local rodList = {"FishingRod", "SliverRod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","BlockyRod","ArcaneRod","VoidRod","FriendRod"}
+	local rodList = {"FishingRod", "Silver Rod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","BlockyRod","ArcaneRod","FlameRod","VoidRod","FriendRod"}
 
 	local boatList = {"BasicBoat"}  -- Boat list
 
 	local fishTrapList = {"BasicFishTrap","AdvancedFishTrap","MasterFishTrap","RobuxFishTrap"}
+
+	local BOBBER_LIST = {"Basic Bobber","Lucky Bobber","Frost Bobber","Heavyweight Bobber","Festival Bobber","Coin Bobber","Gold Bobber","Sans Bobber","Storm Bobber","Black Hole Bobber","Double Catch Bobber","Robux Bobber"}
 
 	local fishList = {
 		"Armor Fish",
@@ -169,6 +171,19 @@ Players.PlayerAdded:Connect(function(plr)
 		fishTrap.Value = false  -- Default: not owned
 		fishTrap.Parent = FishTraps
 	end
+
+	local OwnedBobbersFolder = Instance.new("Folder")
+	OwnedBobbersFolder.Name = "OwnedBobbers"
+	for _, bobberName in ipairs(BOBBER_LIST) do
+		local bv = Instance.new("BoolValue")
+		bv.Name = bobberName
+		bv.Value = (bobberName == "Basic Bobber")
+		bv.Parent = OwnedBobbersFolder
+	end
+
+	local EquippedBobberValue = Instance.new("StringValue")
+	EquippedBobberValue.Name = "EquippedBobber"
+	EquippedBobberValue.Value = "Basic Bobber"
 
 
 
@@ -214,12 +229,15 @@ Players.PlayerAdded:Connect(function(plr)
 	leaderstats.Parent = plr
 	CurrentFishTrap.Parent = leaderstats
 	FishTraps.Parent = leaderstats
+	OwnedBobbersFolder.Parent = leaderstats
+	EquippedBobberValue.Parent = leaderstats
 
 
 	-- Load data
 	local Data
 	repeat
 		task.wait()
+		if not plr.Parent then return end
 		Data = datamanager:GetData(plr)
 	until Data
 
@@ -237,8 +255,15 @@ Players.PlayerAdded:Connect(function(plr)
 			if ok_fs and FishingServerModule then
 				FishingServerModule.playerStreaks[plr.UserId] = savedStreak
 				local streakEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("StreakUpdateEvent")
-				streakEvent:FireClient(plr, savedStreak)
+				streakEvent:FireAllClients(plr.UserId, savedStreak)
 			end
+		end
+
+		-- Migration: SliverRod → Silver Rod
+		if Data.CurrentRod == "SliverRod" then Data.CurrentRod = "Silver Rod" end
+		if Data.Rods and Data.Rods["SliverRod"] then
+			Data.Rods["Silver Rod"] = Data.Rods["SliverRod"]
+			Data.Rods["SliverRod"] = nil
 		end
 
 		-- RealisticRod → BlockyRod 마이그레이션
@@ -337,6 +362,13 @@ Players.PlayerAdded:Connect(function(plr)
 			elseif hasFishTrap then
 				warn("Unknown Fish Trap:", fishTrapName, "->", plr.Name)
 			end
+		end
+
+		-- Apply bobber data
+		EquippedBobberValue.Value = Data.EquippedBobber or "Basic Bobber"
+		for _, bobberName in ipairs(Data.OwnedBobbers or {"Basic Bobber"}) do
+			local bv = OwnedBobbersFolder:FindFirstChild(bobberName)
+			if bv then bv.Value = true end
 		end
 	end
 
@@ -650,8 +682,9 @@ Players.PlayerAdded:Connect(function(plr)
 			end
 		end
 
-		-- Attempt rod give
-		while true do
+		-- Attempt rod give (max 20 attempts × 0.5s = 10s timeout)
+		local MAX_ROD_GIVE_ATTEMPTS = 20
+		for _attempt = 1, MAX_ROD_GIVE_ATTEMPTS do
 			if not plr.Parent then
 				warn("Player left - stopping rod give")
 				return false
@@ -693,6 +726,8 @@ Players.PlayerAdded:Connect(function(plr)
 
 			task.wait(0.5)
 		end
+		warn("Rod re-give failed after max attempts for", plr.Name)
+		return false
 	end
 
 

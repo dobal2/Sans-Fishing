@@ -178,8 +178,9 @@ local function FindItem(itemName)
 	end
 
 	local stripped = StripSuffixes(itemName):lower()
-	local baseName = stripped:gsub("^frozen ", ""):gsub("^festival ", "")
+	local baseName = stripped:gsub("^sans ", ""):gsub("^frozen ", ""):gsub("^festival ", "")
 	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
+	baseName = baseName:gsub("^sans frozen ", ""):gsub("^sans festival ", "")
 
 	if baseName == "unknown" then
 		return ItemsFolder:FindFirstChild("Unknown")
@@ -202,8 +203,11 @@ end
 local function GetFishDataByName(name)
 	local stripped = StripSuffixes(name)
 	local strippedLower = stripped:lower()
-	local baseName = strippedLower:gsub("^frozen ", ""):gsub("^festival ", "")
+	local baseName = strippedLower:gsub("^sans frozen festival ", ""):gsub("^sans festival frozen ", "")
 	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
+	baseName = baseName:gsub("^sans frozen ", ""):gsub("^sans festival ", "")
+	baseName = baseName:gsub("^frozen ", ""):gsub("^festival ", "")
+	baseName = baseName:gsub("^sans ", "")
 
 	for _, rarity in ipairs(FishData.Rarities) do
 		for _, fish in ipairs(rarity.fishes) do
@@ -238,6 +242,7 @@ local function scaleHandleByRatio(handle, scaleRatio)
 end
 
 local function getScaleRatio(weight, minWeight, maxWeight, maxScale)
+	if maxWeight - minWeight <= 0 then return 1 end
 	local clampedWeight = math.clamp(weight, minWeight, maxWeight)
 	local t = (clampedWeight - minWeight) / (maxWeight - minWeight)
 	return 1 + (maxScale - 1) * t
@@ -388,6 +393,17 @@ cloneAndEquipFish = function(player, index)
 			FishData.ApplyFestivalEffect(clone, { fishName = fishData.name, currentWeather = "Firework" })
 		end)
 	end
+	if fishData.isSansVariant then
+		local handle = clone:FindFirstChild("Handle")
+		if handle then
+			local sansParticles = ReplicatedStorage:FindFirstChild("Particle") and ReplicatedStorage.Particle:FindFirstChild("Sans")
+			if sansParticles then
+				for _, p in ipairs(sansParticles:GetChildren()) do
+					if p:IsA("ParticleEmitter") then p:Clone().Parent = handle end
+				end
+			end
+		end
+	end
 
 	clone.Parent = player.Backpack
 
@@ -451,8 +467,9 @@ local function buildFishItemData(fishInfo)
 	local valueRatio = math.clamp((fishInfo.weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
 	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
-	local isFrozen   = fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") ~= nil
-	local isFestival = fishInfo.fishName and string.find(fishInfo.fishName, "Festival") ~= nil
+	local isFrozen      = fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") ~= nil
+	local isFestival    = fishInfo.fishName and string.find(fishInfo.fishName, "Festival") ~= nil
+	local isSansVariant = fishInfo.isSansVariant == true
 
 	-- Apply weather multipliers (same as createFishTool in FishingServerModule)
 	if isFrozen and isFestival then
@@ -478,9 +495,10 @@ local function buildFishItemData(fishInfo)
 		weight    = fishInfo.weight,
 		value     = adjustedValue,
 		baseValue = baseValue,
-		isLocked  = false,
-		isFrozen  = isFrozen,
-		isFestival = isFestival,
+		isLocked    = false,
+		isFrozen    = isFrozen,
+		isFestival  = isFestival,
+		isSansVariant = isSansVariant,
 	}
 end
 
@@ -653,8 +671,9 @@ Players.PlayerAdded:Connect(function(player)
 				error("Weight extraction failed: " .. itemName)
 			end
 
-			local hasFrozen   = itemName:find("^Frozen ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
-			local hasFestival = itemName:find("^Festival ") or itemName:find("Frozen Festival") or itemName:find("Festival Frozen")
+			local hasFrozen   = itemName:find("Frozen") ~= nil
+			local hasFestival = itemName:find("Festival") ~= nil
+			local hasSans     = itemName:find("^Sans ") ~= nil
 
 			local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
 			local baseValue  = fishData.value or 0
@@ -674,16 +693,24 @@ Players.PlayerAdded:Connect(function(player)
 				adjustedValue = math.floor(adjustedValue * festivalMultiplier)
 			end
 
+			if hasSans then
+				adjustedValue = math.floor(adjustedValue * 3.0)
+			end
+
+			-- Reconstruct fishName (with variant prefix) from itemName
+			local fishName = itemName:match("^(.-)%s*%[") or fishData.fishName
+
 			local fishItem = {
 				name      = itemName,
-				fishName  = fishData.fishName,
+				fishName  = fishName,
 				rarity    = fishData.name,
 				weight    = weight,
 				value     = adjustedValue,
 				baseValue = baseValue,
 				isLocked  = isLocked or false,
-				isFrozen  = hasFrozen and true or false,
-				isFestival = hasFestival and true or false,
+				isFrozen  = hasFrozen,
+				isFestival = hasFestival,
+				isSansVariant = hasSans,
 			}
 
 			table.insert(PlayerFishData[player], fishItem)
@@ -786,8 +813,11 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local FishGiveBindable = nil
+local FishGaveBindable = nil
 task.spawn(function()
-	FishGiveBindable = game:GetService("ServerScriptService"):WaitForChild("FishGiveBindable", 30)
+	local SSS = game:GetService("ServerScriptService")
+	FishGiveBindable = SSS:WaitForChild("FishGiveBindable", 30)
+	FishGaveBindable = SSS:WaitForChild("FishGaveBindable", 30)
 	if not FishGiveBindable then return end
 
 	FishGiveBindable.OnInvoke = function(fromPlayer, toPlayer, tool)
@@ -833,6 +863,10 @@ task.spawn(function()
 			FishDataAddedRemote:FireClient(toPlayer, fishItem, #PlayerFishData[toPlayer])
 		end
 		scheduleSave(toPlayer)
+
+		if FishGaveBindable then
+			FishGaveBindable:Fire(fromPlayer)
+		end
 
 		return true
 	end

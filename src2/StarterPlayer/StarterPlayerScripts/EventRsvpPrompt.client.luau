@@ -2,7 +2,7 @@ local SocialService = game:GetService("SocialService")
 local Players = game:GetService("Players")
 
 local EVENT_ID = "2712534918105268896"
-local PROMPT_DELAY = 30
+local PROMPT_DELAY = 300
 
 local player = Players.LocalPlayer
 

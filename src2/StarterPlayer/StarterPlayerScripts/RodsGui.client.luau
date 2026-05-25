@@ -1,32 +1,58 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local MarketplaceService = game:GetService("MarketplaceService")
+
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
+local ROBUX_BOBBER_GAMEPASS_ID = 1853589181
+local cachedRobuxBobberOwned = false
+
+task.spawn(function()
+	local ok, owns = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, ROBUX_BOBBER_GAMEPASS_ID)
+	end)
+	if ok and owns then
+		cachedRobuxBobberOwned = true
+	end
+end)
 local playerGui = player:WaitForChild("PlayerGui")
 local mainGui = playerGui:WaitForChild("Main")
-local rodsFrame = mainGui:WaitForChild("Rods")
+local equipFrame = mainGui:WaitForChild("Equipments")
 
 local RodData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
--- FishingRod fallback in case module cache is stale
+local BobberData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BobberDataModule"))
+
 if not RodData.Rods["FishingRod"] then
 	RodData.Rods["FishingRod"] = {
 		price = 0, storageName = "FishingRod", displayName = "Fishing Rod",
 		position = Vector3.new(0,0,0), luck = "+0%", power = "+15%", weight = "0.5 ~ 100kg",
 	}
 end
-local equipSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Equip")
 
-local scrollingFrame = rodsFrame:WaitForChild("Main"):WaitForChild("ScrollingFrame")
+local equipSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Equip")
+local equipBobberRemote = ReplicatedStorage:WaitForChild("EquipBobberRemote")
+local bobberModels = ReplicatedStorage:WaitForChild("Bobbers")
+
+local mainContent = equipFrame:WaitForChild("Main")
+local scrollingFrame = mainContent:WaitForChild("ScrollingFrame")
 local template = scrollingFrame:WaitForChild("RodSlotTemplate")
 template.Visible = false
 
-local closeBtn = rodsFrame:FindFirstChild("Close") and rodsFrame.Close:FindFirstChild("TextButton")
+local bobberScrollingFrame = mainContent:WaitForChild("BobberScrollingFrame")
+local bobberTemplate = bobberScrollingFrame:WaitForChild("BobberSlotTemplate")
+bobberTemplate.Visible = false
 
--- 현재 장착 로드
+local closeBtn = equipFrame:FindFirstChild("Close") and equipFrame.Close:FindFirstChild("TextButton")
+
 local function getCurrentRod()
 	local ls = player:FindFirstChild("leaderstats")
 	return ls and ls:FindFirstChild("CurrentRod") and ls.CurrentRod.Value
+end
+
+local function getCurrentBobber()
+	local ls = player:FindFirstChild("leaderstats")
+	return ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
 end
 
 local function getOwnedRods()
@@ -36,7 +62,6 @@ local function getOwnedRods()
 	local owned = {}
 	local addedKeys = {}
 
-	-- FishingRod is always owned by everyone
 	local fishingRodData = RodData.Rods["FishingRod"]
 	if fishingRodData then
 		table.insert(owned, {key = "FishingRod", data = fishingRodData})
@@ -54,7 +79,6 @@ local function getOwnedRods()
 		end
 	end
 
-	-- power % 기준 정렬 (낮은 것 → 높은 것), Special은 맨 끝
 	local function getPower(data)
 		local s = tostring(data.power or "0")
 		return tonumber(s:match("([%d%.]+)")) or 9999
@@ -66,7 +90,34 @@ local function getOwnedRods()
 	return owned
 end
 
--- ViewportFrame에 로드 모델 표시
+local function getOwnedBobbers()
+	local ls = player:FindFirstChild("leaderstats")
+	local ownedFolder = ls and ls:FindFirstChild("OwnedBobbers")
+	if not ownedFolder then return {{"Basic Bobber", BobberData.Bobbers["Basic Bobber"]}} end
+
+	local owned = {}
+	local hasRobuxBobber = false
+	for _, bv in ipairs(ownedFolder:GetChildren()) do
+		if bv:IsA("BoolValue") and bv.Value then
+			local data = BobberData.Bobbers[bv.Name]
+			if data then
+				table.insert(owned, {bv.Name, data})
+				if bv.Name == "Robux Bobber" then hasRobuxBobber = true end
+			end
+		end
+	end
+	if not hasRobuxBobber and cachedRobuxBobberOwned then
+		local data = BobberData.Bobbers["Robux Bobber"]
+		if data then table.insert(owned, {"Robux Bobber", data}) end
+	end
+
+	table.sort(owned, function(a, b)
+		return (a[2].price or 0) < (b[2].price or 0)
+	end)
+
+	return owned
+end
+
 local function loadRodModel(vf, rodKey, rodData)
 	local modelName = (rodData.storageName or rodKey) .. "Model"
 	local upgradeShop = workspace:FindFirstChild("Upgrade Shop")
@@ -74,7 +125,6 @@ local function loadRodModel(vf, rodKey, rodData)
 	local model = upgradeShop:FindFirstChild(modelName)
 	if not model then return end
 
-	-- 기존 내용 정리
 	for _, c in ipairs(vf:GetChildren()) do
 		if not c:IsA("UIAspectRatioConstraint") then c:Destroy() end
 	end
@@ -87,37 +137,27 @@ local function loadRodModel(vf, rodKey, rodData)
 	worldModel.Parent = vf
 
 	local clone = model:Clone()
-	-- Parent first so CFrames are stable before any re-parenting
 	clone.Parent = worldModel
 
-	-- Flatten nested sub-Models: extract all BaseParts, destroy empty sub-Models
 	local parts = {}
 	for _, desc in ipairs(clone:GetDescendants()) do
-		if desc:IsA("BasePart") then
-			table.insert(parts, desc)
-		end
+		if desc:IsA("BasePart") then table.insert(parts, desc) end
 	end
 	for _, p in ipairs(parts) do
 		p.Anchored = true
 		p.Parent = clone
 	end
-	-- Remove now-empty sub-Models so they don't skew GetBoundingBox
 	for _, child in ipairs(clone:GetChildren()) do
-		if child:IsA("Model") then
-			child:Destroy()
-		end
+		if child:IsA("Model") then child:Destroy() end
 	end
 	if clone:IsA("BasePart") then clone.Anchored = true end
 
-	-- 회전 적용 후 원점 중앙 정렬 (PivotTo 대신 파트 직접 변환)
 	local pitch, yaw, zoom = -30, 60, 0.7
 	local rotCF = CFrame.Angles(0, math.rad(yaw), 0)
 	local bboxSize
 	if clone:IsA("Model") then
-		-- Step 1: bounding box 중심 계산
 		local bboxCF, sz = clone:GetBoundingBox()
 		bboxSize = sz
-		-- Step 2: 각 파트를 직접 변환 (중심 이동 + 회전)
 		local toOrigin = CFrame.new(-bboxCF.Position)
 		for _, p in ipairs(clone:GetChildren()) do
 			if p:IsA("BasePart") then
@@ -141,13 +181,39 @@ local function loadRodModel(vf, rodKey, rodData)
 	vf.CurrentCamera = camera
 end
 
--- 슬롯 채우기
-local function populateSlots()
-	-- 기존 슬롯 제거
+local function loadBobberModel(vf, bobberName)
+	for _, c in ipairs(vf:GetChildren()) do
+		if not c:IsA("UIAspectRatioConstraint") then c:Destroy() end
+	end
+
+	local tmpl = bobberModels:FindFirstChild(bobberName)
+	if not tmpl then return end
+
+	vf.Ambient = Color3.fromRGB(180, 180, 180)
+	vf.LightColor = Color3.fromRGB(230, 230, 230)
+	vf.LightDirection = Vector3.new(-1, -2, -1)
+
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Parent = vf
+
+	local clone = tmpl:Clone()
+	clone.Anchored = true
+	clone.CFrame = CFrame.new(0, 0, 0)
+	clone.Parent = worldModel
+
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 60
+	local radius = math.max(clone.Size.X, clone.Size.Y, clone.Size.Z) / 2
+	local dist = (radius / math.tan(math.rad(30))) * 1.8
+	camera.CFrame = CFrame.new(0, 0, dist)
+	camera.Focus = CFrame.new(0, 0, 0)
+	camera.Parent = vf
+	vf.CurrentCamera = camera
+end
+
+local function populateRodSlots()
 	for _, c in ipairs(scrollingFrame:GetChildren()) do
-		if c:IsA("Frame") and c.Name == "RodSlot" then
-			c:Destroy()
-		end
+		if c:IsA("Frame") and c.Name == "RodSlot" then c:Destroy() end
 	end
 
 	local owned = getOwnedRods()
@@ -169,7 +235,6 @@ local function populateSlots()
 		local power = slot:FindFirstChild("Power")
 		if power then power.Text = "Power: " .. (data.power or "?") end
 
-		-- Luck 첫 번째 → Luck, 두 번째 → Weight
 		local luckSet = false
 		local weightSet = false
 		for _, c in ipairs(slot:GetChildren()) do
@@ -184,7 +249,6 @@ local function populateSlots()
 			end
 		end
 
-		-- 장착 중 강조
 		local isEquipped = (currentRod == data.storageName)
 		local stroke = slot:FindFirstChildOfClass("UIStroke")
 		if stroke then
@@ -192,23 +256,16 @@ local function populateSlots()
 			stroke.Thickness = isEquipped and 3 or 1.5
 		end
 
-		-- Equip 버튼 텍스트
-		local equipFrame = slot:FindFirstChild("Equip")
-		if equipFrame then
-			equipFrame.Visible = true
-			local equipLabel = equipFrame:FindFirstChildOfClass("TextLabel")
-			if equipLabel then
-				equipLabel.Text = isEquipped and "Equipped" or "Equip"
-			end
+		local equipButtonFrame = slot:FindFirstChild("Equip")
+		if equipButtonFrame then
+			equipButtonFrame.Visible = true
+			local equipLabel = equipButtonFrame:FindFirstChildOfClass("TextLabel")
+			if equipLabel then equipLabel.Text = isEquipped and "Equipped" or "Equip" end
 		end
 
-		-- ViewportFrame에 모델 로드
 		local vf = slot:FindFirstChild("ViewportFrame")
-		if vf then
-			task.spawn(loadRodModel, vf, rodKey, data)
-		end
+		if vf then task.spawn(loadRodModel, vf, rodKey, data) end
 
-		-- 클릭 시 로드 장착 (슬롯 전체 TextButton + Equip 안 ImageButton 둘 다 연결)
 		local function doEquip()
 			local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 			local shopRemote = remotes and remotes:FindFirstChild("Shop") and remotes.Shop:FindFirstChild("BuyFishingRod")
@@ -217,54 +274,154 @@ local function populateSlots()
 				equipSound:Play()
 			end
 			task.wait(0.3)
-			populateSlots()
+			populateRodSlots()
 		end
 
 		local textBtn = slot:FindFirstChild("TextButton")
-		if textBtn then
-			textBtn.MouseButton1Click:Connect(doEquip)
-		end
-		if equipFrame then
-			local equipBtn = equipFrame:FindFirstChildOfClass("ImageButton")
-			if equipBtn then
-				equipBtn.MouseButton1Click:Connect(doEquip)
-			end
+		if textBtn then textBtn.MouseButton1Click:Connect(doEquip) end
+		if equipButtonFrame then
+			local equipBtn = equipButtonFrame:FindFirstChildOfClass("ImageButton")
+			if equipBtn then equipBtn.MouseButton1Click:Connect(doEquip) end
 		end
 
 		slot.Parent = scrollingFrame
 	end
 end
 
--- 창 열기/닫기
-local function openRods()
-	populateSlots()
-	rodsFrame.Visible = true
+local function populateBobberSlots()
+	for _, c in ipairs(bobberScrollingFrame:GetChildren()) do
+		if c:IsA("Frame") and c.Name == "BobberSlot" then c:Destroy() end
+	end
+
+	local owned = getOwnedBobbers()
+	local currentBobber = getCurrentBobber()
+
+	for slotIndex, entry in ipairs(owned) do
+		local bobberName = entry[1]
+		local data = entry[2]
+
+		local slot = bobberTemplate:Clone()
+		slot.Name = "BobberSlot"
+		slot.Visible = true
+		slot.LayoutOrder = slotIndex
+
+		local title = slot:FindFirstChild("Title")
+		if title then title.Text = bobberName end
+
+		local descLabel = slot:FindFirstChild("Desc")
+		if descLabel then descLabel.Text = data.desc or "" end
+
+		local isEquipped = (currentBobber == bobberName)
+		local stroke = slot:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = isEquipped and Color3.fromRGB(255, 220, 50) or Color3.fromRGB(80, 80, 80)
+			stroke.Thickness = isEquipped and 3 or 1.5
+		end
+
+		local equipButtonFrame = slot:FindFirstChild("Equip")
+		if equipButtonFrame then
+			equipButtonFrame.Visible = true
+			local equipLabel = equipButtonFrame:FindFirstChildOfClass("TextLabel")
+			if equipLabel then equipLabel.Text = isEquipped and "Equipped" or "Equip" end
+		end
+
+		local vf = slot:FindFirstChild("ViewportFrame")
+		if vf then task.spawn(loadBobberModel, vf, bobberName) end
+
+		local function doEquip()
+			if isEquipped then return end
+			equipBobberRemote:FireServer(bobberName)
+			equipSound:Play()
+			task.wait(0.3)
+			populateBobberSlots()
+		end
+
+		local textBtn = slot:FindFirstChild("TextButton")
+		if textBtn then textBtn.MouseButton1Click:Connect(doEquip) end
+		if equipButtonFrame then
+			local equipBtn = equipButtonFrame:FindFirstChildOfClass("ImageButton")
+			if equipBtn then equipBtn.MouseButton1Click:Connect(doEquip) end
+		end
+
+		slot.Parent = bobberScrollingFrame
+	end
+
+	-- Keep UIPadding and Padding frames last in children order
+	for _, c in ipairs(bobberScrollingFrame:GetChildren()) do
+		if c:IsA("Frame") and c.Name == "Padding" then
+			c.LayoutOrder = 999999
+		end
+	end
+	local pad = bobberScrollingFrame:FindFirstChildWhichIsA("UIPadding")
+	if pad then
+		pad.Parent = nil
+		pad.Parent = bobberScrollingFrame
+	end
 end
 
-local function closeRods()
-	rodsFrame.Visible = false
+local function openEquipments()
+	populateRodSlots()
+	populateBobberSlots()
+	equipFrame.Visible = true
+end
+
+local function closeEquipments()
+	equipFrame.Visible = false
 end
 
 if closeBtn then
-	closeBtn.MouseButton1Click:Connect(closeRods)
+	closeBtn.MouseButton1Click:Connect(closeEquipments)
 end
 
-rodsFrame.Visible = false
+equipFrame.Visible = false
 
--- Rods 툴 장착/해제 감지
 local function setupCharacter(char)
 	character = char
 	char.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") and child.Name == "Rods" then
-			openRods()
+		if child:IsA("Tool") and child.Name == "Equipment" then
+			openEquipments()
 		end
 	end)
 	char.ChildRemoved:Connect(function(child)
-		if child:IsA("Tool") and child.Name == "Rods" then
-			closeRods()
+		if child:IsA("Tool") and child.Name == "Equipment" then
+			closeEquipments()
 		end
 	end)
 end
 
 setupCharacter(character)
 player.CharacterAdded:Connect(setupCharacter)
+
+-- Refresh bobber slots when any bobber is granted mid-session
+task.spawn(function()
+	local ls = player:WaitForChild("leaderstats")
+	local ownedFolder = ls:WaitForChild("OwnedBobbers")
+	local function watchBobber(bv)
+		bv.Changed:Connect(function()
+			if equipFrame.Visible then populateBobberSlots() end
+		end)
+	end
+	for _, bv in ipairs(ownedFolder:GetChildren()) do
+		if bv:IsA("BoolValue") then watchBobber(bv) end
+	end
+	ownedFolder.ChildAdded:Connect(function(bv)
+		if bv:IsA("BoolValue") then watchBobber(bv) end
+	end)
+end)
+
+-- Refresh rod slots when any rod is purchased mid-session
+task.spawn(function()
+	local ls = player:WaitForChild("leaderstats")
+	local rodsFolder = ls:WaitForChild("Rods")
+	local function watchRod(bv)
+		bv.Changed:Connect(function()
+			if equipFrame.Visible then populateRodSlots() end
+		end)
+	end
+	for _, bv in ipairs(rodsFolder:GetChildren()) do
+		if bv:IsA("BoolValue") then watchRod(bv) end
+	end
+	rodsFolder.ChildAdded:Connect(function(bv)
+		if bv:IsA("BoolValue") then watchRod(bv) end
+	end)
+end)

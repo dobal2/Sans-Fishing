@@ -86,6 +86,9 @@
       "PlayTimeLeaderBoard": {
         "$path": "src2/ServerScriptService/PlayTimeLeaderBoard.server.luau"
       },
+      "BobberShopServer": {
+        "$path": "src2/ServerScriptService/BobberShopServer.server.luau"
+      },
       "BubbleShopSever": {
         "$path": "src2/ServerScriptService/BubbleShopSever.server.luau"
       },
@@ -94,6 +97,9 @@
       },
       "Webhook": {
         "$path": "src2/ServerScriptService/Webhook.server.luau"
+      },
+      "DayCycleServer": {
+        "$path": "src2/ServerScriptService/DayCycleServer.server.luau"
       },
       "ProfileService": {
         "$path": "src2/ServerScriptService/ProfileService.luau"
@@ -155,6 +161,9 @@
       "StarterPlayerScripts": {
         "NpcHighLightAndDistance": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/NpcHighLightAndDistance.client.luau"
+        },
+        "BobberShopClient": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/BobberShopClient.client.luau"
         },
         "FishingClientStarter": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/FishingClientStarter.client.luau"
@@ -354,6 +363,12 @@
         },
         "RecoverGui": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/RecoverGui.client.luau"
+        },
+        "EventNotice": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/EventNotice.client.luau"
+        },
+        "ShutdownNotice": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/ShutdownNotice.client.luau"
         }
       },
       "StarterCharacterScripts": {

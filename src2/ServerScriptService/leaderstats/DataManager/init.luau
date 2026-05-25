@@ -21,6 +21,8 @@ local DATA_TEMPLATE = {
 	Bubbles = {};
 	TotalCatches = 0;
 	FishStreak = 0;
+	OwnedBobbers = {"Basic Bobber"};
+	EquippedBobber = "Basic Bobber";
 }
 
 local sessionStartTimes = {}

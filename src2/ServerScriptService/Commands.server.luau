@@ -13,6 +13,8 @@ local FishTrapDataManager = require(ServerScriptService:WaitForChild("FishTrapMa
 local SkillHelper = require(ServerScriptService:WaitForChild("SkillHelper"))
 local RodDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
 local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
+local EventState = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("EventStateModule"))
+local WeatherSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WeatherSystemModule"))
 
 -- Create/get announcement remote event
 local announceRemote = ReplicatedStorage:FindFirstChild("AnnounceRemote")
@@ -22,7 +24,31 @@ if not announceRemote then
 	announceRemote.Parent = ReplicatedStorage
 end
 
--- Permission setup (UserId-based — immune to username changes)
+-- Event timer remote (persistent on-screen banner for clients)
+local eventTimerEvent = ReplicatedStorage:FindFirstChild("EventTimerEvent")
+if not eventTimerEvent then
+	eventTimerEvent = Instance.new("RemoteEvent")
+	eventTimerEvent.Name = "EventTimerEvent"
+	eventTimerEvent.Parent = ReplicatedStorage
+end
+
+-- Shutdown timer remote
+local shutdownTimerEvent = ReplicatedStorage:FindFirstChild("ShutdownTimerEvent")
+if not shutdownTimerEvent then
+	shutdownTimerEvent = Instance.new("RemoteEvent")
+	shutdownTimerEvent.Name = "ShutdownTimerEvent"
+	shutdownTimerEvent.Parent = ReplicatedStorage
+end
+
+local shutdownThread = nil
+local shutdownEndAt  = nil
+
+-- Tracks the currently active developer event (nil = no event)
+-- { lines: {string}, endAt: os.clock() deadline, durationSecs: number }
+local activeEventInfo = nil
+local activeEventThread = nil
+
+-- Permission setup (UserId-based -- immune to username changes)
 local Ranks = {
 	Developer = {1853104124, 1330397992},
 	Moderator = {},
@@ -35,6 +61,7 @@ local Permissions = {
 		kick = true,
 		setcoins = true,
 		announce = true,
+		event = true,
 		GlobalGiveCoins = true,
 		SlapBattle = true,
 		SlapBattleAll = true,
@@ -50,6 +77,8 @@ local Permissions = {
 		indexreset = true,
 		indexfill = true,
 		skillreset = true,
+		bobberreset = true,
+		bobberrestock = true,
 		rodreset = true,
 		tutorialreset = true,
 		updatelogreset = true,
@@ -60,6 +89,9 @@ local Permissions = {
 		afkreconnect = true,
 		trapfill = true,
 		setstreak = true,
+		daycycle = true,
+		weatherskip = true,
+		shutdown = true,
 	},
 	Moderator = {
 		kick = true,
@@ -267,6 +299,98 @@ if not RunService:IsStudio() then
 	MessagingService:SubscribeAsync("GlobalDevRodGive", function(data)
 		local devRodData = data.Data
 		giveDevRodToAllInServer(devRodData.senderName)
+	end)
+end
+
+-- Helper: build event banner lines from current EventState
+local function buildEventLines()
+	local lines = {}
+	if EventState.CoinMultiplier > 1 then
+		table.insert(lines, string.format("Coin x%g", EventState.CoinMultiplier))
+	end
+	if EventState.LuckMultiplier > 1 then
+		table.insert(lines, string.format("Luck x%g", EventState.LuckMultiplier))
+	end
+	if EventState.WeightMultiplier > 1 then
+		table.insert(lines, string.format("Weight x%g", EventState.WeightMultiplier))
+	end
+	if EventState.FPMultiplier > 1 then
+		table.insert(lines, string.format("FP x%g", EventState.FPMultiplier))
+	end
+	return lines
+end
+
+-- Helper: apply event and broadcast to all clients
+local function startEvent(lines, durationSecs)
+	if activeEventThread then
+		task.cancel(activeEventThread)
+		activeEventThread = nil
+	end
+
+	local mults = {
+		coin   = EventState.CoinMultiplier,
+		luck   = EventState.LuckMultiplier,
+		weight = EventState.WeightMultiplier,
+		fp     = EventState.FPMultiplier,
+	}
+
+	activeEventInfo = {
+		lines = lines,
+		endAt = os.clock() + durationSecs,
+		durationSecs = durationSecs,
+		mults = mults,
+	}
+
+	eventTimerEvent:FireAllClients(lines, durationSecs, mults)
+
+	activeEventThread = task.delay(durationSecs, function()
+		EventState.CoinMultiplier   = 1
+		EventState.LuckMultiplier   = 1
+		EventState.WeightMultiplier = 1
+		EventState.FPMultiplier     = 1
+		activeEventInfo = nil
+		activeEventThread = nil
+		eventTimerEvent:FireAllClients(nil)
+		sendAnnounceToServer("The developer event has ended.", "SYSTEM", nil)
+	end)
+end
+
+local function endEvent()
+	if activeEventThread then
+		task.cancel(activeEventThread)
+		activeEventThread = nil
+	end
+	EventState.CoinMultiplier   = 1
+	EventState.LuckMultiplier   = 1
+	EventState.WeightMultiplier = 1
+	EventState.FPMultiplier     = 1
+	activeEventInfo = nil
+	eventTimerEvent:FireAllClients(nil)
+end
+
+local function cancelShutdown()
+	if shutdownThread then
+		task.cancel(shutdownThread)
+		shutdownThread = nil
+	end
+	shutdownEndAt = nil
+	shutdownTimerEvent:FireAllClients(nil)
+end
+
+local function startShutdown(seconds, reason)
+	cancelShutdown()
+	shutdownEndAt = os.clock() + seconds
+	shutdownTimerEvent:FireAllClients(seconds, reason)
+
+	shutdownThread = task.delay(seconds, function()
+		shutdownEndAt = nil
+		shutdownThread = nil
+		workspace:SetAttribute("ShuttingDown", true)
+		task.wait(3)
+		local kickMsg = reason and ("Server is shutting down: " .. reason) or "Server is shutting down. Thank you for playing!"
+		for _, p in pairs(Players:GetPlayers()) do
+			p:Kick(kickMsg)
+		end
 	end)
 end
 
@@ -560,7 +684,7 @@ local function command(plr, chat)
 
 			local giveRandomBindable = ServerScriptService:FindFirstChild("GiveRandomFishBindable")
 			if not giveRandomBindable then
-				warn(":giverandom — GiveRandomFishBindable not found")
+				warn(":giverandom -- GiveRandomFishBindable not found")
 				return
 			end
 
@@ -573,7 +697,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :odds [target] — show current fish probabilities with luck applied
+	-- :odds [target] -- show current fish probabilities with luck applied
 	if chat:lower():sub(1, #Prefix + 4) == Prefix .. "odds" then
 		if hasPermission(plr, "forcefish") then
 			local args = string.split(chat, " ")
@@ -581,7 +705,7 @@ local function command(plr, chat)
 			local foundPlayers = findPlayers(plr, targetName)
 
 			local ROD_LUCK_BONUS = {
-				FishingRod=0, SliverRod=0.15, GoldRod=0.30, CrystalRod=0.50,
+				FishingRod=0, ["Silver Rod"]=0.15, GoldRod=0.30, CrystalRod=0.50,
 				MagneticRod=0.60, BoneRod=0.80, CloverRod=1.05, RainbowRod=1.50,
 				UnknownRod=2.20, RobuxRod=2.60, ElectricRod=3.60, RealisticRod=4.80,
 				ArcaneRod=6.00, VoidRod=10.00,
@@ -657,7 +781,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :skillreset [target] — 스킬 데이터만 초기화 + SkillPoints 0
+	-- :skillreset [target] -- 스킬 데이터만 초기화 + SkillPoints 0
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "skillreset" then
 		if hasPermission(plr, "skillreset") then
 			local args = string.split(chat, " ")
@@ -682,7 +806,58 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :reset [target] — full data reset (leaderstats + inventory)
+	-- :bobberreset [target] -- OwnedBobbers, EquippedBobber 초기화
+	if chat:lower():sub(1, #Prefix + 11) == Prefix .. "bobberreset" then
+		if hasPermission(plr, "bobberreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				local ls = v:FindFirstChild("leaderstats")
+				local ownedFolder = ls and ls:FindFirstChild("OwnedBobbers")
+				if ownedFolder then
+					for _, bv in ipairs(ownedFolder:GetChildren()) do
+						if bv:IsA("BoolValue") then
+							bv.Value = (bv.Name == "Basic Bobber")
+						end
+					end
+				end
+				local equippedVal = ls and ls:FindFirstChild("EquippedBobber")
+				if equippedVal then equippedVal.Value = "Basic Bobber" end
+				LeaderstatsDataManager:UpdateData(v, "OwnedBobbers", {"Basic Bobber"})
+				LeaderstatsDataManager:UpdateData(v, "EquippedBobber", "Basic Bobber")
+				announceRemote:FireClient(plr, "Bobber reset: " .. v.Name, "SYSTEM")
+			end
+		end
+	end
+
+	-- :sansfish [target] -- force next catch to be a Sans variant
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "sansfish" then
+		if hasPermission(plr, "forcefish") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				v:SetAttribute("ForcedSansVariant", true)
+				announceRemote:FireClient(plr, "Next catch for " .. v.Name .. " will be a Sans variant.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :bobberrestock -- force bobber shop restock immediately
+	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "bobberrestock" then
+		if hasPermission(plr, "bobberrestock") then
+			local restockBE = ServerScriptService:FindFirstChild("BobberShopRestockBE")
+			if restockBE then
+				restockBE:Fire()
+				announceRemote:FireClient(plr, "Bobber shop restocked.", "SYSTEM")
+			else
+				announceRemote:FireClient(plr, "BobberShopRestockBE not found.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :reset [target] -- full data reset (leaderstats + inventory)
 	local resetWord = chat:lower():match("^" .. Prefix .. "(%a+)")
 	if resetWord == "reset" then
 		if hasPermission(plr, "reset") then
@@ -729,7 +904,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :coinreset [target] — reset coins to 0
+	-- :coinreset [target] -- reset coins to 0
 	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "coinreset" then
 		if hasPermission(plr, "coinreset") then
 			local args = string.split(chat, " ")
@@ -747,7 +922,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :invenreset [target] — reset fish inventory (ItemSave)
+	-- :invenreset [target] -- reset fish inventory (ItemSave)
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "invenreset" then
 		if hasPermission(plr, "invenreset") then
 			local args = string.split(chat, " ")
@@ -774,7 +949,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :rodreset [target] — reset rods to FishingRod only (VoidRod kept)
+	-- :rodreset [target] -- reset rods to FishingRod only (VoidRod kept)
 	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "rodreset" then
 		if hasPermission(plr, "rodreset") then
 			local args = string.split(chat, " ")
@@ -828,7 +1003,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :setstreak [target] [count] — set a player's catch streak (server + display)
+	-- :setstreak [target] [count] -- set a player's catch streak (server + display)
 	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "setstreak" then
 		if hasPermission(plr, "setstreak") then
 			local args = string.split(chat, " ")
@@ -844,13 +1019,13 @@ local function command(plr, chat)
 					FishingServerModule.playerStreaks[v.UserId] = count
 					LeaderstatsDataManager:UpdateData(v, "FishStreak", count)
 				end
-				streakEvent:FireClient(v, count)
+				streakEvent:FireAllClients(v.UserId, count)
 				announceRemote:FireClient(plr, string.format("Set %s streak to %d.", v.Name, count), "SYSTEM")
 			end
 		end
 	end
 
-	-- :indexreset [target] — reset fish discovery catalog + claimed
+	-- :indexreset [target] -- reset fish discovery catalog + claimed
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "indexreset" then
 		if hasPermission(plr, "indexreset") then
 			local args = string.split(chat, " ")
@@ -878,7 +1053,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :indexfill [target] — fill entire fish catalog (all fish discovered, not claimed)
+	-- :indexfill [target] -- fill entire fish catalog (all fish discovered, not claimed)
 	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "indexfill" then
 		if hasPermission(plr, "indexfill") then
 			local args = string.split(chat, " ")
@@ -907,7 +1082,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :afkreconnect [target] — force auto-reconnect teleport (test AFK prevention)
+	-- :afkreconnect [target] -- force auto-reconnect teleport (test AFK prevention)
 	if chat:lower():sub(1, #Prefix + 12) == Prefix .. "afkreconnect" then
 		if hasPermission(plr, "afkreconnect") then
 			local TeleportService = game:GetService("TeleportService")
@@ -959,7 +1134,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :tutorialreset [target] — reset tutorial flag so tutorial plays again
+	-- :tutorialreset [target] -- reset tutorial flag so tutorial plays again
 	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "tutorialreset" then
 		if hasPermission(plr, "tutorialreset") then
 			local args = string.split(chat, " ")
@@ -977,7 +1152,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :questreset [target] — wipe all quest data (active + completed + sequential index)
+	-- :questreset [target] -- wipe all quest data (active + completed + sequential index)
 	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "questreset" then
 		if hasPermission(plr, "questreset") then
 			local args = string.split(chat, " ")
@@ -1007,7 +1182,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :dailyquestreset [target] — reset daily quest so a new one is assigned
+	-- :dailyquestreset [target] -- reset daily quest so a new one is assigned
 	if chat:lower():sub(1, #Prefix + 15) == Prefix .. "dailyquestreset" then
 		if hasPermission(plr, "dailyquestreset") then
 			local args = string.split(chat, " ")
@@ -1037,7 +1212,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :dailyquestcomplete [target] — instantly complete the daily quest and give reward
+	-- :dailyquestcomplete [target] -- instantly complete the daily quest and give reward
 	if chat:lower():sub(1, #Prefix + 18) == Prefix .. "dailyquestcomplete" then
 		if hasPermission(plr, "dailyquestcomplete") then
 			local args = string.split(chat, " ")
@@ -1084,7 +1259,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :dailyquestgive [target] — remove existing daily quest and give a fresh one immediately
+	-- :dailyquestgive [target] -- remove existing daily quest and give a fresh one immediately
 	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "dailyquestgive" then
 		if hasPermission(plr, "dailyquestgive") then
 			local args = string.split(chat, " ")
@@ -1163,7 +1338,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :trapfill [target] — fill player's fish trap with fish to max capacity
+	-- :trapfill [target] -- fill player's fish trap with fish to max capacity
 	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "trapfill" then
 		if hasPermission(plr, "trapfill") then
 			local FISHTRAP_CONFIGS = {
@@ -1214,7 +1389,145 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :updatelogreset [target] — reset LastSeenUpdateVersion so update log shows again
+	-- :daycycle [multiplier] -- set day/night cycle speed (1 = normal, 2 = 2x faster, 0 = pause)
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "daycycle" then
+		if hasPermission(plr, "daycycle") then
+			local args = string.split(chat, " ")
+			local mult = tonumber(args[2])
+			if not mult then return end
+			local speedEvent = ServerScriptService:FindFirstChild("DayCycleSpeed")
+			if speedEvent then
+				speedEvent:Fire(mult)
+				announceRemote:FireClient(plr, string.format("Day cycle speed set to %.2fx", mult), "SYSTEM")
+			end
+		end
+	end
+
+	-- :event [type] [multiplier] [minutes] -- start a server-wide event buff
+	-- :event end -- end all active events
+	-- :event info -- show current event state
+	-- Types: coin, luck, weight, fp, all
+	-- Example: :event coin 2 10    (coin x2 for 10 minutes)
+	--          :event all 2 5      (all buffs x2 for 5 minutes)
+	--          :event luck 3       (luck x3 for default 10 min)
+	if chat:lower():sub(1, #Prefix + 5) == Prefix .. "event" then
+		if hasPermission(plr, "announce") then
+			local args = string.split(chat, " ")
+			local subCmd = args[2] and args[2]:lower()
+
+			if subCmd == "end" then
+				endEvent()
+				sendAnnounceToServer("The developer event has ended.", "SYSTEM", nil)
+				if not RunService:IsStudio() then
+					pcall(function()
+						MessagingService:PublishAsync("GlobalEventEnd", {})
+					end)
+				end
+
+			elseif subCmd == "info" then
+				local lines = buildEventLines()
+				local msg = #lines > 0
+					and ("Active event: " .. table.concat(lines, " | "))
+					or "No event active."
+				announceRemote:FireClient(plr, msg, "SYSTEM")
+
+			else
+				local eventType  = subCmd or "coin"
+				local multiplier = tonumber(args[3]) or 2
+				local minutes    = tonumber(args[4]) or 10
+				multiplier = math.clamp(math.floor(multiplier), 1, 10)
+				minutes    = math.clamp(minutes, 1, 120)
+				local durationSecs = minutes * 60
+
+				-- Apply multipliers
+				if eventType == "coin" then
+					EventState.CoinMultiplier = multiplier
+				elseif eventType == "luck" then
+					EventState.LuckMultiplier = multiplier
+				elseif eventType == "weight" then
+					EventState.WeightMultiplier = multiplier
+				elseif eventType == "fp" then
+					EventState.FPMultiplier = multiplier
+				elseif eventType == "all" then
+					EventState.CoinMultiplier   = multiplier
+					EventState.LuckMultiplier   = multiplier
+					EventState.WeightMultiplier = multiplier
+					EventState.FPMultiplier     = multiplier
+				else
+					announceRemote:FireClient(plr, "Unknown event type. Use: coin / luck / weight / fp / all", "SYSTEM")
+					return
+				end
+
+				local lines = buildEventLines()
+				startEvent(lines, durationSecs)
+
+				local buffStr = table.concat(lines, " | ")
+				local message = string.format("EVENT STARTED: %s for %d minutes!", buffStr, minutes)
+				sendAnnounceToServer(message, "EVENT", nil)
+
+				if not RunService:IsStudio() then
+					pcall(function()
+						MessagingService:PublishAsync("GlobalEventStart", {
+							coin   = EventState.CoinMultiplier,
+							luck   = EventState.LuckMultiplier,
+							weight = EventState.WeightMultiplier,
+							fp     = EventState.FPMultiplier,
+							duration = durationSecs,
+							message  = message,
+						})
+					end)
+				end
+			end
+		end
+	end
+
+	-- :shutdown [minutes] / :shutdown cancel
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "shutdown" then
+		if hasPermission(plr, "shutdown") then
+			local args = string.split(chat, " ")
+			local subCmd = args[2] and args[2]:lower()
+			if subCmd == "cancel" then
+				cancelShutdown()
+				sendAnnounceToServer("Shutdown cancelled.", "SYSTEM", nil)
+				if not RunService:IsStudio() then
+					pcall(function()
+						MessagingService:PublishAsync("GlobalShutdownCancel", {})
+					end)
+				end
+			else
+				local minutes = tonumber(subCmd) or 5
+				minutes = math.clamp(minutes, 1, 60)
+				local reasonParts = {table.unpack(args, 3)}
+				local reason = #reasonParts > 0 and table.concat(reasonParts, " ") or nil
+				startShutdown(minutes * 60, reason)
+				local announceMsg = string.format("Server shutting down in %d minutes!", minutes)
+				if reason then announceMsg = announceMsg .. " Reason: " .. reason end
+				sendAnnounceToServer(announceMsg, "SYSTEM", nil)
+				if not RunService:IsStudio() then
+					pcall(function()
+						MessagingService:PublishAsync("GlobalShutdown", {seconds = minutes * 60, reason = reason})
+					end)
+				end
+			end
+		end
+	end
+
+	-- :weatherskip [seconds] -- reduce remaining weather duration
+	if chat:lower():sub(1, #Prefix + 11) == Prefix .. "weatherskip" then
+		if hasPermission(plr, "weatherskip") then
+			local args = string.split(chat, " ")
+			local seconds = tonumber(args[2]) or 60
+			seconds = math.clamp(seconds, 1, 3600)
+			local ok = WeatherSystem.ReduceWeatherTime(seconds)
+			if ok then
+				announceRemote:FireClient(plr, string.format("Weather time reduced by %ds.", seconds), "SYSTEM")
+			else
+				announceRemote:FireClient(plr, "No active weather to skip.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :updatelogreset [target] -- reset LastSeenUpdateVersion so update log shows again
 	if chat:lower():sub(1, #Prefix + 14) == Prefix .. "updatelogreset" then
 		if hasPermission(plr, "updatelogreset") then
 			local args = string.split(chat, " ")
@@ -1230,15 +1543,67 @@ local function command(plr, chat)
 					LeaderstatsDataManager:UpdateData(v, "SeenUpdateLog", false)
 					LeaderstatsDataManager:UpdateData(v, "LastSeenUpdateVersion", 0)
 				end
-				announceRemote:FireClient(v, "Update log reset — rejoin to see it.", "SYSTEM")
+				announceRemote:FireClient(v, "Update log reset -- rejoin to see it.", "SYSTEM")
 			end
 		end
 	end
 
 end
 
+-- MessagingService: receive cross-server event commands
+if not RunService:IsStudio() then
+	pcall(function()
+		MessagingService:SubscribeAsync("GlobalEventStart", function(data)
+			local d = data.Data
+			EventState.CoinMultiplier   = d.coin   or 1
+			EventState.LuckMultiplier   = d.luck   or 1
+			EventState.WeightMultiplier = d.weight or 1
+			EventState.FPMultiplier     = d.fp     or 1
+			local lines = buildEventLines()
+			startEvent(lines, d.duration)
+			sendAnnounceToServer(d.message, "EVENT", nil)
+		end)
+	end)
+
+	pcall(function()
+		MessagingService:SubscribeAsync("GlobalEventEnd", function(_)
+			endEvent()
+			sendAnnounceToServer("The developer event has ended.", "SYSTEM", nil)
+		end)
+	end)
+
+	pcall(function()
+		MessagingService:SubscribeAsync("GlobalShutdown", function(data)
+			local d = data.Data or {}
+			local seconds = d.seconds or 300
+			local reason = d.reason
+			startShutdown(seconds, reason)
+			local msg = string.format("Server shutting down in %d minutes!", math.ceil(seconds / 60))
+			if reason then msg = msg .. " Reason: " .. reason end
+			sendAnnounceToServer(msg, "SYSTEM", nil)
+		end)
+	end)
+
+	pcall(function()
+		MessagingService:SubscribeAsync("GlobalShutdownCancel", function(_)
+			cancelShutdown()
+			sendAnnounceToServer("Shutdown cancelled.", "SYSTEM", nil)
+		end)
+	end)
+end
+
 -- Connect player events
 Players.PlayerAdded:Connect(function(plr)
+	-- Send active event to joining player
+	task.delay(3, function()
+		if activeEventInfo then
+			local remaining = math.max(0, activeEventInfo.endAt - os.clock())
+			if remaining > 0 then
+				eventTimerEvent:FireClient(plr, activeEventInfo.lines, remaining, activeEventInfo.mults)
+			end
+		end
+	end)
+
 	local rank = getPlayerRank(plr)
 	if rank then
 		plr.Chatted:Connect(function(msg)

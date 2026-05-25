@@ -10,6 +10,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local SkillServer = require(script.Parent.SkillHelper)
 local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 local FishDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
+local EventState = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("EventStateModule"))
 
 -- BindableFunction from ItemSave for selling fish from data table
 local SellFishBindable = ServerScriptService:WaitForChild("SellFishBindable")
@@ -31,10 +32,11 @@ local MIN_WEIGHT = 1.0
 local MAX_WEIGHT = 200
 
 local function stripFishPrefixes(name)
-	name = name:gsub("^Frozen Festival ", "")
-	name = name:gsub("^Festival Frozen ", "")
-	name = name:gsub("^Frozen ", "")
-	name = name:gsub("^Festival ", "")
+	name = name:gsub("^Sans Frozen Festival ", ""):gsub("^Sans Festival Frozen ", "")
+	name = name:gsub("^Frozen Festival ", ""):gsub("^Festival Frozen ", "")
+	name = name:gsub("^Sans Frozen ", ""):gsub("^Sans Festival ", "")
+	name = name:gsub("^Frozen ", ""):gsub("^Festival ", "")
+	name = name:gsub("^Sans ", "")
 	return name
 end
 
@@ -63,6 +65,11 @@ local function calcTrueFishValue(tool)
 		adjusted = math.floor(adjusted * 2.0)
 	elseif hasFestival then
 		adjusted = math.floor(adjusted * 1.5)
+	end
+
+	local hasSans = nameStr:find("^Sans ") ~= nil
+	if hasSans then
+		adjusted = math.floor(adjusted * 3.0)
 	end
 
 	return adjusted
@@ -119,7 +126,7 @@ local function calculateFinalValue(baseValue, player, hasDoubleGamepass)
 		finalValue = baseValue + additionalBonus
 	end
 
-	return math.floor(finalValue)
+	return math.floor(finalValue * EventState.CoinMultiplier)
 end
 
 -- Wire ProximityPrompt

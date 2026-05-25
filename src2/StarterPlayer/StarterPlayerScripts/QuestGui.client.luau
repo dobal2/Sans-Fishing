@@ -54,6 +54,19 @@ local function animateFramePosition()
 	frameTween:Play()
 end
 
+local function formatNumber(n)
+	local s = tostring(math.floor(n))
+	local result = ""
+	local len = #s
+	for i = 1, len do
+		if i > 1 and (len - i + 1) % 3 == 0 then
+			result = result .. ","
+		end
+		result = result .. s:sub(i, i)
+	end
+	return result
+end
+
 local function createQuestFrame(questData)
 	local newQuestFrame = questFrame:Clone()
 	newQuestFrame.Name = questData.name
@@ -72,10 +85,12 @@ local function createQuestFrame(questData)
 
 	local rewardText = newQuestFrame:FindFirstChild("RewardText")
 	if rewardText then
-		if questData.rewardFP and questData.rewardFP > 0 then
-			rewardText.Text = "Reward: " .. questData.rewardFP .. " FishingPoints"
+		if questData.rewardBubble and questData.rewardBubble ~= "" then
+			rewardText.Text = "Reward: " .. questData.rewardBubble
+		elseif questData.rewardFP and questData.rewardFP > 0 then
+			rewardText.Text = "Reward: " .. formatNumber(questData.rewardFP) .. " FishingPoints"
 		else
-			rewardText.Text = "Reward: " .. questData.rewardCoins .. " Coins"
+			rewardText.Text = "Reward: " .. formatNumber(questData.rewardCoins) .. " Coins"
 		end
 	end
 
@@ -153,6 +168,7 @@ local function updateQuestList()
 				isReceived = quest:FindFirstChild("IsReceived") and quest.IsReceived.Value or false,
 				rewardCoins = quest:FindFirstChild("RewardCoins") and quest.RewardCoins.Value or 0,
 				rewardFP = quest:FindFirstChild("RewardFP") and quest.RewardFP.Value or 0,
+				rewardBubble = quest:FindFirstChild("RewardBubble") and quest.RewardBubble.Value or "",
 				questType = quest:FindFirstChild("QuestType") and quest.QuestType.Value or "normal"
 			}
 

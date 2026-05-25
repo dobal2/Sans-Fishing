@@ -394,7 +394,7 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyRainLighting()
-		applyClouds(1, 1, Color3.fromRGB(130, 130, 140))
+		applyClouds(0.9, 1, Color3.fromRGB(130, 130, 140))
 
 	elseif newWeather == "Snow" then
 		local success, err = pcall(function()
@@ -405,7 +405,7 @@ local function handleWeatherChange(newWeather)
 		end
 
 		applyRainLighting()
-		applyClouds(1, 0.9, Color3.fromRGB(210, 215, 225))
+		applyClouds(0.8, 0.9, Color3.fromRGB(210, 215, 225))
 
 	elseif newWeather == "Firework" then
 		local success, err = pcall(function()
@@ -415,8 +415,25 @@ local function handleWeatherChange(newWeather)
 			warn("Rain module Disable failed:", err)
 		end
 
-		applyRainLighting()  -- Night atmosphere
-		applyClouds(0.3, 0.4, Color3.fromRGB(255, 255, 255))
+		-- Clear night atmosphere so fireworks look vivid against a dark sky
+		cleanupTweens()
+		local atmosphere = Lighting:FindFirstChild("Atmosphere")
+		if atmosphere then
+			local tween = TweenService:Create(atmosphere, TWEEN_INFO, {Density = 0.15})
+			activeTweens[#activeTweens + 1] = tween
+			tween:Play()
+		end
+		local blur = Lighting:FindFirstChild("Blur")
+		if blur then
+			local tween = TweenService:Create(blur, TWEEN_INFO, {Size = 0})
+			activeTweens[#activeTweens + 1] = tween
+			tween:Play()
+		end
+		local sunRays = Lighting:FindFirstChild("SunRays")
+		if sunRays then
+			sunRays.Enabled = false
+		end
+		applyClouds(0.1, 0.2, Color3.fromRGB(255, 255, 255))
 
 		-- Start firework loop
 		isFireworkActive = true

@@ -365,7 +365,7 @@ function FishingClient:_startSlider(speedRange)
 	local rodName = self.tool and self.tool.Name
 	if rodName == "FishingRod" then
 		tweenTime = tweenTime * 1.25
-	elseif rodName == "SliverRod" then
+	elseif rodName == "Silver Rod" then
 		tweenTime = tweenTime * 1.111
 	end
 
@@ -382,6 +382,7 @@ function FishingClient:_hasStrengthBuff()
 end
 
 function FishingClient:_processFishingInput()
+	if self._successFired then return end
 	if self.isProcessing then
 		return
 	end
@@ -421,6 +422,8 @@ function FishingClient:_processFishingInput()
 		self:_showHitText("strong", sliderLeft)
 
 		if self.currentProgress >= self.maxProgress then
+			self._successFired = true
+			if self._drainConn then self._drainConn:Disconnect(); self._drainConn = nil end
 			SuccessSound:Play()
 			tutorialEvent:Fire("fishing_success")
 			self.remote:FireServer("progress_success")
@@ -440,6 +443,8 @@ function FishingClient:_processFishingInput()
 		self:_showHitText("normal", sliderLeft)
 
 		if self.currentProgress >= self.maxProgress then
+			self._successFired = true
+			if self._drainConn then self._drainConn:Disconnect(); self._drainConn = nil end
 			SuccessSound:Play()
 			tutorialEvent:Fire("fishing_success")
 			self.remote:FireServer("progress_success")
@@ -1301,12 +1306,13 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	-- Passive drain: progress slowly decreases over time (faster for rarer fish)
 	local drainRate = difficulty.drainRate or 4
 	self._drainFired = false
+	self._successFired = false
 	self._drainConn = game:GetService("RunService").Heartbeat:Connect(function(dt)
 		if not self._drainConn then return end
 		if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
 		self.currentProgress = math.max(self.currentProgress - dt * drainRate, 0)
 		self:_updateProgressBar()
-		if self.currentProgress <= 0 and not self._drainFired then
+		if self.currentProgress <= 0 and not self._drainFired and not self._successFired then
 			self._drainFired = true
 			self._drainConn:Disconnect()
 			self._drainConn = nil
