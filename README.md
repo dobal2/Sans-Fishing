@@ -13,7 +13,7 @@
 
 ## 플레이 링크
 
-🎮 [Roblox에서 플레이](https://www.roblox.com/games/your-game-id)
+🎮 [Roblox에서 플레이]([https://www.roblox.com/games/your-game-id](https://www.roblox.com/games/129796299052709/Sans-Fishing))
 
 ---
 
