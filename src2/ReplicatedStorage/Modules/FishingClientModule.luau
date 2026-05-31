@@ -1281,6 +1281,33 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	self.newGUI.Enabled = true
 	self.newGUI:SetAttribute("FishRarity", rarity)
 
+	-- DoublePower 프레임: Power x2 게임패스(1290056221) 보유 시 숨김, 없으면 구매 버튼 연결
+	local doublePowerFrame = self.newGUI:FindFirstChild("DoublePower")
+	if doublePowerFrame then
+		local POWER_X2_PASS = 1290056221
+		local MarketplaceService = game:GetService("MarketplaceService")
+		local hasPowerX2 = false
+		local ok, result = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(self.player.UserId, POWER_X2_PASS)
+		end)
+		if ok then hasPowerX2 = result end
+
+		if hasPowerX2 then
+			doublePowerFrame.Visible = false
+		else
+			doublePowerFrame.Visible = true
+			local btn = doublePowerFrame:FindFirstChildOfClass("TextButton")
+				or doublePowerFrame:FindFirstChildOfClass("ImageButton")
+			if btn then
+				btn.MouseButton1Click:Connect(function()
+					pcall(function()
+						MarketplaceService:PromptGamePassPurchase(self.player, POWER_X2_PASS)
+					end)
+				end)
+			end
+		end
+	end
+
 	self.frame = self.newGUI:WaitForChild("GaugeFrame")
 	self.slider = self.frame:WaitForChild("InFrame"):WaitForChild("Slider")
 	self.hitZone = self.frame:WaitForChild("InFrame"):WaitForChild("HitZone")
