@@ -10,9 +10,9 @@ local MessagingService = game:GetService("MessagingService")
 -- SnowPart only exists in ServerStorage server-side
 local snowPart = RunService:IsServer() and ServerStorage:WaitForChild("SnowPart") or nil
 
--- Timing: 10-minute cycle, weather on :00-:05, Clear on :05-:10 (UTC)
-local CYCLE_SECONDS   = 600  -- 10 minutes
-local WEATHER_SECONDS = 300  -- 5 minutes active
+-- Timing: 15-minute cycle, weather on :00-:05, Clear on :05-:15 (UTC)
+local CYCLE_SECONDS   = 900  -- 15 minutes
+local WEATHER_SECONDS = 300  -- 5 minutes active, 10 minutes clear
 local MS_TOPIC        = "WeatherSync_v1"
 
 -- Weather type definitions

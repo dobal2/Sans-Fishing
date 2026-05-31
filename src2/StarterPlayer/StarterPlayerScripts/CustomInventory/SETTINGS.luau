@@ -420,6 +420,32 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 
 	local conns = {}
 	local isDraggingHB = false
+	local lastTapTimeHB = 0
+	local DOUBLE_TAP_HB = 0.35
+
+	local function toggleLockHB()
+		local fi = module.FishList[fishIndex]
+		if not fi then return end
+		fi.isLocked = not fi.isLocked
+		pcall(function() fishLockRemote:FireServer(nil, fi.isLocked, fishIndex) end)
+		local lockIcon = slotFrame:FindFirstChild("FishLockIcon")
+		if fi.isLocked then
+			if not lockIcon then
+				lockIcon = Instance.new("ImageLabel")
+				lockIcon.Name = "FishLockIcon"
+				lockIcon.Size = UDim2.new(0.35, 0, 0.35, 0)
+				lockIcon.Position = UDim2.new(0.65, 0, 0, 0)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.Image = "rbxassetid://10333789558"
+				lockIcon.ScaleType = Enum.ScaleType.Fit
+				lockIcon.ZIndex = 10
+				lockIcon.Parent = slotFrame
+			end
+		else
+			if lockIcon then lockIcon:Destroy() end
+		end
+		rebuildFishInventory()
+	end
 
 	table.insert(conns, slotFrame.MouseButton1Down:Connect(function()
 		local clickStartPos = Vector2.new(mouse.X, mouse.Y)
@@ -434,16 +460,27 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 
 			if not isDraggingHB then
 				if ghostFrame then ghostFrame:Destroy() end
-				-- short click → equip/unequip
-				if module.equippedFishIndex == fishIndex then
-					module.equippedFishIndex = nil
-					if unequipFishRemote then pcall(function() unequipFishRemote:FireServer() end) end
-				else
-					module.equippedFishIndex = fishIndex
-					if equipFishRemote then pcall(function() equipFishRemote:FireServer(fishIndex) end) end
+				-- 더블탭/더블클릭 감지 → 잠금
+				local now = tick()
+				if now - lastTapTimeHB < DOUBLE_TAP_HB then
+					lastTapTimeHB = 0
+					toggleLockHB()
+					return
 				end
-				rebuildHotBarFish()
-				rebuildFishInventory()
+				lastTapTimeHB = now
+				-- 싱글탭: DOUBLE_TAP_HB 후 equip/unequip
+				task.delay(DOUBLE_TAP_HB, function()
+					if lastTapTimeHB ~= now then return end
+					if module.equippedFishIndex == fishIndex then
+						module.equippedFishIndex = nil
+						if unequipFishRemote then pcall(function() unequipFishRemote:FireServer() end) end
+					else
+						module.equippedFishIndex = fishIndex
+						if equipFishRemote then pcall(function() equipFishRemote:FireServer(fishIndex) end) end
+					end
+					rebuildHotBarFish()
+					rebuildFishInventory()
+				end)
 				return
 			end
 
@@ -558,33 +595,8 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 		end)
 	end))
 
-	-- 우클릭 잠금
-	table.insert(conns, slotFrame.MouseButton2Click:Connect(function()
-		local fi = module.FishList[fishIndex]
-		if not fi then return end
-		fi.isLocked = not fi.isLocked
-		pcall(function()
-			fishLockRemote:FireServer(nil, fi.isLocked, fishIndex)
-		end)
-		-- 잠금 아이콘 업데이트
-		local lockIcon = slotFrame:FindFirstChild("FishLockIcon")
-		if fi.isLocked then
-			if not lockIcon then
-				lockIcon = Instance.new("ImageLabel")
-				lockIcon.Name = "FishLockIcon"
-				lockIcon.Size = UDim2.new(0.35, 0, 0.35, 0)
-				lockIcon.Position = UDim2.new(0.65, 0, 0, 0)
-				lockIcon.BackgroundTransparency = 1
-				lockIcon.Image = "rbxassetid://10333789558"
-				lockIcon.ScaleType = Enum.ScaleType.Fit
-				lockIcon.ZIndex = 10
-				lockIcon.Parent = slotFrame
-			end
-		else
-			if lockIcon then lockIcon:Destroy() end
-		end
-		rebuildFishInventory()
-	end))
+	-- 우클릭 잠금 (PC)
+	table.insert(conns, slotFrame.MouseButton2Click:Connect(toggleLockHB))
 
 	table.insert(conns, slotFrame.MouseEnter:Connect(function()
 		showDescriptionForFrame(slotFrame, fishItem.name)
@@ -1197,8 +1209,12 @@ function module:newTool(tool)
 	local freeSlot = nil
 
 	if isRod then
-		-- 로드는 슬롯1 우선. 슬롯1에 버블이 있으면 버블을 다음 빈 슬롯으로 밀어냄
-		if not module.OBJECTS.HotBar[1] and not module.HotBarFish[1] then
+		-- 로드는 슬롯1 우선.
+		-- 슬롯1에 물고기 핀이 있으면 먼저 핀을 해제해 슬롯을 비워준다.
+		if module.HotBarFish[1] then
+			clearHotBarFishSlot(1)
+		end
+		if not module.OBJECTS.HotBar[1] then
 			freeSlot = 1
 		elseif module.OBJECTS.HotBar[1] then
 			local existingTool = module.OBJECTS.HotBar[1]
@@ -1242,8 +1258,10 @@ function module:newTool(tool)
 		end
 	end
 
+	-- savedPosition은 로드가 아닌 도구(버블 등)에만 적용.
+	-- 로드는 항상 슬롯1 우선 배치를 유지해야 하므로 savedPosition을 무시한다.
 	local savedPosition = tool:GetAttribute("position")
-	if savedPosition and not module.OBJECTS.HotBar[savedPosition] and not module.HotBarFish[savedPosition] then
+	if not isRod and savedPosition and not module.OBJECTS.HotBar[savedPosition] and not module.HotBarFish[savedPosition] then
 		freeSlot = savedPosition
 	end
 
