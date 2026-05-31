@@ -145,7 +145,7 @@ end
 
 local function updateQuestList()
 	for _, child in pairs(ScrollingFrame:GetChildren()) do
-		if child:IsA("Frame") and child ~= questFrame then
+		if child:IsA("Frame") then  -- questFrame은 ScreenGui 루트에 있으므로 SF 안의 모든 Frame 제거
 			child:Destroy()
 		end
 	end
