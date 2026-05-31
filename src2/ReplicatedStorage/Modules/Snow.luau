@@ -67,6 +67,15 @@ local enabled      = false
 local connections  = {}
 local frame        = 0
 
+-- 수면 Y: Water 파트는 CanCollide=false라 raycast에 안 걸림 → 직접 구함
+local WATER_SURFACE_Y = -3.69
+task.spawn(function()
+	local water = workspace:FindFirstChild("Water", true)
+	if water and water:IsA("BasePart") then
+		WATER_SURFACE_Y = water.Position.Y + water.Size.Y / 2
+	end
+end)
+
 -- ── raycast 파라미터 (캐릭터 + Emitter 제외) ────────────────────────────────
 
 local rayParams = RaycastParams.new()
@@ -82,22 +91,23 @@ end
 -- ── 착지까지 남은 시간으로 Lifetime 계산 ──────────────────────────────────
 
 local function calcLifetime(emitterY)
-	-- 카메라 아래 방향으로 raycast해서 가장 가까운 지면/수면 Y를 구함
 	local camPos = workspace.CurrentCamera.CFrame.Position
+
+	-- raycast로 지면 감지 (CanCollide 파트)
 	local result = workspace:Raycast(
 		Vector3.new(camPos.X, emitterY, camPos.Z),
 		Vector3.new(0, -SCAN_HEIGHT, 0),
 		rayParams
 	)
 
-	local floorY = result and result.Position.Y or (emitterY - SCAN_HEIGHT)
+	-- 충돌 지점과 수면 Y 중 더 높은 쪽을 "착지점"으로 사용
+	-- → 바다 위에서는 수면이 착지점, 육지에서는 지면이 착지점
+	local groundY = result and result.Position.Y or (emitterY - SCAN_HEIGHT)
+	local floorY  = math.max(groundY, WATER_SURFACE_Y)
+
 	local fallDist = math.max(emitterY - floorY, 1)
-
-	-- 평균 speed = (min+max)/2, Lifetime = 거리/speed * 여유계수
 	local avgSpeed = (SNOW_SPEED_MIN + SNOW_SPEED_MAX) / 2
-	local t = fallDist / avgSpeed
-
-	-- 여유계수 1.05: 딱 수면에서 끝나도록. 너무 짧으면 공중에서 사라짐
+	local t        = fallDist / avgSpeed
 	return NumberRange.new(t * 0.9, t * 1.05)
 end
 
