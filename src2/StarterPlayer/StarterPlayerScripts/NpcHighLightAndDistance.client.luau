@@ -4,6 +4,7 @@ local gambler = workspace:WaitForChild("Gambler")
 local updateShop = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSeller")
 local robuxShop = workspace:WaitForChild("Pap")
 local voidQuestGiver = workspace:FindFirstChild("Void Quest Giver")
+local feedbackNPC = workspace:FindFirstChild("FeedbackNPC")
 
 local TweenService = game:GetService("TweenService")
 
@@ -23,6 +24,15 @@ robuxHighlight.Parent = robuxShop
 -- Add Void Quest Giver Highlight
 local voidQuestHighlight = voidQuestGiver and (voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight"))
 if voidQuestHighlight and voidQuestGiver then voidQuestHighlight.Parent = voidQuestGiver end
+
+-- Add Feedback NPC Highlight
+local feedbackHighlight = feedbackNPC and (feedbackNPC:FindFirstChild("Highlight") or Instance.new("Highlight"))
+if feedbackHighlight and feedbackNPC then
+	feedbackHighlight.OutlineColor = Color3.fromRGB(100, 200, 255)
+	feedbackHighlight.FillColor    = Color3.fromRGB(100, 200, 255)
+	feedbackHighlight.FillTransparency = 0.85
+	feedbackHighlight.Parent = feedbackNPC
+end
 
 local RANGE = 10
 local UPDATE_SHOP_RANGE = 15  -- Separate range for upgrade shop
@@ -72,6 +82,7 @@ local wasNearby = {
 	updateShop = false,
 	robuxShop = false,
 	voidQuestGiver = false,
+	feedbackNPC = false,
 }
 
 -- Distance check function (per-NPC range)
@@ -190,5 +201,21 @@ while true do
 			end
 		end
 		wasNearby.voidQuestGiver = shouldShowVoidQuestHighlight
+	end
+
+	-- Feedback NPC
+	if feedbackNPC then
+		local feedbackNearby = isPlayerNearby(feedbackNPC, RANGE)
+		local hrp = feedbackNPC:FindFirstChild("HumanoidRootPart")
+		local prompt = hrp and hrp:FindFirstChildOfClass("ProximityPrompt")
+		local canInteractFeedback = prompt and prompt.Enabled
+		local shouldShowFeedbackHighlight = feedbackNearby and canInteractFeedback
+
+		if shouldShowFeedbackHighlight ~= wasNearby.feedbackNPC then
+			if feedbackHighlight then
+				animateHighlight(feedbackHighlight, shouldShowFeedbackHighlight and 0 or 1)
+			end
+		end
+		wasNearby.feedbackNPC = shouldShowFeedbackHighlight
 	end
 end

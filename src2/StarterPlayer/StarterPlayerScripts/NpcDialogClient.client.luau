@@ -249,8 +249,57 @@ local function initLegendRock()
 	end)
 end
 
+-- ─── Feedback NPC ────────────────────────────────────────────────────────────
+local feedbackDialog = nil
+
+local function initFeedbackNPC()
+	local npc = workspace:WaitForChild("FeedbackNPC", 20)
+	if not npc then return end
+	local root  = npc:WaitForChild("HumanoidRootPart", 5)
+	local head  = npc:WaitForChild("Head", 5)
+	-- ProximityPrompt은 HumanoidRootPart 안에 있음
+	local prompt = root and root:WaitForChild("ProximityPrompt", 5)
+	if not root or not head or not prompt then return end
+
+	local dialog = DialogModule.new("Feedback", root, head, prompt)
+	dialog:addDialog("Hi! Got any feedback about the game? I'd love to hear it!", {
+		"Leave feedback",
+		"No thanks",
+	})
+	feedbackDialog = dialog
+
+	prompt.Triggered:Connect(function()
+		prompt.Enabled = false
+		dialog:triggerDialog(player, 1)
+	end)
+
+	dialog.responded:Connect(function(idx)
+		if idx == 1 then
+			dialog:hideGui("Thanks! Opening the feedback form...")
+			-- Roblox 인게임 피드백 폼 열기
+			local ok = pcall(function()
+				game:GetService("GuiService"):OpenBrowserWindow(
+					"https://www.roblox.com/games/feedback?placeId=" .. game.PlaceId
+				)
+			end)
+			if not ok then
+				-- 폴백: 개발자 포럼이나 그룹 월 등
+				pcall(function()
+					game:GetService("GuiService"):OpenBrowserWindow(
+						"https://www.roblox.com/groups/9744474"
+					)
+				end)
+			end
+		else
+			dialog:hideGui("Come back anytime!")
+		end
+		task.delay(1, function() prompt.Enabled = true end)
+	end)
+end
+
 task.spawn(initSeller)
 task.spawn(initGambler)
 task.spawn(initShopSeller)
 task.spawn(initPap)
 task.spawn(initLegendRock)
+task.spawn(initFeedbackNPC)
