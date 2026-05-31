@@ -192,9 +192,6 @@
         "TipChat": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/TipChat.client.luau"
         },
-        "SnowIslandLightEffect": {
-          "$path": "src2/StarterPlayer/StarterPlayerScripts/SnowIslandLightEffect.client.luau"
-        },
         "ErrorRoom": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/ErrorRoom.client.luau"
         },
