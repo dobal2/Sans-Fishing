@@ -10,8 +10,8 @@ local weatherChangedEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChi
 local getWeatherState = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("GetWeatherState")
 
 -- UTC schedule constants (must match WeatherSystemModule)
-local CYCLE_SECONDS   = 600
-local WEATHER_SECONDS = 300
+local CYCLE_SECONDS   = 900  -- 15분 사이클 (5분 날씨 + 10분 Clear)
+local WEATHER_SECONDS = 300  -- 5분 활성
 
 local WEATHER_NAMES = {
 	Rain     = "Rain",
