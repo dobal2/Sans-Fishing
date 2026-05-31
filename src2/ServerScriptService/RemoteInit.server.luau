@@ -92,6 +92,11 @@ local Leaderboard = ensureFolder(Remotes, "Leaderboard")
 ensureRemote(Leaderboard, "CoinYourStats")
 ensureRemote(Leaderboard, "PlaytimeYourStats")
 
+-- Invite
+local Invite = ensureFolder(Remotes, "Invite")
+ensureRemote(Invite, "InviteSent")          -- client → server: 초대장을 실제로 보냈을 때
+ensureRemote(Invite, "InviteQuestProgress") -- server → client: 현재 진행도 알림
+
 -- Misc
 local Misc = ensureFolder(Remotes, "Misc")
 ensureRemote(Misc, "EscapeTheWorld")

@@ -164,6 +164,15 @@ RodData.Rods = {
 		power = "+100%",
 		weight = "1 ~ 200kg",
 	},
+	["InviteRod"] = {
+		price = 0,
+		storageName = "InviteRod",
+		displayName = "Invite Rod",
+		position = Vector3.new(0, 0, 0),
+		luck = "+80%",
+		power = "+38%",
+		weight = "2 ~ 145kg",
+	},
 	["FriendRod"] = {
 		price = 0,
 		storageName = "FriendRod",

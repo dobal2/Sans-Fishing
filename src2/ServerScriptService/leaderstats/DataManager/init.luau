@@ -26,6 +26,8 @@ local DATA_TEMPLATE = {
 	FishStreak = 0;
 	OwnedBobbers = {"Basic Bobber"};
 	EquippedBobber = "Basic Bobber";
+	InviteCount = 0;
+	InviteRodGranted = false;
 }
 
 local sessionStartTimes = {}

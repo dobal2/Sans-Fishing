@@ -572,6 +572,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		GoldRod           = 0.30,
 		CrystalRod        = 0.50,
 		MagneticRod       = 0.70,
+		InviteRod         = 0.80,
 		BoneRod           = 0.95,
 		CloverRod         = 1.05,
 		RainbowRod        = 1.50,

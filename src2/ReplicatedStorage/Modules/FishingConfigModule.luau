@@ -98,6 +98,12 @@ return {
 		RodPower = 2.0,
 		DifficultyMod = 0.15
 	},
+	InviteRod = {
+		Distance = 97,
+		Rarity = "Epic",
+		RodPower = 1.38,
+		DifficultyMod = 0.73
+	},
 	FriendRod = {
 		Distance = 120,
 		Rarity = "Special",

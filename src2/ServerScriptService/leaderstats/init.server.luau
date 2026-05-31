@@ -137,7 +137,7 @@ Players.PlayerAdded:Connect(function(plr)
 		sv.Parent = Skills
 	end
 
-	local rodList = {"FishingRod", "Silver Rod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","BlockyRod","ArcaneRod","FlameRod","VoidRod","FriendRod"}
+	local rodList = {"FishingRod", "Silver Rod", "GoldRod", "CrystalRod", "MagneticRod", "BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod", "ElectricRod","BlockyRod","ArcaneRod","FlameRod","VoidRod","FriendRod","InviteRod"}
 
 	local boatList = {"BasicBoat"}  -- Boat list
 

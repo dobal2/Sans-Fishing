@@ -839,6 +839,75 @@ Players.PlayerAdded:Connect(function(plr)
 		end
 	end
 
+	-- ── Invite quest ─────────────────────────────────────────────────────────────
+	task.spawn(function()
+		local INVITE_REQUIRED = 3
+		local inviteRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Invite")
+		local inviteSentRemote    = inviteRemotes:WaitForChild("InviteSent")
+		local inviteProgressRemote = inviteRemotes:WaitForChild("InviteQuestProgress")
+
+		-- 저장된 InviteCount 및 완료 여부 복원
+		local data = datamanager:GetData(plr)
+		if not data then return end
+		if data.InviteRodGranted then return end  -- 이미 받은 플레이어는 처리 안 함
+
+		local inviteCount = data.InviteCount or 0
+
+		-- 현재 진행도 전송
+		inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
+
+		-- InviteSent: 클라이언트가 실제로 초대장을 보냈을 때
+		inviteSentRemote.OnServerEvent:Connect(function(sender, recipientCount)
+			if sender ~= plr then return end
+			if type(recipientCount) ~= "number" or recipientCount <= 0 then return end
+
+			local d = datamanager:GetData(plr)
+			if not d or d.InviteRodGranted then return end
+
+			d.InviteCount = (d.InviteCount or 0) + 1
+			inviteCount = d.InviteCount
+			datamanager:UpdateData(plr, "InviteCount", inviteCount)
+
+			-- 진행도 업데이트 전송
+			inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
+
+			if inviteCount >= INVITE_REQUIRED then
+				-- InviteRod 지급
+				local ls = plr:FindFirstChild("leaderstats")
+				local rodsFolder = ls and ls:FindFirstChild("Rods")
+				local rodBool = rodsFolder and rodsFolder:FindFirstChild("InviteRod")
+				if rodBool and not rodBool.Value then
+					rodBool.Value = true
+					datamanager:UpdateData(plr, "InviteRodGranted", true)
+
+					-- 기존 로드 제거 후 InviteRod 장착
+					local ServerStorage = game:GetService("ServerStorage")
+					local rodTool = ServerStorage:FindFirstChild("InviteRod")
+					if rodTool then
+						for _, container in ipairs({ plr:FindFirstChild("Backpack"), plr.Character }) do
+							if container then
+								for _, tool in ipairs(container:GetChildren()) do
+									if tool:IsA("Tool") then tool:Destroy() end
+								end
+							end
+						end
+						local currentRodVal = ls and ls:FindFirstChild("CurrentRod")
+						if currentRodVal then currentRodVal.Value = "InviteRod" end
+						leaderstatsDataManager:UpdateData(plr, "CurrentRod", "InviteRod")
+
+						local backpack = plr:FindFirstChild("Backpack")
+						if backpack then rodTool:Clone().Parent = backpack end
+					end
+
+					local noticeEvent = getNoticeEvent()
+					if noticeEvent then
+						noticeEvent:FireClient(plr, "Invite quest complete! You received the Invite Rod!")
+					end
+				end
+			end
+		end)
+	end)
+
 	-- Register handler for external FishCaughtBindable calls
 	dailyRandomQuestHandlers[plr] = handleDailyRandomQuest
 	dailyGiveQuestHandlers[plr] = handleDailyGiveQuest
