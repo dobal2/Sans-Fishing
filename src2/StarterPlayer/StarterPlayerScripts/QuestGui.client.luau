@@ -18,6 +18,11 @@ local questCompleteEvent = questRemotes:WaitForChild("QuestCompleteEvent")
 
 local isFrameExpanded = false
 
+-- ScrollingFrame 속성 강제 보정
+ScrollingFrame.ClipsDescendants = true
+ScrollingFrame.CanvasSize        = UDim2.new(0, 0, 0, 0)  -- AutomaticCanvasSize=Y와 함께 동작
+ScrollingFrame.ScrollBarThickness = 4
+
 local function formatTime(seconds)
 	if seconds >= 60 then
 		local minutes = math.floor(seconds / 60)
