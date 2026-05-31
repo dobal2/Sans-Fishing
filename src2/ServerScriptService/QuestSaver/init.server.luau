@@ -854,27 +854,26 @@ Players.PlayerAdded:Connect(function(plr)
 		local inviteCount = data.InviteCount or 0
 
 		-- ActiveQuests 폴더에 invite 퀘스트 등록 (QuestGui에 표시되도록)
-		local ls = plr:FindFirstChild("leaderstats")
-		local questsFolder = ls and ls:FindFirstChild("Quests")
-		local activeQuestsFolder = questsFolder and questsFolder:FindFirstChild("ActiveQuests")
+		-- WaitForChild로 기다려서 타이밍 문제 방지
+		local ls = plr:WaitForChild("leaderstats", 30)
+		local questsFolder = ls and ls:WaitForChild("Quests", 30)
+		local activeQuestsFolder = questsFolder and questsFolder:WaitForChild("ActiveQuests", 30)
 		if activeQuestsFolder and not activeQuestsFolder:FindFirstChild("invite_rod_quest") then
-			local inviteFolder = Instance.new("Folder")
-			inviteFolder.Name = "invite_rod_quest"
-
-			local function sv(n, v) local o = Instance.new("StringValue"); o.Name = n; o.Value = v; o.Parent = inviteFolder end
-			local function iv(n, v) local o = Instance.new("IntValue");    o.Name = n; o.Value = v; o.Parent = inviteFolder end
-			local function bv(n, v) local o = Instance.new("BoolValue");   o.Name = n; o.Value = v; o.Parent = inviteFolder end
-
-			sv("QuestName",        "Send 3 Invites")
-			sv("QuestDescription", "Send game invites to 3 friends")
-			sv("QuestType",        "invite")
-			sv("RewardBubble",     "Invite Rod")  -- RewardText에 "Reward: Invite Rod" 로 표시됨
-			iv("CurrentProgress",  inviteCount)
-			iv("RequiredProgress", INVITE_REQUIRED)
-			iv("RewardCoins",      0)
-			bv("IsReceived",       true)
-
-			inviteFolder.Parent = activeQuestsFolder
+			local inviteQuestData = {
+				id              = "invite_rod_quest",
+				name            = "Send 3 Invites",
+				description     = "Send game invites to 3 friends",
+				questType       = "invite",
+				rewardBubble    = "Invite Rod",
+				currentProgress = inviteCount,
+				requiredProgress = INVITE_REQUIRED,
+				rewardCoins     = 0,
+				isReceived      = true,
+			}
+			local inviteFolder = createQuest(inviteQuestData, "invite_rod_quest")
+			if inviteFolder then
+				inviteFolder.Parent = activeQuestsFolder
+			end
 		end
 
 		-- 현재 진행도 전송
