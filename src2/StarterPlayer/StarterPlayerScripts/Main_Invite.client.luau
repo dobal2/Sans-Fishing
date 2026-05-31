@@ -22,10 +22,15 @@ end
 
 local canInvite = canSendGameInvite()
 
--- 초대 창 닫힐 때: recipientIds가 있으면 실제로 초대장을 보낸 것
-SocialService.GameInvitePromptClosed:Connect(function(_, recipientIds)
-	if not recipientIds or #recipientIds == 0 then return end
-	inviteSentRemote:FireServer(#recipientIds)
+-- 초대 창이 닫힐 때 카운트
+-- recipientIds는 Roblox 버그로 항상 빈 배열을 반환하므로,
+-- 창을 열었다가 닫은 것 자체를 1회 초대로 카운트
+local invitePromptOpened = false
+
+SocialService.GameInvitePromptClosed:Connect(function()
+	if not invitePromptOpened then return end
+	invitePromptOpened = false
+	inviteSentRemote:FireServer(1)
 end)
 
 -- 서버에서 진행도 수신 → 버튼 툴팁/텍스트 업데이트
@@ -48,7 +53,9 @@ inviteButton.MouseButton1Click:Connect(function()
 	local success, result = pcall(function()
 		SocialService:PromptGameInvite(player)
 	end)
-	if not success then
+	if success then
+		invitePromptOpened = true  -- 창이 성공적으로 열렸음을 표시
+	else
 		warn("Failed to open invite prompt:", result)
 	end
 	task.wait(1)
