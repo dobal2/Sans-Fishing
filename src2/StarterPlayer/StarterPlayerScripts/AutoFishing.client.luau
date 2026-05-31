@@ -71,6 +71,8 @@ local lastCastTime = 0
 local lastClickTime = 0
 local equipTime = 0
 local fishingEndedAt = 0         -- tick() when IsFishing last became false
+local minigameStartTime = 0      -- tick() when minigame GUI first appeared
+local MINIGAME_CLICK_DELAY = 0.5 -- 미니게임 시작 후 최소 이 시간 지나야 자동 클릭 가능
 
 local function isAutoOn()
 	return player:GetAttribute("AutoFishing") == true
@@ -185,6 +187,12 @@ RunService.Heartbeat:Connect(function()
 	local gui = getFishingGui()
 
 	if gui then
+		-- 미니게임 GUI가 처음 감지된 시점 기록
+		if minigameStartTime == 0 then
+			minigameStartTime = now
+		end
+		-- 미니게임 시작 직후엔 클릭 금지 (서버 gameStartTime 기준 0.3초 검사 통과 여유)
+		if now - minigameStartTime < MINIGAME_CLICK_DELAY then return end
 		-- Minigame open: click when slider in zone, with cooldown
 		if now - lastClickTime < getAutoClickCooldown() then return end
 		local slider, hitZone, strongZone = getSliderAndHitZone(gui)
@@ -201,6 +209,8 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	else
+		-- GUI 없으면 다음 미니게임을 위해 타이머 리셋
+		minigameStartTime = 0
 		-- No minigame: auto cast with cooldowns
 		if now - lastCastTime < AUTO_CAST_COOLDOWN then return end
 		if now - fishingEndedAt < AUTO_CAST_COOLDOWN then return end

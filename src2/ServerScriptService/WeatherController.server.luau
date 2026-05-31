@@ -34,9 +34,7 @@ local function handleAdminCommand(player, message)
 
 	local duration = tonumber(args[2]) or entry.default
 	local ok = WeatherSystem.SetWeather(entry.name, duration)
-	if ok and weatherEvent then
-		weatherEvent:FireAllClients(entry.name)
-	elseif not ok then
+	if not ok then
 		warn("Failed to set weather:", entry.name)
 	end
 end

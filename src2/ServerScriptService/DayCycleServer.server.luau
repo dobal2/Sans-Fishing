@@ -1,4 +1,5 @@
 local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- WeatherSystemModule fires this to suppress Lighting updates during Firework
@@ -19,11 +20,35 @@ local NIGHT_RATE = 12 / (5 * 60)   -- 5 real minutes for night (18→6)
 
 local TICK = 1
 
+local clockTime = 8
+
 local overridden = false
 local speedMultiplier = 1
+local clockTween = nil
+
+local CLOCK_TWEEN_INFO = TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+
+local function tweenClockTime(target)
+	if clockTween then clockTween:Cancel() end
+	clockTween = TweenService:Create(Lighting, CLOCK_TWEEN_INFO, { ClockTime = target })
+	clockTween.Completed:Connect(function()
+		clockTween = nil
+		-- tween done: hand control back to the loop
+		overridden = false
+	end)
+	clockTween:Play()
+end
 
 pauseEvent.Event:Connect(function(isOverridden)
-	overridden = isOverridden
+	if isOverridden and not overridden then
+		overridden = true
+		clockTime = 21
+		tweenClockTime(21)
+	elseif not isOverridden and overridden then
+		-- keep overridden=true while tween plays; tweenClockTime.Completed sets it false
+		local target = clockTime
+		tweenClockTime(target)
+	end
 end)
 
 speedEvent.Event:Connect(function(mult)
@@ -64,7 +89,6 @@ local function setDaySky()
 	sky.SkyboxUp = DAY_SKYBOX.SkyboxUp or ""
 end
 
-local clockTime = 8
 Lighting.ClockTime = clockTime
 
 task.spawn(function()

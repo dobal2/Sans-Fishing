@@ -663,42 +663,51 @@ rebuildFishInventory = function()
 		frame.Visible = true
 		frame.Parent = inventoryFrame.Frame
 
-		-- Click to equip/unequip
-		frame.MouseButton1Click:Connect(function()
-			if module.equippedFishIndex == i then
-				-- Unequip
-				module.equippedFishIndex = nil
-				if unequipFishRemote then
-					pcall(function() unequipFishRemote:FireServer() end)
-				end
-				-- Remove equipped highlight
-				local stroke = frame:FindFirstChildOfClass("UIStroke")
-				if stroke then stroke.Color = Color3.new(0, 0, 0) end
-				frame.Image = SETTINGS.DEFAULT_IMAGEID
-				-- Refresh to clear all highlights
-				rebuildFishInventory()
-			else
-				-- Equip
-				module.equippedFishIndex = i
-				if equipFishRemote then
-					pcall(function() equipFishRemote:FireServer(i) end)
-				end
-				-- Refresh to apply highlight
-				rebuildFishInventory()
-			end
-		end)
+		-- 더블탭/더블클릭으로 잠금 토글 (모바일 포함)
+		local lastTapTime = 0
+		local DOUBLE_TAP_DELAY = 0.35
 
-		-- Right-click to toggle lock
-		frame.MouseButton2Click:Connect(function()
-			local fishItem = module.FishList[i]
-			if not fishItem then return end
-			fishItem.isLocked = not fishItem.isLocked
-			-- fire server: (nil tool, isLocked, fishIndex)
+		local function toggleLock()
+			local fi = module.FishList[i]
+			if not fi then return end
+			fi.isLocked = not fi.isLocked
 			pcall(function()
-				fishLockRemote:FireServer(nil, fishItem.isLocked, i)
+				fishLockRemote:FireServer(nil, fi.isLocked, i)
 			end)
 			rebuildFishInventory()
+		end
+
+		-- Click to equip/unequip (싱글탭), 더블탭은 잠금
+		frame.MouseButton1Click:Connect(function()
+			local now = tick()
+			if now - lastTapTime < DOUBLE_TAP_DELAY then
+				-- 더블클릭/탭 → 잠금
+				lastTapTime = 0
+				toggleLock()
+				return
+			end
+			lastTapTime = now
+			-- 싱글클릭 처리는 DOUBLE_TAP_DELAY 후 실행 (더블탭 판별 후)
+			task.delay(DOUBLE_TAP_DELAY, function()
+				if lastTapTime ~= now then return end  -- 더블탭이 발생하면 취소
+				if module.equippedFishIndex == i then
+					module.equippedFishIndex = nil
+					if unequipFishRemote then
+						pcall(function() unequipFishRemote:FireServer() end)
+					end
+					rebuildFishInventory()
+				else
+					module.equippedFishIndex = i
+					if equipFishRemote then
+						pcall(function() equipFishRemote:FireServer(i) end)
+					end
+					rebuildFishInventory()
+				end
+			end)
 		end)
+
+		-- Right-click to toggle lock (PC)
+		frame.MouseButton2Click:Connect(toggleLock)
 
 		-- Hover tooltip
 		frame.MouseEnter:Connect(function()
@@ -1184,17 +1193,52 @@ function module:newTool(tool)
 	if tool:GetAttribute("toolAdded") or not tool:IsA("Tool") then return end
 	if tool:FindFirstChild("FishValue") then return end  -- fish handled separately
 
-	-- 빈 핫바 슬롯 탐색 (rod/bubble + fish 핀 모두 점유 슬롯으로 간주)
 	local isRod = tool:FindFirstChild("CastRod") ~= nil
 	local freeSlot = nil
-	-- Rod tools always prefer slot 1
-	if isRod and not module.OBJECTS.HotBar[1] and not module.HotBarFish[1] then
-		freeSlot = 1
+
+	if isRod then
+		-- 로드는 슬롯1 우선. 슬롯1에 버블이 있으면 버블을 다음 빈 슬롯으로 밀어냄
+		if not module.OBJECTS.HotBar[1] and not module.HotBarFish[1] then
+			freeSlot = 1
+		elseif module.OBJECTS.HotBar[1] then
+			local existingTool = module.OBJECTS.HotBar[1]
+			local isBubble = existingTool.Tool and not existingTool.Tool:FindFirstChild("CastRod")
+			if isBubble then
+				-- 버블을 다음 빈 슬롯으로 이동
+				local nextSlot = nil
+				for s = 2, self.slotAmount do
+					if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
+						nextSlot = s; break
+					end
+				end
+				if nextSlot then
+					existingTool:DisconnectAll()
+					module:addTool(existingTool.Tool, "HotBar", nextSlot)
+				else
+					existingTool:DisconnectAll()
+					module:addTool(existingTool.Tool, "Inventory")
+				end
+				freeSlot = 1
+			else
+				-- 슬롯1에 다른 로드가 있으면 다음 빈 슬롯
+				for s = 2, self.slotAmount do
+					if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
+						freeSlot = s; break
+					end
+				end
+			end
+		end
 	else
-		for s = 1, self.slotAmount do
+		-- 버블 등 비로드 도구: 슬롯1은 로드 예약이므로 2번부터 탐색
+		local startSlot = 2
+		for s = startSlot, self.slotAmount do
 			if not module.OBJECTS.HotBar[s] and not module.HotBarFish[s] then
 				freeSlot = s; break
 			end
+		end
+		-- 슬롯1이 비어있고 2번 이후도 없을 때만 슬롯1 허용
+		if not freeSlot and not module.OBJECTS.HotBar[1] and not module.HotBarFish[1] then
+			freeSlot = 1
 		end
 	end
 

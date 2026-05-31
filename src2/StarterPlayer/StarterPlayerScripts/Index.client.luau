@@ -22,14 +22,21 @@ local scrollFrame  = main:WaitForChild("ScrollingFrame")
 local uiScale      = newIndexFrame:WaitForChild("UIScale")
 local clickSound   = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("click")
 local blur         = lighting:WaitForChild("ShopBlur")
-local fishesFolder = game:GetService("ReplicatedStorage"):WaitForChild("Fishes")
+local fishesFolder = ReplicatedStorage:WaitForChild("Fishes")
 
-local mainGui       = player:WaitForChild("PlayerGui"):WaitForChild("Main")
-local notifBadge    = mainGui.Left.Index:WaitForChild("Notification")
-local notifLabel    = notifBadge:WaitForChild("TextLabel")
+local categoriesFrame = newIndexFrame:WaitForChild("Categories")
+local catNormal   = categoriesFrame:WaitForChild("Normal")
+local catGold     = categoriesFrame:WaitForChild("Gold")
+local catFrozen   = categoriesFrame:WaitForChild("Frozen")
+local catFestival = categoriesFrame:WaitForChild("Festival")
+local catSans     = categoriesFrame:WaitForChild("Sans")
 
-local discoverRemote  = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
-local getClaimedRF    = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("GetDiscoveryClaimed")
+local mainGui    = player:WaitForChild("PlayerGui"):WaitForChild("Main")
+local notifBadge = mainGui.Left.Index:WaitForChild("Notification")
+local notifLabel = notifBadge:WaitForChild("TextLabel")
+
+local discoverRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("FishDiscoverReward")
+local getClaimedRF   = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fishing"):WaitForChild("GetDiscoveryClaimed")
 
 local slotTemplate = scrollFrame:WaitForChild("IndexSlot")
 slotTemplate.Visible = false
@@ -37,6 +44,8 @@ slotTemplate.Visible = false
 local canClick = true
 local OPEN_TWEEN  = TweenInfo.new(0.35, Enum.EasingStyle.Back,  Enum.EasingDirection.Out)
 local CLOSE_TWEEN = TweenInfo.new(0.2,  Enum.EasingStyle.Quad,  Enum.EasingDirection.In)
+
+local currentCategory = "Normal"
 
 local FishRarities = {
 	{ name="Common",    chance=44.4, fishes={ {fishName="Small Carp",value=80},{fishName="Gold Fish",value=100},{fishName="Stone Fish",value=400} } },
@@ -49,7 +58,11 @@ local FishRarities = {
 	{ name="Unknown",   chance=0.1,  fishes={ {fishName="Unknown",value=50000},{fishName="Nyan Cat",value=56000} } },
 }
 
-local DISCOVER_REWARDS = { Common=50,Uncommon=150,Rare=400,Epic=1000,Legendary=3000,Mystic=8000,Fantasy=25000,Unknown=100000 }
+-- halved base rewards
+local DISCOVER_REWARDS = { Common=25,Uncommon=75,Rare=200,Epic=500,Legendary=1500,Mystic=4000,Fantasy=12500,Unknown=50000 }
+local VARIANT_MULTIPLIER = 2
+
+local VARIANT_PREFIXES = { "Gold", "Frozen", "Festival", "Sans" }
 
 local rarityColors = {
 	Common=Color3.fromRGB(255,255,255), Uncommon=Color3.fromRGB(12,255,32),
@@ -58,29 +71,75 @@ local rarityColors = {
 	Fantasy=Color3.fromRGB(64,224,208), Unknown=Color3.fromRGB(0,0,0),
 }
 
--- fishName -> rarity name lookup
+local catAccentColors = {
+	Normal   = Color3.fromRGB(255, 255, 255),
+	Gold     = Color3.fromRGB(255, 235, 60),
+	Frozen   = Color3.fromRGB(100, 200, 255),
+	Festival = Color3.fromRGB(255, 100, 200),
+	Sans     = Color3.fromRGB(0, 200, 255),
+}
+
 local fishRarityMap = {}
-local fishRewardMap = {}
 for _, rd in ipairs(FishRarities) do
 	for _, fd in ipairs(rd.fishes) do
 		fishRarityMap[fd.fishName] = rd.name
-		fishRewardMap[fd.fishName] = DISCOVER_REWARDS[rd.name] or 0
 	end
 end
 
--- Unclaimed discovered fish: fishName -> true
-local unclaimed = {}
+-- unclaimed[fishName] = true  (used for Normal category)
+-- variantUnclaimed["Gold Bass"] = true  (used for variant categories)
+local unclaimed        = {}
+local variantUnclaimed = {}
+
+-- last server data, refreshed on open
+local lastClaimed        = {}
+local lastVariantClaimed = {}
 
 local function isIndexOpen() return newIndexFrame.Visible end
 
+local function totalUnclaimedCount()
+	local n = 0
+	for _ in pairs(unclaimed) do n += 1 end
+	for _ in pairs(variantUnclaimed) do n += 1 end
+	return n
+end
+
 local function updateNotifBadge()
-	local count = 0
-	for _ in pairs(unclaimed) do count += 1 end
+	local count = totalUnclaimedCount()
 	if count > 0 then
 		notifLabel.Text = tostring(count)
 		notifBadge.Visible = true
 	else
 		notifBadge.Visible = false
+	end
+end
+
+local function unclaimedCountForCategory(cat)
+	if cat == "Normal" then
+		local n = 0
+		for _ in pairs(unclaimed) do n += 1 end
+		return n
+	else
+		local n = 0
+		for key in pairs(variantUnclaimed) do
+			if key:sub(1, #cat) == cat then n += 1 end
+		end
+		return n
+	end
+end
+
+local function updateCategoryBadges()
+	for _, catName in ipairs({ "Normal", "Gold", "Frozen", "Festival", "Sans" }) do
+		local frame = categoriesFrame:FindFirstChild(catName)
+		if frame then
+			local badge = frame:FindFirstChild("Exclamation")
+			if badge then
+				local count = unclaimedCountForCategory(catName)
+				badge.Visible = count > 0
+				local lbl = badge:FindFirstChild("Label")
+				if lbl then lbl.Text = tostring(count) end
+			end
+		end
 	end
 end
 
@@ -93,6 +152,17 @@ local function setVpSilhouette(vp, enabled)
 	if enabled then
 		vp.Ambient    = Color3.new(0, 0, 0)
 		vp.LightColor = Color3.new(0, 0, 0)
+		-- Paint all parts black so edges don't show through
+		local wm = vp:FindFirstChildOfClass("WorldModel")
+		if wm then
+			for _, p in ipairs(wm:GetDescendants()) do
+				if p:IsA("BasePart") then
+					p.Color = Color3.new(0, 0, 0)
+					p.Material = Enum.Material.SmoothPlastic
+					p.CastShadow = false
+				end
+			end
+		end
 	else
 		vp.Ambient    = Color3.fromRGB(180, 180, 180)
 		vp.LightColor = Color3.fromRGB(230, 230, 230)
@@ -110,7 +180,7 @@ local VP_OVERRIDES = {
 	["Nyan Cat"]      = { pitch = -10, yaw = 30, zoom = 0.9 },
 }
 
-local function setupModelInViewport(vp, fishModel)
+local function setupModelInViewport(vp, fishModel, isGold, isSans)
 	for _, c in ipairs(vp:GetChildren()) do
 		if not c:IsA("Camera") then c:Destroy() end
 	end
@@ -127,6 +197,16 @@ local function setupModelInViewport(vp, fishModel)
 	local clone = handle:Clone()
 	clone.CFrame = CFrame.new(0, 0, 0)
 	clone.Anchored = true
+
+	if isGold then
+		clone.Color = Color3.fromRGB(255, 235, 60)
+		clone.Material = Enum.Material.Metal
+		clone.Reflectance = 0.6
+	elseif isSans then
+		clone.Color = Color3.fromRGB(0, 200, 255)
+		clone.Material = Enum.Material.Neon
+	end
+
 	clone.Parent = worldModel
 
 	local fishName = fishModel and fishModel.Name or ""
@@ -173,13 +253,10 @@ local function createHoverEffect(slot, viewportFrame)
 	end
 end
 
--- Pulsing glow tween for unclaimed slots
-local PULSE_IN  = TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local PULSE_IN = TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 local function startClaimPulse(slot)
 	local us = slot:FindFirstChild("UIStroke")
-	if us then
-		TweenService:Create(us, PULSE_IN, {Transparency = 0.2}):Play()
-	end
+	if us then TweenService:Create(us, PULSE_IN, {Transparency = 0.2}):Play() end
 	local shine = slot:FindFirstChild("Shine")
 	if shine then
 		shine.Visible = true
@@ -189,42 +266,7 @@ end
 
 local function stopClaimPulse(slot)
 	local us = slot:FindFirstChild("UIStroke")
-	if us then
-		TweenService:Create(us, TweenInfo.new(0.2), {Transparency = 0}):Play()
-	end
-end
-
-local function claimReward(fishName, slot, rarityColor)
-	if not unclaimed[fishName] then return end
-	unclaimed[fishName] = nil
-	updateNotifBadge()
-	discoverRemote:FireServer(fishName)
-
-	stopClaimPulse(slot)
-
-	-- Remove claim overlay
-	local overlay = slot:FindFirstChild("ClaimOverlay")
-	if overlay then overlay:Destroy() end
-
-	-- Flash white then settle to rarity color
-	local us = slot:FindFirstChild("UIStroke")
-	if us then
-		us.Color = Color3.new(1, 1, 1)
-		us.Thickness = 5
-		task.delay(0.15, function()
-			TweenService:Create(us, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
-				Color = rarityColor,
-				Thickness = 3,
-			}):Play()
-		end)
-	end
-
-	-- Scale pop
-	local usc = slot:FindFirstChild("UIScale")
-	if usc then
-		usc.Scale = 1.15
-		TweenService:Create(usc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-	end
+	if us then TweenService:Create(us, TweenInfo.new(0.2), {Transparency = 0}):Play() end
 end
 
 local function addClaimOverlay(slot, fishName, rarityColor)
@@ -263,6 +305,62 @@ local function addClaimOverlay(slot, fishName, rarityColor)
 	overlay.Parent = slot
 end
 
+local function claimReward(displayName, slot, rarityColor, isVariant)
+	if isVariant then
+		if not variantUnclaimed[displayName] then return end
+		variantUnclaimed[displayName] = nil
+	else
+		if not unclaimed[displayName] then return end
+		unclaimed[displayName] = nil
+	end
+
+	updateNotifBadge()
+	updateCategoryBadges()
+	discoverRemote:FireServer(displayName)
+	stopClaimPulse(slot)
+
+	local overlay = slot:FindFirstChild("ClaimOverlay")
+	if overlay then overlay:Destroy() end
+
+	local us = slot:FindFirstChild("UIStroke")
+	if us then
+		us.Color = Color3.new(1, 1, 1)
+		us.Thickness = 5
+		task.delay(0.15, function()
+			TweenService:Create(us, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+				Color = rarityColor, Thickness = 3,
+			}):Play()
+		end)
+	end
+
+	local usc = slot:FindFirstChild("UIScale")
+	if usc then
+		usc.Scale = 1.15
+		TweenService:Create(usc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+	end
+end
+
+-- Build the catalog list for a given category
+local function getFishListForCategory(cat)
+	-- returns array of { displayName, baseName, rarityName, reward }
+	local list = {}
+	for _, rd in ipairs(FishRarities) do
+		for _, fd in ipairs(rd.fishes) do
+			local base = fd.fishName
+			local displayName = (cat == "Normal") and base or (cat .. " " .. base)
+			local reward = DISCOVER_REWARDS[rd.name] or 0
+			if cat ~= "Normal" then reward = math.floor(reward * VARIANT_MULTIPLIER) end
+			table.insert(list, {
+				displayName = displayName,
+				baseName    = base,
+				rarityName  = rd.name,
+				reward      = reward,
+			})
+		end
+	end
+	return list
+end
+
 local function createFishIndexUI()
 	for _, child in pairs(scrollFrame:GetChildren()) do
 		if child:IsA("Frame") and child.Name == "IndexSlot" and child ~= slotTemplate then
@@ -270,97 +368,112 @@ local function createFishIndexUI()
 		end
 	end
 
-	local leaderstats = player:WaitForChild("leaderstats")
-	local fishFolder  = leaderstats:WaitForChild("Fish")
+	local leaderstats   = player:WaitForChild("leaderstats")
+	local fishFolder    = leaderstats:WaitForChild("Fish")
+	local variantFolder = leaderstats:FindFirstChild("FishVariant")
+
+	local isVariant  = currentCategory ~= "Normal"
+	local fishList   = getFishListForCategory(currentCategory)
 	local layoutOrder = 1
 
-	for _, rarityData in ipairs(FishRarities) do
-		for _, fishData in ipairs(rarityData.fishes) do
-			local fishName = fishData.fishName
-			local slot = slotTemplate:Clone()
-			slot.Name = "IndexSlot"
-			slot.LayoutOrder = layoutOrder
-			slot.Visible = true
+	for _, entry in ipairs(fishList) do
+		local displayName = entry.displayName
+		local baseName    = entry.baseName
+		local rarityName  = entry.rarityName
+		local rarityColor = rarityColors[rarityName] or Color3.fromRGB(255, 255, 255)
 
-			local rarityColor = rarityColors[rarityData.name] or Color3.fromRGB(255, 255, 255)
-			local fishBool = fishFolder:FindFirstChild(fishName)
-			local isDiscovered = fishBool and fishBool.Value or false
-			local isClaiming = unclaimed[fishName] == true
-
-			local uiStroke = slot:FindFirstChildOfClass("UIStroke")
-			if uiStroke then
-				uiStroke.Color = rarityColor
-				uiStroke.Transparency = isDiscovered and 0 or 0.6
-			end
-
-			local titleLbl = slot:FindFirstChild("Title")
-			if titleLbl then
-				titleLbl.Text = isDiscovered and fishName or "???"
-				titleLbl.TextColor3 = isDiscovered and Color3.new(1, 1, 1) or Color3.new(0.5, 0.5, 0.5)
-				titleLbl.TextTransparency = isDiscovered and 0 or 0.3
-			end
-
-			local rarityLbl = slot:FindFirstChild("Rarity")
-			if rarityLbl then
-				rarityLbl.Text = isDiscovered and rarityData.name or "???"
-				rarityLbl.TextColor3 = isDiscovered and rarityColor or Color3.new(0.4, 0.4, 0.4)
-			end
-
-			local vp = slot:FindFirstChild("ViewportFrame")
-			if vp then
-				local fishModel = fishesFolder:FindFirstChild(fishName)
-				setupModelInViewport(vp, fishModel)
-				setVpSilhouette(vp, not isDiscovered)
-				if isDiscovered then
-					createHoverEffect(slot, vp)
-				end
-			end
-
-			local shine = slot:FindFirstChild("Shine")
-			if shine then shine.Visible = isDiscovered and not isClaiming end
-
-			-- Unclaimed reward: dark overlay + Claim! text, click to claim
-			if isClaiming then
-				addClaimOverlay(slot, fishName, rarityColor)
-				startClaimPulse(slot)
-				local btn = slot:FindFirstChildOfClass("TextButton")
-				if btn then
-					btn.MouseButton1Click:Connect(function()
-						claimReward(fishName, slot, rarityColor)
-					end)
-				end
-			end
-
-			slot.Parent = scrollFrame
-			layoutOrder += 1
+		local isDiscovered
+		if isVariant then
+			local vBool = variantFolder and variantFolder:FindFirstChild(displayName)
+			isDiscovered = vBool and vBool.Value or false
+		else
+			local fishBool = fishFolder:FindFirstChild(displayName)
+			isDiscovered = fishBool and fishBool.Value or false
 		end
+
+		local isClaiming
+		if isVariant then
+			isClaiming = variantUnclaimed[displayName] == true
+		else
+			isClaiming = unclaimed[displayName] == true
+		end
+
+		local slot = slotTemplate:Clone()
+		slot.Name = "IndexSlot"
+		slot.LayoutOrder = layoutOrder
+		slot.Visible = true
+
+		local uiStroke = slot:FindFirstChildOfClass("UIStroke")
+		if uiStroke then
+			uiStroke.Color = rarityColor
+			uiStroke.Transparency = isDiscovered and 0 or 0.6
+		end
+
+		local titleLbl = slot:FindFirstChild("Title")
+		if titleLbl then
+			titleLbl.Text = isDiscovered and displayName or "???"
+			titleLbl.TextColor3 = isDiscovered and Color3.new(1, 1, 1) or Color3.new(0.5, 0.5, 0.5)
+			titleLbl.TextTransparency = isDiscovered and 0 or 0.3
+		end
+
+		local rarityLbl = slot:FindFirstChild("Rarity")
+		if rarityLbl then
+			rarityLbl.Text = isDiscovered and rarityName or "???"
+			rarityLbl.TextColor3 = isDiscovered and rarityColor or Color3.new(0.4, 0.4, 0.4)
+		end
+
+		local vp = slot:FindFirstChild("ViewportFrame")
+		if vp then
+			local fishModel = fishesFolder:FindFirstChild(baseName)
+			setupModelInViewport(vp, fishModel, currentCategory == "Gold" and isDiscovered, currentCategory == "Sans" and isDiscovered)
+			setVpSilhouette(vp, not isDiscovered)
+			if isDiscovered then createHoverEffect(slot, vp) end
+		end
+
+		local shine = slot:FindFirstChild("Shine")
+		if shine then shine.Visible = isDiscovered and not isClaiming end
+
+		if isClaiming then
+			addClaimOverlay(slot, displayName, rarityColor)
+			startClaimPulse(slot)
+			local btn = slot:FindFirstChildOfClass("TextButton")
+			if btn then
+				btn.MouseButton1Click:Connect(function()
+					claimReward(displayName, slot, rarityColor, isVariant)
+				end)
+			end
+		end
+
+		slot.Parent = scrollFrame
+		layoutOrder += 1
 	end
 end
 
 local playerGui = player.PlayerGui
 
 local function refreshUnclaimed()
-	-- claimed 목록을 서버에서 가져옴 (구버전/신버전 모두 처리)
-	local claimed = {}
 	local ok, result = pcall(function() return getClaimedRF:InvokeServer() end)
+
+	local claimed        = {}
+	local variantClaimed = {}
 	if ok and type(result) == "table" then
-		if type(result.claimed) == "table" then
-			claimed = result.claimed
-		else
-			claimed = result
-		end
+		claimed        = type(result.claimed)        == "table" and result.claimed        or {}
+		variantClaimed = type(result.variantClaimed) == "table" and result.variantClaimed or {}
 	end
+	lastClaimed        = claimed
+	lastVariantClaimed = variantClaimed
 
-	-- discovered는 항상 클라이언트 BoolValue 기준 (서버 응답 무관)
 	local ls = player:FindFirstChild("leaderstats")
-	local fishFolder = ls and ls:FindFirstChild("Fish")
-	if not fishFolder then return end  -- fishFolder 없으면 기존 unclaimed 유지
+	local fishFolder    = ls and ls:FindFirstChild("Fish")
+	local variantFolder = ls and ls:FindFirstChild("FishVariant")
+	if not fishFolder then return end
 
-	for _, rarityData in ipairs(FishRarities) do
-		for _, fishData in ipairs(rarityData.fishes) do
-			local fishName = fishData.fishName
+	-- base fish unclaimed
+	for _, rd in ipairs(FishRarities) do
+		for _, fd in ipairs(rd.fishes) do
+			local fishName = fd.fishName
 			local fishBool = fishFolder:FindFirstChild(fishName)
-			if fishBool then  -- fishBool 존재할 때만 처리 (없으면 기존 값 유지)
+			if fishBool then
 				if fishBool.Value and not claimed[fishName] then
 					unclaimed[fishName] = true
 				else
@@ -369,7 +482,44 @@ local function refreshUnclaimed()
 			end
 		end
 	end
+
+	-- variant unclaimed
+	variantUnclaimed = {}
+	if variantFolder then
+		for _, prefix in ipairs(VARIANT_PREFIXES) do
+			for _, rd in ipairs(FishRarities) do
+				for _, fd in ipairs(rd.fishes) do
+					local key = prefix .. " " .. fd.fishName
+					local vBool = variantFolder:FindFirstChild(key)
+					if vBool and vBool.Value and not variantClaimed[key] then
+						variantUnclaimed[key] = true
+					end
+				end
+			end
+		end
+	end
+
 	updateNotifBadge()
+	updateCategoryBadges()
+end
+
+-- Category button selection highlight
+local function selectCategory(cat)
+	currentCategory = cat
+	for _, catName in ipairs({ "Normal", "Gold", "Frozen", "Festival", "Sans" }) do
+		local frame = categoriesFrame:FindFirstChild(catName)
+		if frame then
+			local btn = frame:FindFirstChild("TextButton")
+			if btn then
+				-- gradient always on; darken color when not selected
+				btn.ImageColor3 = catName == cat and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+				btn.ImageTransparency = 0
+			end
+			local glow = frame:FindFirstChild("Glow")
+			if glow then glow.Visible = catName == cat end
+		end
+	end
+	createFishIndexUI()
 end
 
 local function openIndex()
@@ -382,7 +532,7 @@ local function openIndex()
 	task.spawn(function()
 		task.wait(0.3)
 		refreshUnclaimed()
-		createFishIndexUI()
+		selectCategory(currentCategory)
 	end)
 end
 
@@ -401,6 +551,21 @@ local function toggleIndex()
 	if isIndexOpen() then closeIndex() else openIndex() end
 	task.wait(0.5)
 	canClick = true
+end
+
+-- Wire up category buttons
+for _, catName in ipairs({ "Normal", "Gold", "Frozen", "Festival", "Sans" }) do
+	local frame = categoriesFrame:FindFirstChild(catName)
+	if frame then
+		local btn = frame:FindFirstChild("TextButton")
+		if btn then
+			btn.MouseButton1Click:Connect(function()
+				if currentCategory ~= catName then
+					selectCategory(catName)
+				end
+			end)
+		end
+	end
 end
 
 playerGui:GetAttributeChangedSignal("ActiveLargeUI"):Connect(function()
@@ -426,47 +591,74 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 local function setupDiscoveryWatchers()
-	local leaderstats = player:WaitForChild("leaderstats")
-	local fishFolder  = leaderstats:WaitForChild("Fish")
+	local leaderstats   = player:WaitForChild("leaderstats")
+	local fishFolder    = leaderstats:WaitForChild("Fish")
+	local variantFolder = leaderstats:WaitForChild("FishVariant")
 
-	-- 데이터 로드 완료 대기
 	local dataReady = player:WaitForChild("DataReady", 30)
 	if dataReady then
 		repeat task.wait() until dataReady.Value == true
 	end
 
-	-- claimed 목록 서버에서 가져옴
-	local claimed = {}
 	local ok, result = pcall(function() return getClaimedRF:InvokeServer() end)
+	local claimed        = {}
+	local variantClaimed = {}
 	if ok and type(result) == "table" then
-		if type(result.claimed) == "table" then
-			claimed = result.claimed
-		else
-			claimed = result
-		end
+		claimed        = type(result.claimed)        == "table" and result.claimed        or {}
+		variantClaimed = type(result.variantClaimed) == "table" and result.variantClaimed or {}
 	end
+	lastClaimed        = claimed
+	lastVariantClaimed = variantClaimed
 
-	for _, rarityData in ipairs(FishRarities) do
-		for _, fishData in ipairs(rarityData.fishes) do
-			local fishName = fishData.fishName
+	-- base fish watchers
+	for _, rd in ipairs(FishRarities) do
+		for _, fd in ipairs(rd.fishes) do
+			local fishName = fd.fishName
 			local fishBool = fishFolder:FindFirstChild(fishName)
 			if fishBool then
 				if fishBool.Value and not claimed[fishName] then
 					unclaimed[fishName] = true
 				end
-				-- 아직 미발견: 발견 시 unclaimed에 추가
 				fishBool.Changed:Connect(function(newVal)
-					if newVal and not claimed[fishName] then
+					if newVal and not lastClaimed[fishName] then
 						unclaimed[fishName] = true
 						updateNotifBadge()
-						if isIndexOpen() then createFishIndexUI() end
+						updateCategoryBadges()
+						if isIndexOpen() and currentCategory == "Normal" then createFishIndexUI() end
 					end
 				end)
 			end
 		end
 	end
 
+	-- variant watchers
+	for _, prefix in ipairs(VARIANT_PREFIXES) do
+		for _, rd in ipairs(FishRarities) do
+			for _, fd in ipairs(rd.fishes) do
+				local key = prefix .. " " .. fd.fishName
+				local vBool = variantFolder:FindFirstChild(key)
+				if vBool then
+					if vBool.Value and not variantClaimed[key] then
+						variantUnclaimed[key] = true
+					end
+					vBool.Changed:Connect(function(newVal)
+						if newVal and not lastVariantClaimed[key] then
+							variantUnclaimed[key] = true
+							updateNotifBadge()
+							updateCategoryBadges()
+							local prefixMatch = key:sub(1, #prefix) == prefix
+							if isIndexOpen() and prefixMatch and currentCategory == prefix then
+								createFishIndexUI()
+							end
+						end
+					end)
+				end
+			end
+		end
+	end
+
 	updateNotifBadge()
+	updateCategoryBadges()
 end
 
 newIndexFrame.Visible = false

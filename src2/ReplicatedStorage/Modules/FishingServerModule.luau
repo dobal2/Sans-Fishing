@@ -912,24 +912,47 @@ function FishingServer:_checkMaterial()
 				local BobberData = require(ReplicatedStorage.Modules:WaitForChild("BobberDataModule"))
 				local fx = BobberData.GetEffects(equippedBobber)
 
-				-- Sans variant (forced by admin command or bobber chance)
+				-- Gold variant (forced by admin command, or 2% base chance)
+				local GOLD_CHANCE = 0.02
+				local forcedGold = self.player:GetAttribute("ForcedGoldVariant")
+				if forcedGold or math.random() < GOLD_CHANCE then
+					if forcedGold then self.player:SetAttribute("ForcedGoldVariant", nil) end
+					fishInfo.fishName = "Gold " .. fishInfo.fishName
+					fishInfo.value = math.floor((fishInfo.value or 0) * 2.0)
+					fishInfo.isGoldVariant = true
+				end
+
+				-- Sans variant (forced by admin command, bobber chance, or base 0.2% chance)
+				local BASE_SANS_CHANCE = 0.002
 				local forcedSans = self.player:GetAttribute("ForcedSansVariant")
+				local totalSansChance = math.max(fx.sansChance, BASE_SANS_CHANCE)
 				if forcedSans then
 					self.player:SetAttribute("ForcedSansVariant", nil)
 					fishInfo.fishName = "Sans " .. fishInfo.fishName
 					fishInfo.value = math.floor((fishInfo.value or 0) * (fx.sansMultiplier > 0 and fx.sansMultiplier or 2))
 					fishInfo.isSansVariant = true
-				elseif fx.sansChance > 0 and math.random() < fx.sansChance then
+				elseif math.random() < totalSansChance then
 					fishInfo.fishName = "Sans " .. fishInfo.fishName
-					fishInfo.value = math.floor((fishInfo.value or 0) * fx.sansMultiplier)
+					fishInfo.value = math.floor((fishInfo.value or 0) * (fx.sansMultiplier > 0 and fx.sansMultiplier or 2))
 					fishInfo.isSansVariant = true
 				end
 
-				-- Frozen variant (only if not already Sans or Frozen from weather)
-				local alreadyFrozen = fishInfo.fishName and fishInfo.fishName:find("^Frozen ") ~= nil
-				if not fishInfo.isSansVariant and not alreadyFrozen and fx.frozenChance > 0 and math.random() < fx.frozenChance then
+				-- Frozen variant (bobber chance OR base 0.8% chance, skip if already Frozen from weather)
+				local alreadyFrozen = fishInfo.isFrozen == true
+				local BASE_FROZEN_CHANCE = 0.008
+				if not alreadyFrozen and (fx.frozenChance > 0 and math.random() < fx.frozenChance or math.random() < BASE_FROZEN_CHANCE) then
 					fishInfo.fishName = "Frozen " .. fishInfo.fishName
-					fishInfo.value = math.floor((fishInfo.value or 0) * fx.frozenMultiplier)
+					fishInfo.value = math.floor((fishInfo.value or 0) * (fx.frozenMultiplier or 2.0))
+					fishInfo.isFrozen = true
+				end
+
+				-- Festival variant (bobber festivalBonus OR base 0.5% chance, skip if already Festival from weather)
+				local alreadyFestival = fishInfo.isFestival == true
+				local BASE_FESTIVAL_CHANCE = 0.005
+				if not alreadyFestival and (fx.festivalBonus > 0 and math.random() < fx.festivalBonus or math.random() < BASE_FESTIVAL_CHANCE) then
+					fishInfo.fishName = "Festival " .. fishInfo.fishName
+					fishInfo.value = math.floor((fishInfo.value or 0) * 1.5)
+					fishInfo.isFestival = true
 				end
 
 				fishInfo.bobberFx = fx
@@ -957,13 +980,34 @@ function FishingServer:_checkMaterial()
 				fakeHandle.Size = fakeHandle.Size * ratio
 				self._hookedBaseSize = fakeHandle.Size
 
-				local highLight = Instance.new("Highlight")
-				highLight.DepthMode = Enum.HighlightDepthMode.Occluded
-				highLight.FillColor = Color3.new(0, 0, 0)
-				highLight.FillTransparency = 0
-				highLight.OutlineTransparency = 0
-				highLight.OutlineColor = Color3.new(1, 1, 1)
-				highLight.Parent = fakeHandle
+				-- Gold 변이 비주얼 적용
+				if fishInfo.isGoldVariant then
+					fakeHandle.Color = Color3.fromRGB(255, 235, 60)
+					fakeHandle.Material = Enum.Material.Metal
+					fakeHandle.Reflectance = 0.6
+				end
+
+				-- 미발견 물고기일 때만 검정 실루엣 처리
+				local baseFishName = fishInfo.fishName
+					:gsub("Gold ", "")
+					:gsub("Frozen ", "")
+					:gsub("Festival ", "")
+					:gsub("Sans ", "")
+				local fishFolder = self.player:FindFirstChild("leaderstats")
+					and self.player.leaderstats:FindFirstChild("Fish")
+				local discovered = fishFolder
+					and fishFolder:FindFirstChild(baseFishName)
+					and fishFolder[baseFishName].Value == true
+
+				if not discovered then
+					local highLight = Instance.new("Highlight")
+					highLight.DepthMode = Enum.HighlightDepthMode.Occluded
+					highLight.FillColor = Color3.new(0, 0, 0)
+					highLight.FillTransparency = 0
+					highLight.OutlineTransparency = 0
+					highLight.OutlineColor = Color3.new(1, 1, 1)
+					highLight.Parent = fakeHandle
+				end
 
 				fakeHandle.Anchored = false
 				fakeHandle.CanCollide = false
@@ -1248,6 +1292,20 @@ function FishingServer:_resolveFishing(player, result)
 			end
 		end
 
+		-- Apply Gold variant visual
+		if fishInfo.isGoldVariant then
+			for _, part in ipairs(toolClone:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Color = Color3.fromRGB(255, 235, 60)
+					part.Material = Enum.Material.Metal
+					part.Reflectance = 0.6
+					if part:IsA("UnionOperation") then
+						part.UsePartColor = true
+					end
+				end
+			end
+		end
+
 		-- Handle setup and size adjustment
 		local handle = toolClone:FindFirstChild("Handle")
 		if handle then
@@ -1332,16 +1390,15 @@ function FishingServer:_resolveFishing(player, result)
 			if leaderstats then
 				local fishFolder = leaderstats:FindFirstChild("Fish")
 				if fishFolder then
-					-- Auto-extract base fish name
 					local baseFishName = getBaseFishName(fishInfo.fishName)
 
 					if baseFishName then
 						local fishBool = fishFolder:FindFirstChild(baseFishName)
+						local newFishDiscovered = false
 						if fishBool and fishBool:IsA("BoolValue") then
 							if not fishBool.Value then
 								fishBool.Value = true
-
-								-- New fish discovered notification (using base name)
+								newFishDiscovered = true
 								ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("DiscoverNoticeEvent"):FireClient(
 									player,
 									"New Fish Discovered: " .. baseFishName .. "!"
@@ -1355,6 +1412,32 @@ function FishingServer:_resolveFishing(player, result)
 					end
 				else
 					warn("Fish folder not found:", player.Name)
+				end
+
+				-- 변이 도감 등록
+				local variantFolder = leaderstats:FindFirstChild("FishVariant")
+				local newVariant = false
+				if variantFolder then
+					local TRACKED_PREFIXES = { "Gold", "Frozen", "Festival", "Sans" }
+					local baseFishName2 = getBaseFishName(fishInfo.fishName)
+					if baseFishName2 then
+						for _, prefix in ipairs(TRACKED_PREFIXES) do
+							if fishInfo.fishName:find(prefix .. " ") then
+								local variantKey = prefix .. " " .. baseFishName2
+								local vBool = variantFolder:FindFirstChild(variantKey)
+								if vBool and not vBool.Value then
+									vBool.Value = true
+									newVariant = true
+								end
+							end
+						end
+					end
+				end
+
+				-- 새 도감 발견 시 즉시 저장
+				if newFishDiscovered or newVariant then
+					local dm = getStreakDM()
+					if dm then task.spawn(function() dm:SaveData(player) end) end
 				end
 			else
 				warn("leaderstats not found:", player.Name)
@@ -1481,10 +1564,29 @@ function FishingServer:_resolveFishing(player, result)
 			end
 
 			-- Success notification
-			ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent"):FireClient(
-				player,
-				string.format("You got %s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
-			)
+			do
+				local fn = fishInfo.fishName or ""
+				local pct = (fishInfo.chance or 0) / 100
+				-- Divide by fish count within rarity (each fish equally probable within rarity)
+				local rarityName = fishInfo.name
+				for _, rarity in ipairs(FishData.Rarities) do
+					if rarity.name == rarityName then
+						local n = #rarity.fishes
+						if n > 1 then pct = pct / n end
+						break
+					end
+				end
+				if fishInfo.isGoldVariant then pct = pct * 0.02 end
+				if fishInfo.isFrozen then pct = pct * 0.25 end
+				if fishInfo.isFestival then pct = pct * 0.25 end
+				if fishInfo.isSansVariant then pct = pct * 0.05 end
+				local oneIn = pct > 0 and math.round(1 / pct) or 0
+				local chanceStr = oneIn > 0 and ("1 in " .. tostring(oneIn)) or "???"
+				ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("FishNoticeEvent"):FireClient(
+					player,
+					string.format("You got %s [%s] - %.1fkg (%s)", fn, fishInfo.name, fishInfo.weight, chanceStr)
+				)
+			end
 		end
 
 	elseif result == "cancel" then
@@ -1559,7 +1661,7 @@ local RARITY_EXCLAMATION_COLOR = {
 	Uncommon  = Color3.fromRGB(80, 220, 80),
 	Rare      = Color3.fromRGB(80, 140, 255),
 	Epic      = Color3.fromRGB(180, 80, 255),
-	Legendary = Color3.fromRGB(255, 200, 0),
+	Legendary = Color3.fromRGB(255, 235, 60),
 	Mystic    = Color3.fromRGB(255, 80, 80),
 	Fantasy   = Color3.fromRGB(100, 220, 255),
 	Unknown   = Color3.fromRGB(255, 255, 255),

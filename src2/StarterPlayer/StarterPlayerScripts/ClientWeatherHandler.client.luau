@@ -351,18 +351,16 @@ local function startFireworkLoop()
 	if fireworkLoopConnection then return end
 
 	fireworkLoopConnection = task.spawn(function()
+		-- Server already set ClockTime to night; give a short delay for it to replicate
+		task.wait(1)
 		while isFireworkActive do
-			-- Launch 1-3 fireworks simultaneously
 			local fireworkCount = math.random(1, 3)
-
 			for i = 1, fireworkCount do
 				task.spawn(function()
-					-- Small delay per firework
 					task.wait(math.random() * 0.5)
 					createClientFireworkEffect()
 				end)
 			end
-
 			task.wait(math.random() * 4 + 1)
 		end
 	end)
@@ -470,16 +468,5 @@ end
 -- Connect weather event
 weatherChangedEvent.OnClientEvent:Connect(handleWeatherChange)
 
--- Connect firework event (server signal)
-fireworkEffectEvent.OnClientEvent:Connect(function()
-	if isFireworkActive then
-		-- Launch 1-2 simultaneously on server signal
-		local count = math.random(1, 2)
-		for i = 1, count do
-			task.spawn(function()
-				task.wait(math.random() * 0.3)
-				createClientFireworkEffect()
-			end)
-		end
-	end
-end)
+-- fireworkEffectEvent는 현재 미사용 (클라이언트 루프가 폭죽 생성을 전담)
+fireworkEffectEvent.OnClientEvent:Connect(function() end)

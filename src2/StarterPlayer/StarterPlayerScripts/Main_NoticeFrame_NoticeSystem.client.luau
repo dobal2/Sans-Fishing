@@ -10,6 +10,14 @@ local template = noticeFrame:WaitForChild("ItemFrame")
 local MAX_NOTICES = 5
 local DISPLAY_TIME = 3.5
 
+local notificationSound = nil
+task.spawn(function()
+	local sounds = ReplicatedStorage:WaitForChild("Sounds", 10)
+	if sounds then
+		notificationSound = sounds:WaitForChild("GetSound", 5)
+	end
+end)
+
 -- Slide in from right, pop with Back easing
 local TWEEN_IN  = TweenInfo.new(0.35, Enum.EasingStyle.Back,  Enum.EasingDirection.Out)
 -- Fade + shrink out
@@ -88,6 +96,10 @@ local function showNotice(message, color)
 	end
 
 	table.insert(activeNotices, frame)
+
+	if notificationSound then
+		notificationSound:Play()
+	end
 
 	-- Expand height first (makes room in the list), then slide in
 	local expandTween = TweenService:Create(frame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {

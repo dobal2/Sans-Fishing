@@ -129,37 +129,29 @@ for i, v in pairs(ChangedItemName) do
 	OriginalItemName[v] = i
 end
 
+local VARIANT_PREFIXES_ORDERED = { "Gold", "Sans", "Frozen", "Festival" }
+
+-- Strips all variant prefixes and weight/rarity suffixes, returns just the base fish name.
 local function StripSuffixes(name)
-	local originalName = name
-	local hasFrozen = name:find("^Frozen ") ~= nil
-	local hasFestival = name:find("^Festival ") ~= nil
-	local hasBoth = name:find("^Frozen Festival ") ~= nil or name:find("^Festival Frozen ") ~= nil
+	-- Remove weight/rarity suffix first: "Bass [Rare] - 5.2kg" -> "Bass"
+	local stripped = name:match("^(.-) %-%s*[%d%.]+kg$") or name
+	stripped = stripped:match("^(.-)%s*%[.-%]$") or stripped
 
-	if hasBoth then
-		name = name:gsub("^Frozen Festival ", "")
-		name = name:gsub("^Festival Frozen ", "")
-	elseif hasFrozen then
-		name = name:gsub("^Frozen ", "")
-	elseif hasFestival then
-		name = name:gsub("^Festival ", "")
-	end
-
-	name = name:match("^(.-) %-%s*[%d%.]+kg$") or name
-	name = name:match("^(.-)%s*%[.-%]$") or name
-
-	if hasBoth then
-		if originalName:find("^Frozen Festival ") then
-			name = "Frozen Festival " .. name
-		else
-			name = "Festival Frozen " .. name
+	-- Repeatedly strip any known variant prefix from the front
+	local changed = true
+	while changed do
+		changed = false
+		for _, prefix in ipairs(VARIANT_PREFIXES_ORDERED) do
+			local pattern = "^" .. prefix .. " "
+			if stripped:find(pattern) then
+				stripped = stripped:gsub(pattern, "", 1)
+				changed = true
+				break
+			end
 		end
-	elseif hasFrozen then
-		name = "Frozen " .. name
-	elseif hasFestival then
-		name = "Festival " .. name
 	end
 
-	return name
+	return stripped
 end
 
 local function ExtractWeightFromName(name)
@@ -178,17 +170,12 @@ local function FindItem(itemName)
 	end
 
 	local stripped = StripSuffixes(itemName):lower()
-	local baseName = stripped:gsub("^sans ", ""):gsub("^frozen ", ""):gsub("^festival ", "")
-	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
-	baseName = baseName:gsub("^sans frozen ", ""):gsub("^sans festival ", "")
 
-	if baseName == "unknown" then
-		return ItemsFolder:FindFirstChild("Unknown")
-	end
-
+	-- Match by suffix against known fish names (handles any prefix combo without false-positives)
 	for _, rarity in ipairs(FishData.Rarities) do
 		for _, fish in ipairs(rarity.fishes) do
-			if fish.fishName:lower() == baseName then
+			local fn = fish.fishName:lower()
+			if stripped == fn or stripped:sub(-#fn) == fn and (stripped == fn or stripped:sub(-(#fn+1), -(#fn+1)) == " ") then
 				if fish.model and fish.model.Parent then
 					return fish.model
 				end
@@ -197,21 +184,20 @@ local function FindItem(itemName)
 		end
 	end
 
+	if stripped == "unknown" then
+		return ItemsFolder:FindFirstChild("Unknown")
+	end
+
 	return nil
 end
 
 local function GetFishDataByName(name)
-	local stripped = StripSuffixes(name)
-	local strippedLower = stripped:lower()
-	local baseName = strippedLower:gsub("^sans frozen festival ", ""):gsub("^sans festival frozen ", "")
-	baseName = baseName:gsub("^frozen festival ", ""):gsub("^festival frozen ", "")
-	baseName = baseName:gsub("^sans frozen ", ""):gsub("^sans festival ", "")
-	baseName = baseName:gsub("^frozen ", ""):gsub("^festival ", "")
-	baseName = baseName:gsub("^sans ", "")
+	local stripped = StripSuffixes(name):lower()
 
 	for _, rarity in ipairs(FishData.Rarities) do
 		for _, fish in ipairs(rarity.fishes) do
-			if fish.fishName:lower() == baseName then
+			local fn = fish.fishName:lower()
+			if stripped == fn or stripped:sub(-#fn) == fn and (stripped == fn or stripped:sub(-(#fn+1), -(#fn+1)) == " ") then
 				return {
 					name     = rarity.name,
 					fishName = fish.fishName,
@@ -290,8 +276,14 @@ local function saveCurrentInventory(player)
 	local newItemsData = {}
 
 	for _, fishItem in ipairs(fishList) do
-		-- Store each fish as a table so lock state is tied to the item, not its position
-		table.insert(newItemsData, { name = fishItem.name, isLocked = fishItem.isLocked or false })
+		table.insert(newItemsData, {
+			name          = fishItem.name,
+			isLocked      = fishItem.isLocked      or false,
+			isFrozen      = fishItem.isFrozen      or false,
+			isFestival    = fishItem.isFestival    or false,
+			isSansVariant = fishItem.isSansVariant or false,
+			isGoldVariant = fishItem.isGoldVariant or false,
+		})
 	end
 
 	Data.items    = newItemsData
@@ -405,6 +397,19 @@ cloneAndEquipFish = function(player, index)
 		end
 	end
 
+	if fishData.isGoldVariant then
+		for _, part in ipairs(clone:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Color = Color3.fromRGB(255, 235, 60)
+				part.Material = Enum.Material.Metal
+				part.Reflectance = 0.6
+				if part:IsA("UnionOperation") then
+					part.UsePartColor = true
+				end
+			end
+		end
+	end
+
 	clone.Parent = player.Backpack
 
 	PlayerEquippedTool[player]  = clone
@@ -447,10 +452,13 @@ cloneAndEquipFish = function(player, index)
 			local vObj = clone:FindFirstChild("FishValue")
 			if wObj then fishItem.weight = wObj.Value end
 			if vObj then fishItem.value  = vObj.Value end
-			local isFrozen   = clone.Name:find("Frozen") ~= nil
-			local isFestival = clone.Name:find("Festival") ~= nil
-			fishItem.isFrozen   = isFrozen
-			fishItem.isFestival = isFestival
+			local basePart = clone.Name:match("^(.-)%s*%[") or clone.Name
+			local strippedBase = StripSuffixes(basePart)
+			local prefixPart = basePart:sub(1, #basePart - #strippedBase)
+			fishItem.isFrozen      = prefixPart:find("Frozen")  ~= nil
+			fishItem.isFestival    = prefixPart:find("Festival") ~= nil
+			fishItem.isSansVariant = prefixPart:find("Sans")    ~= nil
+			fishItem.isGoldVariant = prefixPart:find("Gold")    ~= nil and strippedBase:sub(1,4):lower() ~= "gold"
 			scheduleSave(player)
 		end
 	end)
@@ -467,24 +475,21 @@ local function buildFishItemData(fishInfo)
 	local valueRatio = math.clamp((fishInfo.weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
 	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
-	local isFrozen      = fishInfo.fishName and string.find(fishInfo.fishName, "Frozen") ~= nil
-	local isFestival    = fishInfo.fishName and string.find(fishInfo.fishName, "Festival") ~= nil
+	local isFrozen      = fishInfo.isFrozen == true
+	local isFestival    = fishInfo.isFestival == true
 	local isSansVariant = fishInfo.isSansVariant == true
+	local isGoldVariant = fishInfo.isGoldVariant == true
 
-	-- Apply weather multipliers (same as createFishTool in FishingServerModule)
-	if isFrozen and isFestival then
-		local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
-			WeatherSystemModule.WeatherTypes.Firework and
-			WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
-		adjustedValue = math.floor(adjustedValue * 2.0 * festivalMultiplier)
-	elseif isFrozen then
-		adjustedValue = math.floor(adjustedValue * 2.0)
-	elseif isFestival then
+	-- Apply variant multipliers
+	if isFrozen then adjustedValue = math.floor(adjustedValue * 2.0) end
+	if isFestival then
 		local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
 			WeatherSystemModule.WeatherTypes.Firework and
 			WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
 		adjustedValue = math.floor(adjustedValue * festivalMultiplier)
 	end
+	if isSansVariant then adjustedValue = math.floor(adjustedValue * 3.0) end
+	if isGoldVariant then adjustedValue = math.floor(adjustedValue * 2.0) end
 
 	local fullName = string.format("%s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
 
@@ -495,10 +500,11 @@ local function buildFishItemData(fishInfo)
 		weight    = fishInfo.weight,
 		value     = adjustedValue,
 		baseValue = baseValue,
-		isLocked    = false,
-		isFrozen    = isFrozen,
-		isFestival  = isFestival,
+		isLocked      = false,
+		isFrozen      = isFrozen,
+		isFestival    = isFestival,
 		isSansVariant = isSansVariant,
+		isGoldVariant = isGoldVariant,
 	}
 end
 
@@ -671,31 +677,40 @@ Players.PlayerAdded:Connect(function(player)
 				error("Weight extraction failed: " .. itemName)
 			end
 
-			local hasFrozen   = itemName:find("Frozen") ~= nil
-			local hasFestival = itemName:find("Festival") ~= nil
-			local hasSans     = itemName:find("^Sans ") ~= nil
+			-- Use saved boolean flags when available (new format).
+			-- Legacy entries fall back to name-string parsing with safer rules.
+			local hasSavedFlags = type(itemEntry) == "table" and itemEntry.isFrozen ~= nil
+			local hasFrozen, hasFestival, hasSans, hasGold
+			if hasSavedFlags then
+				hasFrozen   = itemEntry.isFrozen      == true
+				hasFestival = itemEntry.isFestival    == true
+				hasSans     = itemEntry.isSansVariant == true
+				hasGold     = itemEntry.isGoldVariant == true
+			else
+				-- Legacy: parse from name, but use suffix-safe check for Gold
+				-- (avoid false-positive on fish whose base name contains "Gold")
+				hasFrozen   = itemName:find("^Frozen ")   ~= nil or itemName:find("^Festival Frozen ") ~= nil
+				hasFestival = itemName:find("^Festival ") ~= nil or itemName:find("^Frozen Festival ") ~= nil
+				hasSans     = itemName:find("^Sans ")     ~= nil
+				-- Gold variant: name must start with "Gold " AND base fish name
+				-- does NOT start with "Gold" (e.g. "Gold Fish" is not a variant)
+				local goldPrefix = itemName:match("^Gold (.+)%s*%[")
+				hasGold = goldPrefix ~= nil and fishData.fishName:sub(1, 4):lower() ~= "gold"
+			end
 
 			local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
 			local baseValue  = fishData.value or 0
 			local valueRatio = safeValueRatio(weight, minW, maxW)
 			local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
-			local frozenMultiplier   = 2.0
 			local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
 				WeatherSystemModule.WeatherTypes.Firework and
 				WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
 
-			if hasFrozen and hasFestival then
-				adjustedValue = math.floor(adjustedValue * frozenMultiplier * festivalMultiplier)
-			elseif hasFrozen then
-				adjustedValue = math.floor(adjustedValue * frozenMultiplier)
-			elseif hasFestival then
-				adjustedValue = math.floor(adjustedValue * festivalMultiplier)
-			end
-
-			if hasSans then
-				adjustedValue = math.floor(adjustedValue * 3.0)
-			end
+			if hasFrozen   then adjustedValue = math.floor(adjustedValue * 2.0) end
+			if hasFestival then adjustedValue = math.floor(adjustedValue * festivalMultiplier) end
+			if hasSans     then adjustedValue = math.floor(adjustedValue * 3.0) end
+			if hasGold     then adjustedValue = math.floor(adjustedValue * 2.0) end
 
 			-- Reconstruct fishName (with variant prefix) from itemName
 			local fishName = itemName:match("^(.-)%s*%[") or fishData.fishName
@@ -707,10 +722,11 @@ Players.PlayerAdded:Connect(function(player)
 				weight    = weight,
 				value     = adjustedValue,
 				baseValue = baseValue,
-				isLocked  = isLocked or false,
-				isFrozen  = hasFrozen,
-				isFestival = hasFestival,
+				isLocked      = isLocked or false,
+				isFrozen      = hasFrozen,
+				isFestival    = hasFestival,
 				isSansVariant = hasSans,
+				isGoldVariant = hasGold,
 			}
 
 			table.insert(PlayerFishData[player], fishItem)

@@ -359,6 +359,7 @@ local ROD_WEIGHT_TIER = {
 	ElectricRod  = 9,
 	RealisticRod = 10,
 	ArcaneRod    = 11,
+	FlameRod     = 11,
 	VoidRod      = 12,
 }
 
@@ -544,10 +545,11 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		RainbowRod  = 85,
 		UnknownRod  = 100,
 		RobuxRod    = 100,
-		ElectricRod = 110,
-		RealisticRod= 130,
-		ArcaneRod   = 150,
-		VoidRod     = 200,
+		ElectricRod  = 110,
+		RealisticRod = 130,
+		ArcaneRod    = 150,
+		FlameRod     = 175,
+		VoidRod      = 200,
 	}
 	local weightBonus = ROD_MAX_WEIGHT_BONUS[rodName] or 0
 
@@ -565,20 +567,21 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	-- VoidRod = 2.50 means 3.5× multiplier on all rare+ rarities.
 	-- Common absorbs the reduction naturally after normalization.
 	local ROD_LUCK_BONUS = {
-		FishingRod   = 0,
+		FishingRod        = 0,
 		["Silver Rod"]    = 0.15,
-		GoldRod      = 0.30,
-		CrystalRod   = 0.50,
-		MagneticRod  = 0.60,  -- 너프 (기존 0.75)
-		BoneRod      = 0.80,  -- 너프 (기존 1.00)
-		CloverRod    = 1.05,  -- 소폭 너프 (기존 1.30)
-		RainbowRod   = 1.50,  -- 유지
-		UnknownRod   = 2.20,  -- 상승 (기존 1.70)
-		RobuxRod     = 2.60,  -- 상승 (기존 2.00)
-		ElectricRod  = 3.60,  -- 상승 (기존 3.00)
-		RealisticRod = 4.80,  -- 상승 (기존 3.80)
-		ArcaneRod    = 6.00,  -- 상승 (기존 4.50)
-		VoidRod      = 10.00,
+		GoldRod           = 0.30,
+		CrystalRod        = 0.50,
+		MagneticRod       = 0.70,
+		BoneRod           = 0.95,
+		CloverRod         = 1.05,
+		RainbowRod        = 1.50,
+		UnknownRod        = 2.20,
+		RobuxRod          = 3.00,
+		ElectricRod       = 3.60,
+		RealisticRod      = 5.20,
+		ArcaneRod         = 6.50,
+		FlameRod          = 8.00,
+		VoidRod           = 10.00,
 	}
 	local luckBonus = ROD_LUCK_BONUS[rodName] or 0
 
@@ -742,6 +745,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 			local fishInfo = {
 				name = entry.rarity.name,
 				fishName = selectedFish.fishName,
+				baseFishName = selectedFish.fishName, -- always the unprefixed base name
 				value = selectedFish.value,
 				model = selectedFish.model,
 				minWeight = selectedFish.minWeight,
@@ -765,6 +769,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	local fishInfo = {
 		name = commonRarity.name,
 		fishName = defaultFish.fishName,
+		baseFishName = defaultFish.fishName,
 		value = defaultFish.value,
 		model = defaultFish.model,
 		minWeight = defaultFish.minWeight,
@@ -1037,6 +1042,51 @@ end
 function FishData.PrintStatus()
 	local weatherInfo = WeatherSystem.GetCurrentWeatherInfo()
 	local iceStats = FishData.GetIceEffectStats()
+end
+
+-- 서버 시작 시 로드 테이블 누락 자동 검증
+-- 새 로드를 추가할 때 이 목록에도 반드시 추가해야 한다.
+-- 누락된 항목은 서버 콘솔에 warn으로 출력된다.
+if RunService:IsServer() then
+	task.defer(function()
+		local RodDataModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RodDataModule"))
+		local FishingConfigModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishingConfigModule"))
+
+		local ROD_LUCK_BONUS_CHECK = {
+			"FishingRod", "Silver Rod", "GoldRod", "CrystalRod", "MagneticRod",
+			"BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
+			"ElectricRod", "RealisticRod", "ArcaneRod", "FlameRod", "VoidRod",
+		}
+		local ROD_WEIGHT_TIER_CHECK = ROD_LUCK_BONUS_CHECK
+		local ROD_MAX_WEIGHT_BONUS_CHECK = ROD_LUCK_BONUS_CHECK
+
+		-- RodDataModule에 등록된 모든 로드가 FishingConfig에도 있는지 확인
+		for rodKey, _ in pairs(RodDataModule.Rods) do
+			if rodKey == "FriendRod" then continue end -- 특수 로드 제외
+			if not FishingConfigModule[rodKey] then
+				local rd = RodDataModule.Rods[rodKey]
+				local sn = rd and rd.storageName
+				if not (sn and FishingConfigModule[sn]) then
+					warn(string.format("[RodBalance] FishingConfigModule에 '%s'(storageName='%s') 항목 없음 — 추가 필요", rodKey, tostring(sn)))
+				end
+			end
+		end
+
+		-- ROD_LUCK_BONUS, ROD_WEIGHT_TIER, ROD_MAX_WEIGHT_BONUS 검증은
+		-- GetRandomFish 내부 로컬 테이블이므로 목록 기반으로 경고
+		for _, rodName in ipairs(ROD_LUCK_BONUS_CHECK) do
+			local rd = RodDataModule.Rods[rodName]
+			if not rd then
+				warn(string.format("[RodBalance] RodDataModule에 '%s' 항목 없음", rodName))
+			end
+			if not FishingConfigModule[rodName] then
+				local sn = rd and rd.storageName
+				if not (sn and FishingConfigModule[sn]) then
+					warn(string.format("[RodBalance] FishingConfigModule에 '%s' 항목 없음", rodName))
+				end
+			end
+		end
+	end)
 end
 
 return FishData

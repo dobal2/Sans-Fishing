@@ -64,13 +64,13 @@ local function initSeller()
 			if amount == -1 then
 				dialog:hideGui("Bye!")
 			elseif amount == 0 then
-				dialog:hideGui("I don't see any fish on you!")
+				dialog:hideGui("Hold a fish first to check its value!")
 			else
 				dialog:hideGui(("That's worth <font color='rgb(0,187,255)'>¢%d</font>!"):format(amount))
 			end
 		else
 			if amount == 0 then
-				dialog:hideGui("You don't have any fish to sell!")
+				dialog:hideGui("Hold a fish to sell it, or use 'Sell All'!")
 			else
 				dialog:hideGui(("Here's <font color='rgb(0,187,255)'>¢%d</font> for your catch!"):format(amount))
 			end

@@ -844,6 +844,19 @@ local function command(plr, chat)
 		end
 	end
 
+	-- :goldfish [target] -- force next catch to be a Gold variant
+	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "goldfish" then
+		if hasPermission(plr, "forcefish") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			for _, v in pairs(foundPlayers) do
+				v:SetAttribute("ForcedGoldVariant", true)
+				announceRemote:FireClient(plr, "Next catch for " .. v.Name .. " will be a Gold variant.", "SYSTEM")
+			end
+		end
+	end
+
 	-- :bobberrestock -- force bobber shop restock immediately
 	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "bobberrestock" then
 		if hasPermission(plr, "bobberrestock") then
@@ -1463,9 +1476,12 @@ local function command(plr, chat)
 
 				local buffStr = table.concat(lines, " | ")
 				local message = string.format("EVENT STARTED: %s for %d minutes!", buffStr, minutes)
-				sendAnnounceToServer(message, "EVENT", nil)
 
-				if not RunService:IsStudio() then
+				if RunService:IsStudio() then
+					-- Studio에서는 MessagingService 미작동이므로 직접 전송
+					sendAnnounceToServer(message, "EVENT", nil)
+				else
+					-- 실서버: Subscribe 콜백이 같은 서버에도 실행되므로 Publish만 (중복 방지)
 					pcall(function()
 						MessagingService:PublishAsync("GlobalEventStart", {
 							coin   = EventState.CoinMultiplier,
@@ -1512,18 +1528,10 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :weatherskip [seconds] -- reduce remaining weather duration
+	-- :weatherskip -- UTC schedule based; use /rain /snow /firework /clear to force weather
 	if chat:lower():sub(1, #Prefix + 11) == Prefix .. "weatherskip" then
 		if hasPermission(plr, "weatherskip") then
-			local args = string.split(chat, " ")
-			local seconds = tonumber(args[2]) or 60
-			seconds = math.clamp(seconds, 1, 3600)
-			local ok = WeatherSystem.ReduceWeatherTime(seconds)
-			if ok then
-				announceRemote:FireClient(plr, string.format("Weather time reduced by %ds.", seconds), "SYSTEM")
-			else
-				announceRemote:FireClient(plr, "No active weather to skip.", "SYSTEM")
-			end
+			announceRemote:FireClient(plr, "weatherskip disabled: weather is now UTC-schedule based. Use /rain /snow /firework /clear to force.", "SYSTEM")
 		end
 	end
 

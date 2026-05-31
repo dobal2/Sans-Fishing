@@ -15,6 +15,9 @@ local DATA_TEMPLATE = {
 	LastSeenUpdateVersion = 0;
 	Playtime = 0;
 	DiscoveryClaimed = {};
+	VariantDiscoveryClaimed = {};
+	Fish = {};
+	FishVariant = {};
 	SkillPoints = 0;
 	Skills = {};
 	AutoFishingOn = false;
@@ -269,6 +272,15 @@ function DataManager:SafeSavePlayer(player)
 	end
 	profile.Data.Fish = fishData
 
+	local fishVariantFolder = leaderstats:FindFirstChild("FishVariant")
+	local fishVariantData = {}
+	if fishVariantFolder then
+		for _, vBool in ipairs(fishVariantFolder:GetChildren()) do
+			if vBool:IsA("BoolValue") then fishVariantData[vBool.Name] = vBool.Value end
+		end
+	end
+	profile.Data.FishVariant = fishVariantData
+
 	local boatsData = {}
 	if boatFolder then
 		for _, boat in ipairs(boatFolder:GetChildren()) do
@@ -300,9 +312,30 @@ end
 
 function DataManager:SaveData(player)
 	local profile = Profiles[player]
-	if profile and profile:IsActive() then
-		profile:Save()
+	if not profile or not profile:IsActive() then return end
+
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local fishFolder = leaderstats:FindFirstChild("Fish")
+		if fishFolder then
+			local fishData = {}
+			for _, v in ipairs(fishFolder:GetChildren()) do
+				if v:IsA("BoolValue") then fishData[v.Name] = v.Value end
+			end
+			profile.Data.Fish = fishData
+		end
+
+		local variantFolder = leaderstats:FindFirstChild("FishVariant")
+		if variantFolder then
+			local variantData = {}
+			for _, v in ipairs(variantFolder:GetChildren()) do
+				if v:IsA("BoolValue") then variantData[v.Name] = v.Value end
+			end
+			profile.Data.FishVariant = variantData
+		end
 	end
+
+	profile:Save()
 end
 
 local RunService = game:GetService("RunService")

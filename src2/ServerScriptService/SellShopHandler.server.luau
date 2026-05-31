@@ -31,16 +31,25 @@ local enablePromptEvent     = ReplicatedStorage:WaitForChild("Remotes"):WaitForC
 local MIN_WEIGHT = 1.0
 local MAX_WEIGHT = 200
 
-local function stripFishPrefixes(name)
-	name = name:gsub("^Sans Frozen Festival ", ""):gsub("^Sans Festival Frozen ", "")
-	name = name:gsub("^Frozen Festival ", ""):gsub("^Festival Frozen ", "")
-	name = name:gsub("^Sans Frozen ", ""):gsub("^Sans Festival ", "")
-	name = name:gsub("^Frozen ", ""):gsub("^Festival ", "")
-	name = name:gsub("^Sans ", "")
+local VARIANT_PREFIXES_STRIP = { "Gold", "Sans", "Frozen", "Festival" }
+
+local function stripAllFishPrefixes(name)
+	local changed = true
+	while changed do
+		changed = false
+		for _, prefix in ipairs(VARIANT_PREFIXES_STRIP) do
+			local pattern = "^" .. prefix .. " "
+			if name:find(pattern) then
+				name = name:gsub(pattern, "", 1)
+				changed = true
+				break
+			end
+		end
+	end
 	return name
 end
 
--- Recalculate fish value server-side from the tool name (ignores potentially-manipulated FishValue IntValue)
+-- Recalculate fish value server-side from the tool name (used for Option3 preview)
 local function calcTrueFishValue(tool)
 	local nameStr = tool.Name
 	local _, _, fishPart, weight = nameStr:find("(.+) %[.+%] %- (%.?%d+%.?%d*)kg")
@@ -48,29 +57,26 @@ local function calcTrueFishValue(tool)
 	weight = tonumber(weight)
 	if not weight then return 0 end
 
-	local hasFrozen   = nameStr:find("^Frozen ") or nameStr:find("Frozen Festival") or nameStr:find("Festival Frozen")
-	local hasFestival = nameStr:find("^Festival ") or nameStr:find("Frozen Festival") or nameStr:find("Festival Frozen")
-
-	local baseFishName = stripFishPrefixes(fishPart)
+	local baseFishName = stripAllFishPrefixes(fishPart)
 	local fishData = FishDataModule.GetFishByName(baseFishName)
 	if not fishData then return 0 end
+
+	-- Detect variants from prefix portion
+	local prefixPart = fishPart:sub(1, #fishPart - #baseFishName)
+	local hasFrozen   = prefixPart:find("Frozen")   ~= nil
+	local hasFestival = prefixPart:find("Festival")  ~= nil
+	local hasSans     = prefixPart:find("Sans")      ~= nil
+	-- Gold variant: only if base fish name doesn't itself start with "Gold"
+	local hasGold     = prefixPart:find("Gold") ~= nil and fishData.fishName:sub(1,4):lower() ~= "gold"
 
 	local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
 	local valueRatio = (minW == maxW) and 0 or math.clamp((weight - minW) / (maxW - minW), 0, 1)
 	local adjusted = math.floor(fishData.value * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
-	if hasFrozen and hasFestival then
-		adjusted = math.floor(adjusted * 2.0 * 1.5)
-	elseif hasFrozen then
-		adjusted = math.floor(adjusted * 2.0)
-	elseif hasFestival then
-		adjusted = math.floor(adjusted * 1.5)
-	end
-
-	local hasSans = nameStr:find("^Sans ") ~= nil
-	if hasSans then
-		adjusted = math.floor(adjusted * 3.0)
-	end
+	if hasFrozen   then adjusted = math.floor(adjusted * 2.0) end
+	if hasFestival then adjusted = math.floor(adjusted * 1.5) end
+	if hasSans     then adjusted = math.floor(adjusted * 3.0) end
+	if hasGold     then adjusted = math.floor(adjusted * 2.0) end
 
 	return adjusted
 end

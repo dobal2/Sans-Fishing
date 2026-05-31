@@ -369,6 +369,12 @@
         },
         "ShutdownNotice": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/ShutdownNotice.client.luau"
+        },
+        "CoinCollectEffect": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/CoinCollectEffect.client.luau"
+        },
+        "RobuxRodGui": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/RobuxRodGui.client.luau"
         }
       },
       "StarterCharacterScripts": {

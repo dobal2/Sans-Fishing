@@ -76,6 +76,9 @@ Players.PlayerAdded:Connect(function(plr)
 	local Fish = Instance.new("Folder")  -- Uppercase F for consistency
 	Fish.Name = "Fish"
 
+	local FishVariant = Instance.new("Folder")
+	FishVariant.Name = "FishVariant"
+
 	local Boats = Instance.new("Folder")  -- Boats folder
 	Boats.Name = "Boats"
 
@@ -219,12 +222,24 @@ Players.PlayerAdded:Connect(function(plr)
 		fishBool.Parent = Fish  -- Add to Fish folder
 	end
 
+	-- Create variant encyclopedia (Gold/Frozen/Festival per fish)
+	local VARIANT_PREFIXES = { "Gold", "Frozen", "Festival", "Sans" }
+	for _, prefix in ipairs(VARIANT_PREFIXES) do
+		for _, fishName in ipairs(fishList) do
+			local vBool = Instance.new("BoolValue")
+			vBool.Name = prefix .. " " .. fishName
+			vBool.Value = false
+			vBool.Parent = FishVariant
+		end
+	end
+
 	-- Add to leaderstats
 	Coins.Parent = leaderstats
 	CurrentRod.Parent = leaderstats
 	Rods.Parent = leaderstats
 	Boats.Parent = leaderstats
 	Fish.Parent = leaderstats  -- Add Fish folder to leaderstats
+	FishVariant.Parent = leaderstats
 	TotalCatches.Parent = leaderstats
 	leaderstats.Parent = plr
 	CurrentFishTrap.Parent = leaderstats
@@ -329,6 +344,14 @@ Players.PlayerAdded:Connect(function(plr)
 				fishBool.Value = hasCaught or false
 			elseif hasCaught then
 				warn("Unknown fish:", fishName, "->", plr.Name)
+			end
+		end
+
+		-- Apply variant encyclopedia data
+		for variantName, hasCaught in pairs(Data.FishVariant or {}) do
+			local vBool = FishVariant:FindFirstChild(variantName)
+			if vBool then
+				vBool.Value = hasCaught or false
 			end
 		end
 

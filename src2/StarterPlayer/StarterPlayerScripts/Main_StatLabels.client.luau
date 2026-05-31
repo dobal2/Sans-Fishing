@@ -1,5 +1,4 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -88,89 +87,170 @@ local function isInGroup()
 	return ok and result
 end
 
-local function updateLabels()
-	local main = playerGui:FindFirstChild("Main")
-	if not main then return end
-	local luckLabel = main:FindFirstChild("LuckLabel", true)
-	local coinLabel = main:FindFirstChild("CoinLabel", true)
-	if not luckLabel and not coinLabel then return end
+-- 스킬/이펙트 캐시 (getSkillData 서버 왕복 최소화)
+local cachedSkillData = nil
+local skillDataLastFetch = -999
+local SKILL_CACHE_TTL = 10  -- 스킬은 직접 살 때만 바뀌므로 10초 캐시
 
-	local data = getSkillData:InvokeServer()
-	if not data then return end
-
-	local levels = data.levels or {}
-	local skills = data.skills or {}
-
-	local function getEffect(skillName)
-		local level = levels[skillName] or 0
-		if level == 0 then return 0 end
-		local cfg = skills[skillName]
-		return cfg and cfg.effects and (cfg.effects[level] or 0) or 0
+local function getSkillDataCached()
+	local now = tick()
+	if not cachedSkillData or now - skillDataLastFetch >= SKILL_CACHE_TTL then
+		local ok, data = pcall(function() return getSkillData:InvokeServer() end)
+		if ok and data then
+			cachedSkillData = data
+			skillDataLastFetch = now
+		end
 	end
-
-	checkPasses()
-	local friendsCount = getFriendsCount()
-
-	-- LuckLabel: 낚싯대 + LuckUp 스킬 + FriendBonus×친구수, Luck x2 패스면 2배, 서버부스트 배율 추가
-	local eventLuckMult = player:GetAttribute("EventLuckMult") or 1
-	local eventCoinMult = player:GetAttribute("EventCoinMult") or 1
-
-	-- Bobber bonuses
-	local ls = player:FindFirstChild("leaderstats")
-	local equippedBobber = ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
-	local bobberFx = BobberData.GetEffects(equippedBobber)
-	local bobberLuckPct = math.floor((bobberFx.luckBonus or 0) * 100)
-	local bobberSellPct = math.floor((bobberFx.sellBonus or 0) * 100)
-
-	if luckLabel then
-		local rodLuck       = getRodLuckPercent()
-		local luckUpPct     = math.floor(getEffect("LuckUp") * 100)
-		local friendLuckPct = math.floor(getEffect("FriendBonus") * friendsCount * 100)
-		local baseLuck      = rodLuck + luckUpPct + friendLuckPct + bobberLuckPct
-		local afterPass     = cachedLuckPass and (baseLuck * 2) or baseLuck
-		local afterBoost    = afterPass * lastBoostMult * eventLuckMult
-		local hasBubble     = player:GetAttribute("LuckBubbleBuff") == true
-		local totalLuck     = math.floor(hasBubble and (afterBoost + 200) or afterBoost)
-		luckLabel.Text = "+" .. totalLuck .. "%"
-	end
-
-	if coinLabel then
-		local sellBonusPct  = math.floor(getEffect("SellBonus") * 100)
-		local groupPct      = isInGroup() and 50 or 0
-		local friendCoinPct = friendsCount * 5
-		local baseCoin      = sellBonusPct + groupPct + friendCoinPct + bobberSellPct
-		local afterPass     = cachedCoinPass and (baseCoin * 2) or baseCoin
-		local totalCoin     = math.floor(afterPass * eventCoinMult)
-		coinLabel.Text = "+" .. totalCoin .. "%"
-	end
+	return cachedSkillData
 end
 
-local lastUpdate = 0
+local function invalidateSkillCache()
+	skillDataLastFetch = -999
+end
+
 local isUpdating = false
-RunService.Heartbeat:Connect(function()
-	local now = tick()
-	if now - lastUpdate >= 5 and not isUpdating then
-		lastUpdate = now
-		task.spawn(function()
-			isUpdating = true
+local pendingUpdate = false
+
+local function updateLabels()
+	if isUpdating then
+		pendingUpdate = true
+		return
+	end
+	isUpdating = true
+	pendingUpdate = false
+
+	task.spawn(function()
+		local main = playerGui:FindFirstChild("Main")
+		local luckLabel = main and main:FindFirstChild("LuckLabel", true)
+		local coinLabel = main and main:FindFirstChild("CoinLabel", true)
+
+		if luckLabel or coinLabel then
+			local data = getSkillDataCached()
+			if data then
+				local levels = data.levels or {}
+				local skills = data.skills or {}
+
+				local function getEffect(skillName)
+					local level = levels[skillName] or 0
+					if level == 0 then return 0 end
+					local cfg = skills[skillName]
+					return cfg and cfg.effects and (cfg.effects[level] or 0) or 0
+				end
+
+				checkPasses()
+				local friendsCount = getFriendsCount()
+				local eventLuckMult = player:GetAttribute("EventLuckMult") or 1
+				local eventCoinMult = player:GetAttribute("EventCoinMult") or 1
+
+				local ls = player:FindFirstChild("leaderstats")
+				local equippedBobber = ls and ls:FindFirstChild("EquippedBobber") and ls.EquippedBobber.Value or "Basic Bobber"
+				local bobberFx = BobberData.GetEffects(equippedBobber)
+				local bobberLuckPct = math.floor((bobberFx.luckBonus or 0) * 100)
+				local bobberSellPct = math.floor((bobberFx.sellBonus or 0) * 100)
+
+				if luckLabel then
+					local rodLuck       = getRodLuckPercent()
+					local luckUpPct     = math.floor(getEffect("LuckUp") * 100)
+					local friendLuckPct = math.floor(getEffect("FriendBonus") * friendsCount * 100)
+					local baseLuck      = rodLuck + luckUpPct + friendLuckPct + bobberLuckPct
+					local afterPass     = cachedLuckPass and (baseLuck * 2) or baseLuck
+					local afterBoost    = afterPass * lastBoostMult * eventLuckMult
+					local hasBubble     = player:GetAttribute("LuckBubbleBuff") == true
+					local totalLuck     = math.floor(hasBubble and (afterBoost + 200) or afterBoost)
+					luckLabel.Text = "+" .. totalLuck .. "%"
+				end
+
+				if coinLabel then
+					local sellBonusPct  = math.floor(getEffect("SellBonus") * 100)
+					local groupPct      = isInGroup() and 50 or 0
+					local friendCoinPct = friendsCount * 5
+					local baseCoin      = sellBonusPct + groupPct + friendCoinPct + bobberSellPct
+					local afterPass     = cachedCoinPass and (baseCoin * 2) or baseCoin
+					local totalCoin     = math.floor(afterPass * eventCoinMult)
+					coinLabel.Text = "+" .. totalCoin .. "%"
+				end
+			end
+		end
+
+		isUpdating = false
+		if pendingUpdate then
 			updateLabels()
-			isUpdating = false
+		end
+	end)
+end
+
+-- 로드 장착/해제 시 즉시 갱신
+local function watchCharacterTools(char)
+	if not char then return end
+	char.ChildAdded:Connect(function(obj)
+		if obj:IsA("Tool") then updateLabels() end
+	end)
+	char.ChildRemoved:Connect(function(obj)
+		if obj:IsA("Tool") then updateLabels() end
+	end)
+end
+
+player.CharacterAdded:Connect(function(char)
+	watchCharacterTools(char)
+	updateLabels()
+end)
+if player.Character then
+	watchCharacterTools(player.Character)
+end
+
+-- Attribute 변경 시 즉시 갱신 (버블버프, 이벤트 배율, 찌 장착 등)
+player.AttributeChanged:Connect(function(attr)
+	if attr == "LuckBubbleBuff" or attr == "EventLuckMult" or attr == "EventCoinMult" then
+		updateLabels()
+	end
+end)
+
+-- 찌(Bobber) 변경 시 즉시 갱신
+task.spawn(function()
+	local ls = player:WaitForChild("leaderstats", 30)
+	if not ls then return end
+	local bobberVal = ls:WaitForChild("EquippedBobber", 10)
+	if bobberVal then
+		bobberVal.Changed:Connect(function()
+			updateLabels()
+		end)
+	end
+	-- 스킬 구매 시 즉시 갱신 (Skills 폴더 내 IntValue 변경)
+	local skillsFolder = player:WaitForChild("Skills", 10)
+	if skillsFolder then
+		for _, sv in ipairs(skillsFolder:GetChildren()) do
+			if sv:IsA("IntValue") then
+				sv.Changed:Connect(function()
+					invalidateSkillCache()
+					updateLabels()
+				end)
+			end
+		end
+		skillsFolder.ChildAdded:Connect(function(sv)
+			if sv:IsA("IntValue") then
+				sv.Changed:Connect(function()
+					invalidateSkillCache()
+					updateLabels()
+				end)
+			end
 		end)
 	end
 end)
 
--- 서버 부스트: 배율이 실제로 바뀔 때만 갱신 (1초마다 브로드캐스트되므로 값 비교 필요)
+-- 서버 부스트: 배율이 실제로 바뀔 때만 갱신
 local serverBoostRemote = ReplicatedStorage:WaitForChild("ServerBoostRemote")
 serverBoostRemote.OnClientEvent:Connect(function(_, mult)
 	local newMult = (type(mult) == "number") and mult or 1
 	if newMult == lastBoostMult then return end
 	lastBoostMult = newMult
-	if not isUpdating then
-		task.spawn(function()
-			isUpdating = true
-			updateLabels()
-			isUpdating = false
-		end)
+	updateLabels()
+end)
+
+-- 1초 폴링 (친구수 등 이벤트로 감지 불가한 변화 대비)
+task.spawn(function()
+	while true do
+		task.wait(1)
+		updateLabels()
 	end
 end)
 
