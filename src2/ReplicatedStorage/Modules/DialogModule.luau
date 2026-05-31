@@ -86,6 +86,7 @@ function DialogModule.new(npcName, npcRoot, npcHead, prompt)
 	self.dialogs   = {}
 	self.active    = false
 	self.talking   = false
+	self._typewriterGen = 0  -- 타이핑 세대 카운터 (새 대화 시작 시 이전 타이핑 중단용)
 
 	self.npcGui = ensureNpcGui(npcHead, npcName)
 
@@ -148,11 +149,12 @@ function DialogModule.new(npcName, npcRoot, npcHead, prompt)
 	return self
 end
 
-local function typewriter(label, text)
+local function typewriter(label, text, getGen, myGen)
 	local plain = text:gsub("<[^>]+>", "")
 	label.Text = ""
 	local cur = ""
 	for _, ch in string.split(plain, "") do
+		if getGen() ~= myGen then return end  -- 새 대화가 시작되면 즉시 중단
 		cur = cur .. ch
 		label.Text = cur
 		if ch ~= " " then
@@ -160,7 +162,9 @@ local function typewriter(label, text)
 		end
 		task.wait(0.025)
 	end
-	label.Text = text
+	if getGen() == myGen then
+		label.Text = text
+	end
 end
 
 function DialogModule:addDialog(text, responses)
@@ -178,6 +182,15 @@ function DialogModule:triggerDialog(player, dialogNum)
 	local dialog = self.dialogs[dialogNum or 1]
 	if not dialog then return end
 
+	-- 새 대화 세대 번호 부여 → 이전 typewriter 루프가 중단됨
+	self._typewriterGen = self._typewriterGen + 1
+	local myGen = self._typewriterGen
+
+	-- 이전 대화 상태 강제 종료
+	self.active  = false
+	self.talking = false
+	self:clearResponses()
+
 	self:_showGui()
 	TweenService:Create(workspace.CurrentCamera, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {FieldOfView = 65}):Play()
 
@@ -186,7 +199,8 @@ function DialogModule:triggerDialog(player, dialogNum)
 		local dlg = self.npcGui:FindFirstChild("dialog")
 		if not dlg then self.talking = false return end
 		dlg.Visible = true
-		typewriter(dlg, dialog.text)
+		typewriter(dlg, dialog.text, function() return self._typewriterGen end, myGen)
+		if self._typewriterGen ~= myGen then return end  -- 도중에 새 대화 시작됐으면 중단
 		self.talking = false
 
 		self:clearResponses()
@@ -296,12 +310,16 @@ function DialogModule:hideGui(exitQuip)
 	local dlg = self.npcGui:FindFirstChild("dialog")
 
 	if exitQuip and dlg then
+		self._typewriterGen = self._typewriterGen + 1
+		local myGen = self._typewriterGen
 		dlg.TextTransparency      = 0
 		dlg.UIStroke.Transparency = 0
 		dlg.Text = ""
 		task.spawn(function()
-			typewriter(dlg, exitQuip)
+			typewriter(dlg, exitQuip, function() return self._typewriterGen end, myGen)
+			if self._typewriterGen ~= myGen then return end
 			task.wait(2.5)
+			if self._typewriterGen ~= myGen then return end
 			self:_fadeToIdle()
 		end)
 	else
