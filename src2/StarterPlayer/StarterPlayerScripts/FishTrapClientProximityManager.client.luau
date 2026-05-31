@@ -30,49 +30,47 @@ local proximityToFishTrap = {
 
 -- Update ActionText for a ProximityPrompt
 local function updateProximityText(proximity, fishTrapName)
-	local leaderstats = player:WaitForChild("leaderstats")
+	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
 
-	local fishTrapsFolder = leaderstats:WaitForChild("FishTraps")
-	local currentFishTrap = leaderstats:WaitForChild("CurrentFishTrap")
+	local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
+	local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
 	if not (fishTrapsFolder and currentFishTrap) then return end
 
-	local fishTrapBool = fishTrapsFolder:WaitForChild(fishTrapName)
-	local currentFishTrapValue = currentFishTrap:WaitForChild("Value")
+	local fishTrapBool = fishTrapsFolder:FindFirstChild(fishTrapName)
+	local currentFishTrapValue = currentFishTrap:FindFirstChild("Value")
 	if not (fishTrapBool and currentFishTrapValue) then return end
 
 	-- Special handling for RobuxFishTrap
 	if fishTrapName == "RobuxFishTrap" then
 		local hasRobuxGamepass = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
-
 		if not hasRobuxGamepass then
-			-- No gamepass
-			return
+			-- 게임패스 없음: 가격 텍스트 유지 (ObjectText는 건드리지 않음)
+			proximity.ActionText = "Buy (Robux)"
 		elseif fishTrapBool.Value then
-			-- Has gamepass and owns trap
 			if currentFishTrapValue.Value == fishTrapName then
 				proximity.ActionText = "Equipped"
 			else
 				proximity.ActionText = "Equip"
 			end
 		else
-			-- Has gamepass but not yet received
+			proximity.ActionText = "Claim"
 		end
 		return
 	end
 
 	-- Normal Fish Trap handling
 	if fishTrapBool.Value then
-		-- Owned
+		-- 소유함: 가격 텍스트 숨기고 Equip/Equipped 표시
 		if currentFishTrapValue.Value == fishTrapName then
-			-- Currently equipped
 			proximity.ActionText = "Equipped"
 		else
-			-- Owned but not equipped
 			proximity.ActionText = "Equip"
 		end
+		proximity.ObjectText = ""  -- 소유했으면 가격 텍스트 제거
 	else
-		-- Not owned
+		-- 미소유: ActionText를 "Buy"로 고정해 Studio 기본값이 보이는 타이밍 버그 방지
+		proximity.ActionText = "Buy"
 	end
 end
 
@@ -149,5 +147,8 @@ local function waitForLeaderstats()
 
 end
 
--- Wait for leaderstats and initialize
-waitForLeaderstats()
+-- DataReady가 될 때까지 기다린 뒤 초기화 (데이터 복원 전에 텍스트가 깜빡이는 버그 방지)
+task.spawn(function()
+	player:WaitForChild("DataReady", 60)
+	waitForLeaderstats()
+end)
