@@ -319,15 +319,16 @@ function DialogModule:hideGui(exitQuip)
 			typewriter(dlg, exitQuip, function() return self._typewriterGen end, myGen)
 			if self._typewriterGen ~= myGen then return end
 			task.wait(2.5)
-			if self._typewriterGen ~= myGen then return end
-			self:_fadeToIdle()
+			self:_fadeToIdle(myGen)
 		end)
 	else
-		self:_fadeToIdle()
+		self:_fadeToIdle(self._typewriterGen)
 	end
 end
 
-function DialogModule:_fadeToIdle()
+function DialogModule:_fadeToIdle(gen)
+	-- 세대가 다르면(새 대화 진행 중) prompt 복원 및 UI 초기화 안 함
+	if gen and gen ~= self._typewriterGen then return end
 	if self.prompt then self.prompt.Enabled = true end
 	local gui        = self.npcGui
 	local nameLabel  = gui:FindFirstChild("name")
