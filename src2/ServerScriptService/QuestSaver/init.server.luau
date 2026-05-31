@@ -855,7 +855,11 @@ Players.PlayerAdded:Connect(function(plr)
 		local ls = plr:WaitForChild("leaderstats", 30)
 		local questsFolder = ls and ls:WaitForChild("Quests", 30)
 		local activeQuestsFolder = questsFolder and questsFolder:WaitForChild("ActiveQuests", 30)
-		if activeQuestsFolder and not activeQuestsFolder:FindFirstChild("invite_rod_quest") then
+		if activeQuestsFolder then
+			-- 기존 폴더 제거 (구버전 3명짜리가 남아있을 수 있음)
+			local old = activeQuestsFolder:FindFirstChild("invite_rod_quest")
+			if old then old:Destroy() end
+
 			local inviteQuestData = {
 				id               = "invite_rod_quest",
 				name             = "Invite a Friend",
