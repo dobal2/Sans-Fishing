@@ -164,14 +164,21 @@ local function updateQuestList()
 		return
 	end
 
-	-- 순서: 1=daily_playtime, 2=normal(sequential), 3=invite, 4=daily_give
+	-- 순서: 1=플레이타임, 2=일반퀘(시퀀셜), 3=친구초대, 4=물고기주기
 	local ORDER = {
 		daily_playtime = 1,
+		-- 시퀀셜 퀘스트 실제 questType 값들
+		rarity         = 2,
+		count          = 2,
+		rod            = 2,
+		all_species    = 2,
+		weight         = 2,
+		void           = 2,
 		normal         = 2,
 		sequential     = 2,
+		daily_random   = 2,
 		invite         = 3,
 		daily_give     = 4,
-		daily_random   = 2,
 	}
 
 	local questList = {}
