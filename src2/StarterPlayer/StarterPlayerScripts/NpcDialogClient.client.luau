@@ -275,11 +275,8 @@ local function initFeedbackNPC()
 	dialog.responded:Connect(function(idx)
 		if idx == 1 then
 			dialog:hideGui("Thanks for your feedback!")
-			-- GuiService:OpenBrowserWindow은 LocalScript에서만 동작 (published game)
 			pcall(function()
-				game:GetService("GuiService"):OpenBrowserWindow(
-					"https://www.roblox.com/games/" .. game.PlaceId .. "#"
-				)
+				game:GetService("SocialService"):PromptFeedbackSubmissionAsync(player)
 			end)
 		else
 			dialog:hideGui("Come back anytime!")
