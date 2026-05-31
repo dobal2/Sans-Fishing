@@ -86,7 +86,8 @@ function DialogModule.new(npcName, npcRoot, npcHead, prompt)
 	self.dialogs   = {}
 	self.active    = false
 	self.talking   = false
-	self._typewriterGen = 0  -- 타이핑 세대 카운터 (새 대화 시작 시 이전 타이핑 중단용)
+	self._typewriterGen = 0
+	self._guiTweens = {}  -- 진행 중인 GUI 트윈 목록 (새 대화 시작 시 취소)
 
 	self.npcGui = ensureNpcGui(npcHead, npcName)
 
@@ -283,18 +284,33 @@ function DialogModule:triggerDialog(player, dialogNum)
 	end)
 end
 
+local function cancelTweens(tweens)
+	for _, t in ipairs(tweens) do
+		pcall(function() t:Cancel() end)
+	end
+	table.clear(tweens)
+end
+
 function DialogModule:_showGui()
+	cancelTweens(self._guiTweens)
 	local gui = self.npcGui
 	local nameLabel  = gui:FindFirstChild("name")
 	local arrowLabel = gui:FindFirstChild("arrow")
 	local dlgLabel   = gui:FindFirstChild("dialog")
+	local info = TweenInfo.new(0.3)
 	if nameLabel then
-		TweenService:Create(nameLabel,                 TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-		TweenService:Create(nameLabel.UIStroke,        TweenInfo.new(0.3), {Transparency = 1}):Play()
+		local t1 = TweenService:Create(nameLabel,          info, {TextTransparency = 1})
+		local t2 = TweenService:Create(nameLabel.UIStroke, info, {Transparency = 1})
+		t1:Play(); t2:Play()
+		table.insert(self._guiTweens, t1)
+		table.insert(self._guiTweens, t2)
 	end
 	if arrowLabel then
-		TweenService:Create(arrowLabel,                TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-		TweenService:Create(arrowLabel.UIStroke,       TweenInfo.new(0.3), {Transparency = 1}):Play()
+		local t3 = TweenService:Create(arrowLabel,          info, {TextTransparency = 1})
+		local t4 = TweenService:Create(arrowLabel.UIStroke, info, {Transparency = 1})
+		t3:Play(); t4:Play()
+		table.insert(self._guiTweens, t3)
+		table.insert(self._guiTweens, t4)
 	end
 	if dlgLabel then
 		dlgLabel.TextTransparency      = 0
@@ -327,13 +343,14 @@ function DialogModule:hideGui(exitQuip)
 end
 
 function DialogModule:_fadeToIdle(gen)
-	-- 세대가 다르면(새 대화 진행 중) prompt 복원 및 UI 초기화 안 함
 	if gen and gen ~= self._typewriterGen then return end
+	cancelTweens(self._guiTweens)
 	if self.prompt then self.prompt.Enabled = true end
 	local gui        = self.npcGui
 	local nameLabel  = gui:FindFirstChild("name")
 	local arrowLabel = gui:FindFirstChild("arrow")
 	local dlgLabel   = gui:FindFirstChild("dialog")
+	local info = TweenInfo.new(0.3)
 	if nameLabel then
 		nameLabel.Visible = true
 		nameLabel.TextTransparency      = 0
@@ -345,8 +362,11 @@ function DialogModule:_fadeToIdle(gen)
 		arrowLabel.UIStroke.Transparency = 0
 	end
 	if dlgLabel then
-		TweenService:Create(dlgLabel,          TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-		TweenService:Create(dlgLabel.UIStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+		local t1 = TweenService:Create(dlgLabel,          info, {TextTransparency = 1})
+		local t2 = TweenService:Create(dlgLabel.UIStroke, info, {Transparency = 1})
+		t1:Play(); t2:Play()
+		table.insert(self._guiTweens, t1)
+		table.insert(self._guiTweens, t2)
 	end
 end
 
