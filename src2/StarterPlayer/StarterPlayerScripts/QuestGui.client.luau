@@ -5,11 +5,11 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local questGui = player.PlayerGui:WaitForChild("QuestGui")
-local frame = questGui:WaitForChild("Frame")
-local ScrollingFrame = frame:WaitForChild("ScrollingFrame")
-local button = frame:WaitForChild("Button")
--- Template은 Studio에서 QuestGui 루트 바로 아래로 옮겨야 함
-local questFrame = questGui:FindFirstChild("Template") or questGui:FindFirstChildOfClass("LocalScript") and questGui:FindFirstChildOfClass("LocalScript"):FindFirstChild("Template")
+-- Frame이 제거됐으므로 ScrollingFrame이 직접 슬라이드 대상
+local ScrollingFrame = questGui:WaitForChild("ScrollingFrame")
+local frame = ScrollingFrame  -- 슬라이드 애니메이션 타겟
+local button = questGui:WaitForChild("Button")
+local questFrame = questGui:FindFirstChild("Template")
 
 local questRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Quest")
 local questGuiEvent = questRemotes:WaitForChild("QuestGuiEvent")
@@ -18,14 +18,10 @@ local questCompleteEvent = questRemotes:WaitForChild("QuestCompleteEvent")
 
 local isFrameExpanded = false
 
--- Frame/ScrollingFrame 속성 강제 보정 (스크롤 동작을 위해)
-frame.ClipsDescendants            = true   -- Frame이 자식을 잘라줘야 SF 스크롤 동작
+-- ScrollingFrame 속성 보정
 ScrollingFrame.ClipsDescendants   = true
 ScrollingFrame.CanvasSize         = UDim2.new(0, 0, 0, 0)
 ScrollingFrame.ScrollBarThickness = 8
-ScrollingFrame.AnchorPoint        = Vector2.new(0, 0)
-ScrollingFrame.Position           = UDim2.new(0, 0, 0.224, 0)
-ScrollingFrame.Size               = UDim2.new(1, 0, 1, 0)
 ScrollingFrame.Interactable       = true
 
 local function formatTime(seconds)
