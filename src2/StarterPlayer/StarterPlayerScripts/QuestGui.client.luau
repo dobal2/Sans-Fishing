@@ -18,10 +18,14 @@ local questCompleteEvent = questRemotes:WaitForChild("QuestCompleteEvent")
 
 local isFrameExpanded = false
 
--- ScrollingFrame 속성 강제 보정
-ScrollingFrame.ClipsDescendants = true
-ScrollingFrame.CanvasSize        = UDim2.new(0, 0, 0, 0)  -- AutomaticCanvasSize=Y와 함께 동작
+-- Frame/ScrollingFrame 속성 강제 보정 (스크롤 동작을 위해)
+frame.ClipsDescendants            = true   -- Frame이 자식을 잘라줘야 SF 스크롤 동작
+ScrollingFrame.ClipsDescendants   = true
+ScrollingFrame.CanvasSize         = UDim2.new(0, 0, 0, 0)
 ScrollingFrame.ScrollBarThickness = 8
+ScrollingFrame.AnchorPoint        = Vector2.new(0, 0)
+ScrollingFrame.Position           = UDim2.new(0, 0, 0.224, 0)  -- Title+Button 아래
+ScrollingFrame.Size               = UDim2.new(1, 0, 1, 0)
 
 local function formatTime(seconds)
 	if seconds >= 60 then
