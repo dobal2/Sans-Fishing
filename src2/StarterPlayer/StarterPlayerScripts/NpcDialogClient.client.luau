@@ -274,20 +274,15 @@ local function initFeedbackNPC()
 
 	dialog.responded:Connect(function(idx)
 		if idx == 1 then
-			dialog:hideGui("Thanks! Opening the feedback form...")
-			-- Roblox 인게임 피드백 폼 열기
-			local ok = pcall(function()
-				game:GetService("GuiService"):OpenBrowserWindow(
-					"https://www.roblox.com/games/feedback?placeId=" .. game.PlaceId
-				)
-			end)
-			if not ok then
-				-- 폴백: 개발자 포럼이나 그룹 월 등
-				pcall(function()
-					game:GetService("GuiService"):OpenBrowserWindow(
-						"https://www.roblox.com/groups/9744474"
-					)
-				end)
+			dialog:hideGui("Thanks for your feedback!")
+			-- Roblox 공식 인게임 피드백 폼 (SocialService:PromptPlayerFeedbackAsync)
+			-- 서버에 요청 → 서버에서 호출
+			local feedbackRemote = game:GetService("ReplicatedStorage")
+				:FindFirstChild("Remotes") and
+				game:GetService("ReplicatedStorage").Remotes:FindFirstChild("Misc") and
+				game:GetService("ReplicatedStorage").Remotes.Misc:FindFirstChild("RequestFeedbackPrompt")
+			if feedbackRemote then
+				feedbackRemote:FireServer()
 			end
 		else
 			dialog:hideGui("Come back anytime!")

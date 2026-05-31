@@ -120,6 +120,7 @@ ensureRemote(Misc, "SaveFishHotBarPins")
 ensureRemote(Misc, "GetFishHotBarPins", "RemoteFunction")
 ensureRemote(Misc, "CollectFishTrapRemote")
 ensureRemote(Misc, "PlaceFishTrapRemote")
+ensureRemote(Misc, "RequestFeedbackPrompt")
 
 local _serverStartClock = os.clock()
 local _getServerAge = Misc:FindFirstChild("GetServerAge")
