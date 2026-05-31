@@ -17,9 +17,10 @@ task.spawn(function()
 	fireworkSound = sounds:WaitForChild("firework")
 end)
 
--- Load Rain module
+-- Load Rain / Snow modules
 local modules = ReplicatedStorage:WaitForChild("Modules")
 local RainModule = require(modules:WaitForChild("Rain"))
+local SnowModule = require(modules:WaitForChild("Snow"))
 
 -- Wait for events (indefinitely)
 local weatherChangedEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Weather"):WaitForChild("WeatherChangedEvent")
@@ -383,6 +384,9 @@ local function handleWeatherChange(newWeather)
 	end
 
 	if newWeather == "Rain" then
+		pcall(function()
+			SnowModule:Disable(TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
+		end)
 		local success, err = pcall(function()
 			task.wait(0.5)
 			RainModule:Enable()
@@ -395,23 +399,19 @@ local function handleWeatherChange(newWeather)
 		applyClouds(0.9, 1, Color3.fromRGB(130, 130, 140))
 
 	elseif newWeather == "Snow" then
-		local success, err = pcall(function()
-			RainModule:Disable()
+		pcall(function() RainModule:Disable() end)
+		pcall(function()
+			SnowModule:Enable(TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
 		end)
-		if not success then
-			warn("Rain module Disable failed:", err)
-		end
 
 		applyRainLighting()
 		applyClouds(0.8, 0.9, Color3.fromRGB(210, 215, 225))
 
 	elseif newWeather == "Firework" then
-		local success, err = pcall(function()
-			RainModule:Disable()
+		pcall(function() RainModule:Disable() end)
+		pcall(function()
+			SnowModule:Disable(TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
 		end)
-		if not success then
-			warn("Rain module Disable failed:", err)
-		end
 
 		-- Clear night atmosphere so fireworks look vivid against a dark sky
 		cleanupTweens()
@@ -438,12 +438,10 @@ local function handleWeatherChange(newWeather)
 		startFireworkLoop()
 
 	else -- Clear
-		local success, err = pcall(function()
-			RainModule:Disable()
+		pcall(function() RainModule:Disable() end)
+		pcall(function()
+			SnowModule:Disable(TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
 		end)
-		if not success then
-			warn("Rain module Disable failed:", err)
-		end
 
 		applyClearLighting()
 		applyClouds(0.5, 0.7, Color3.fromRGB(255, 255, 255))
