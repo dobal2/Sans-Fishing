@@ -841,107 +841,37 @@ Players.PlayerAdded:Connect(function(plr)
 
 	-- ── Invite quest ─────────────────────────────────────────────────────────────
 	task.spawn(function()
-		local INVITE_REQUIRED = 3
-		local inviteRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Invite")
-		local inviteSentRemote    = inviteRemotes:WaitForChild("InviteSent")
-		local inviteProgressRemote = inviteRemotes:WaitForChild("InviteQuestProgress")
+		local INVITE_REQUIRED = 1
+		local inviteProgressRemote = ReplicatedStorage:WaitForChild("Remotes")
+			:WaitForChild("Invite"):WaitForChild("InviteQuestProgress")
 
-		-- 저장된 InviteCount 및 완료 여부 복원
 		local data = datamanager:GetData(plr)
 		if not data then return end
-		if data.InviteRodGranted then return end  -- 이미 받은 플레이어는 처리 안 함
+		if data.InviteRodGranted then return end
 
 		local inviteCount = data.InviteCount or 0
 
-		-- ActiveQuests 폴더에 invite 퀘스트 등록 (QuestGui에 표시되도록)
-		-- WaitForChild로 기다려서 타이밍 문제 방지
+		-- ActiveQuests 폴더에 invite 퀘스트 등록
 		local ls = plr:WaitForChild("leaderstats", 30)
 		local questsFolder = ls and ls:WaitForChild("Quests", 30)
 		local activeQuestsFolder = questsFolder and questsFolder:WaitForChild("ActiveQuests", 30)
 		if activeQuestsFolder and not activeQuestsFolder:FindFirstChild("invite_rod_quest") then
 			local inviteQuestData = {
-				id              = "invite_rod_quest",
-				name            = "Send 3 Invites",
-				description     = "Send game invites to 3 friends",
-				questType       = "invite",
-				rewardBubble    = "Invite Rod",
-				currentProgress = inviteCount,
+				id               = "invite_rod_quest",
+				name             = "Invite a Friend",
+				description      = "Get 1 friend to join via your invite",
+				questType        = "invite",
+				rewardBubble     = "Invite Rod",
+				currentProgress  = inviteCount,
 				requiredProgress = INVITE_REQUIRED,
-				rewardCoins     = 0,
-				isReceived      = true,
+				rewardCoins      = 0,
+				isReceived       = true,
 			}
 			local inviteFolder = createQuest(inviteQuestData, "invite_rod_quest")
-			if inviteFolder then
-				inviteFolder.Parent = activeQuestsFolder
-			end
+			if inviteFolder then inviteFolder.Parent = activeQuestsFolder end
 		end
 
-		-- 현재 진행도 전송
 		inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
-
-		-- InviteSent: 클라이언트가 실제로 초대장을 보냈을 때
-		inviteSentRemote.OnServerEvent:Connect(function(sender, recipientCount)
-			if sender ~= plr then return end
-			if type(recipientCount) ~= "number" or recipientCount <= 0 then return end
-
-			local d = datamanager:GetData(plr)
-			if not d or d.InviteRodGranted then return end
-
-			d.InviteCount = (d.InviteCount or 0) + 1
-			inviteCount = d.InviteCount
-			datamanager:UpdateData(plr, "InviteCount", inviteCount)
-
-			-- QuestGui 폴더 진행도 업데이트
-			local ls2 = plr:FindFirstChild("leaderstats")
-			local aqf = ls2 and ls2:FindFirstChild("Quests") and ls2.Quests:FindFirstChild("ActiveQuests")
-			local invFolder = aqf and aqf:FindFirstChild("invite_rod_quest")
-			local cp = invFolder and invFolder:FindFirstChild("CurrentProgress")
-			if cp then cp.Value = inviteCount end
-
-			-- 진행도 업데이트 전송
-			inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
-
-			if inviteCount >= INVITE_REQUIRED then
-				-- InviteRod 지급
-				local ls = plr:FindFirstChild("leaderstats")
-				local rodsFolder = ls and ls:FindFirstChild("Rods")
-				local rodBool = rodsFolder and rodsFolder:FindFirstChild("InviteRod")
-				if rodBool and not rodBool.Value then
-					rodBool.Value = true
-					datamanager:UpdateData(plr, "InviteRodGranted", true)
-
-					-- 기존 로드 제거 후 InviteRod 장착
-					local ServerStorage = game:GetService("ServerStorage")
-					local rodTool = ServerStorage:FindFirstChild("InviteRod")
-					if rodTool then
-						for _, container in ipairs({ plr:FindFirstChild("Backpack"), plr.Character }) do
-							if container then
-								for _, tool in ipairs(container:GetChildren()) do
-									if tool:IsA("Tool") then tool:Destroy() end
-								end
-							end
-						end
-						local currentRodVal = ls and ls:FindFirstChild("CurrentRod")
-						if currentRodVal then currentRodVal.Value = "InviteRod" end
-						leaderstatsDataManager:UpdateData(plr, "CurrentRod", "InviteRod")
-
-						local backpack = plr:FindFirstChild("Backpack")
-						if backpack then rodTool:Clone().Parent = backpack end
-					end
-
-					-- QuestGui에서 invite 퀘스트 폴더 제거
-					local ls3 = plr:FindFirstChild("leaderstats")
-					local aqf2 = ls3 and ls3:FindFirstChild("Quests") and ls3.Quests:FindFirstChild("ActiveQuests")
-					local invF = aqf2 and aqf2:FindFirstChild("invite_rod_quest")
-					if invF then invF:Destroy() end
-
-					local noticeEvent = getNoticeEvent()
-					if noticeEvent then
-						noticeEvent:FireClient(plr, "Invite quest complete! You received the Invite Rod!")
-					end
-				end
-			end
-		end)
 	end)
 
 	-- Register handler for external FishCaughtBindable calls
@@ -1035,4 +965,81 @@ end)
 
 Players.PlayerRemoving:Connect(function(plr)
 	datamanager:SafeSavePlayer(plr)
+end)
+
+-- ── Invite quest: ReferredByPlayerId 감지 ──────────────────────────────────────
+-- 초대받아서 입장한 플레이어가 생기면 초대한 플레이어의 카운트 +1
+
+local function grantInviteProgress(inviterId)
+	local inviteProgressRemote = ReplicatedStorage:WaitForChild("Remotes")
+		:WaitForChild("Invite"):WaitForChild("InviteQuestProgress")
+	local INVITE_REQUIRED = 1
+
+	-- 초대한 플레이어가 현재 서버에 있는지 확인
+	local inviter = Players:GetPlayerByUserId(inviterId)
+	if not inviter then return end
+
+	local d = datamanager:GetData(inviter)
+	if not d or d.InviteRodGranted then return end
+
+	d.InviteCount = (d.InviteCount or 0) + 1
+	local inviteCount = d.InviteCount
+	datamanager:UpdateData(inviter, "InviteCount", inviteCount)
+
+	-- QuestGui 폴더 진행도 업데이트
+	local ls = inviter:FindFirstChild("leaderstats")
+	local aqf = ls and ls:FindFirstChild("Quests") and ls.Quests:FindFirstChild("ActiveQuests")
+	local invFolder = aqf and aqf:FindFirstChild("invite_rod_quest")
+	local cp = invFolder and invFolder:FindFirstChild("CurrentProgress")
+	if cp then cp.Value = inviteCount end
+
+	inviteProgressRemote:FireClient(inviter, inviteCount, INVITE_REQUIRED)
+
+	if inviteCount >= INVITE_REQUIRED then
+		local rodsFolder = ls and ls:FindFirstChild("Rods")
+		local rodBool = rodsFolder and rodsFolder:FindFirstChild("InviteRod")
+		if rodBool and not rodBool.Value then
+			rodBool.Value = true
+			datamanager:UpdateData(inviter, "InviteRodGranted", true)
+
+			local rodTool = ServerStorage:FindFirstChild("InviteRod")
+			if rodTool then
+				for _, container in ipairs({ inviter:FindFirstChild("Backpack"), inviter.Character }) do
+					if container then
+						for _, tool in ipairs(container:GetChildren()) do
+							if tool:IsA("Tool") then tool:Destroy() end
+						end
+					end
+				end
+				local currentRodVal = ls and ls:FindFirstChild("CurrentRod")
+				if currentRodVal then currentRodVal.Value = "InviteRod" end
+				leaderstatsDataManager:UpdateData(inviter, "CurrentRod", "InviteRod")
+				local backpack = inviter:FindFirstChild("Backpack")
+				if backpack then rodTool:Clone().Parent = backpack end
+			end
+
+			-- QuestGui 폴더 제거
+			if invFolder then invFolder:Destroy() end
+
+			local noticeEvent = getNoticeEvent()
+			if noticeEvent then
+				noticeEvent:FireClient(inviter, "Invite quest complete! You received the Invite Rod!")
+			end
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(function(newPlayer)
+	-- 초대받아서 입장한 경우 초대한 플레이어의 퀘스트 진행
+	task.spawn(function()
+		local joinData = newPlayer:GetJoinData()
+		if joinData and joinData.ReferredByPlayerId and joinData.ReferredByPlayerId ~= 0 then
+			local inviterId = joinData.ReferredByPlayerId
+			if inviterId ~= newPlayer.UserId then
+				-- 초대한 플레이어 데이터가 로드될 때까지 잠깐 대기
+				task.wait(3)
+				grantInviteProgress(inviterId)
+			end
+		end
+	end)
 end)
