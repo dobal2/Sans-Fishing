@@ -610,18 +610,26 @@ function FishingClient:_playHoldingAnimation(holdingFish)
 	end
 
 	local BIG_FISH_THRESHOLD = 30.0
+	local BIG_FISH_EXCLUDE = { ["Crab"] = true }
 	local isBig = false
 	if holdingFish then
-		local backpack = self.player:FindFirstChild("Backpack")
-		if backpack then
-			for _, item in ipairs(backpack:GetChildren()) do
+		-- Backpack(인벤) + Character(장착 중) 양쪽 모두 확인
+		local function checkContainer(container)
+			if not container then return end
+			for _, item in ipairs(container:GetChildren()) do
 				local fw = item:FindFirstChild("FishWeight")
 				if fw and fw.Value >= BIG_FISH_THRESHOLD then
-					isBig = true
-					break
+					-- Crab 제외: 물고기 이름에 Crab이 포함되면 스킵
+					local baseName = item.Name:gsub("%s*%[.-%]%s*%-.*", ""):match("^%s*(.-)%s*$")
+					if not BIG_FISH_EXCLUDE[baseName] then
+						isBig = true
+						return
+					end
 				end
 			end
 		end
+		checkContainer(self.player:FindFirstChild("Backpack"))
+		if not isBig then checkContainer(self.player.Character) end
 	end
 
 	if isBig and not self.preloadedHoldBigFishAnimation then
@@ -1209,15 +1217,18 @@ function FishingClient:_bind()
 	end)
 
 	self.tool.Equipped:Connect(function()
-		-- Wait until holding animation is preloaded before playing
 		task.spawn(function()
+			-- preloadedHoldingAnimation이 준비될 때까지 대기 (최대 5초)
 			local deadline = tick() + 5
 			while not self.preloadedHoldingAnimation and tick() < deadline do
 				task.wait(0.05)
 			end
-			if (not self.fishBaitEatAnimationTrack or not self.fishBaitEatAnimationTrack.IsPlaying) and
-				(not self.finishAnimationTrack or not self.finishAnimationTrack.IsPlaying) and
-				self.tool.Parent == self.player.Character then
+			-- 아직 장착 중이고, 낚시/피니시 애니가 재생 중이 아닐 때만 재생
+			if self.tool.Parent ~= self.player.Character then return end
+			local isFishBaitPlaying = self.fishBaitEatAnimationTrack and self.fishBaitEatAnimationTrack.IsPlaying
+			local isFinishPlaying   = self.finishAnimationTrack and self.finishAnimationTrack.IsPlaying
+			local isFishingPlaying  = self.fishingAnimationTrack and self.fishingAnimationTrack.IsPlaying
+			if not isFishBaitPlaying and not isFinishPlaying and not isFishingPlaying then
 				self:_playHoldingAnimation(false)
 			end
 		end)

@@ -489,7 +489,7 @@ end
 function FishingServer:_setupRope()
 	-- Tip attachment on the rod handle.
 	-- Preference order: pre-existing "RodTip", then rod-specific known attachments, then fallback.
-	local handle = self.tool.Handle
+	local handle = self.tool:FindFirstChild("Handle")
 	-- Search entire tool recursively so tip attachments in non-Handle parts (e.g. VoidRod) are found
 	local tipAtt = self.tool:FindFirstChild("RodTip", true)
 	if not tipAtt then
@@ -582,8 +582,9 @@ function FishingServer:_moveBaitTo(targetPos)
 	-- Use HumanoidRootPart as origin so repeated casts are consistent
 	-- regardless of animation-driven hand/handle position drift
 	local hrp = self.character and self.character:FindFirstChild("HumanoidRootPart")
+	local toolHandle = self.tool:FindFirstChild("Handle")
 	local origin = hrp and (hrp.Position + Vector3.new(0, 2, 0))
-		or (self.tool.Handle.Position + Vector3.new(0, 3, 0))
+		or (toolHandle and (toolHandle.Position + Vector3.new(0, 3, 0)) or Vector3.new(0, 2, 0))
 
 	-- Project direction onto XZ plane, then apply fixed upward pitch
 	local flat = targetPos - origin

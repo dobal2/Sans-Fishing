@@ -54,13 +54,19 @@ local function playBigFishAnim(character)
 	currentTrack = track
 end
 
+local BIG_FISH_EXCLUDE = { ["Crab"] = true }
+
+local function isBigFishTool(tool)
+	local fw = tool:FindFirstChild("FishWeight")
+	if not fw or fw.Value < BIG_FISH_THRESHOLD then return false end
+	local baseName = tool.Name:gsub("%s*%[.-%]%s*%-.*", ""):match("^%s*(.-)%s*$")
+	return not BIG_FISH_EXCLUDE[baseName]
+end
+
 local function hasBigFishEquipped(character)
 	for _, child in ipairs(character:GetChildren()) do
-		if child:IsA("Tool") then
-			local fw = child:FindFirstChild("FishWeight")
-			if fw and fw.Value >= BIG_FISH_THRESHOLD then
-				return true
-			end
+		if child:IsA("Tool") and isBigFishTool(child) then
+			return true
 		end
 	end
 	return false
@@ -81,11 +87,8 @@ local function watchCharacter(character)
 		toolConnections[child] = conn
 
 		task.defer(function()
-			if child.Parent then
-				local fw = child:FindFirstChild("FishWeight")
-				if fw and fw.Value >= BIG_FISH_THRESHOLD then
-					playBigFishAnim(character)
-				end
+			if child.Parent and isBigFishTool(child) then
+				playBigFishAnim(character)
 			end
 		end)
 	end)

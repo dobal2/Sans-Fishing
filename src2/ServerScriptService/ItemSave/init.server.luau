@@ -131,22 +131,46 @@ end
 
 local VARIANT_PREFIXES_ORDERED = { "Gold", "Sans", "Frozen", "Festival" }
 
+-- 실제 물고기 이름 집합 (prefix 제거 후 검증용)
+local _validFishNames = nil
+local function getValidFishNames()
+	if _validFishNames then return _validFishNames end
+	_validFishNames = {}
+	for _, rarity in ipairs(FishData.Rarities) do
+		for _, fish in ipairs(rarity.fishes) do
+			_validFishNames[fish.fishName:lower()] = true
+		end
+	end
+	return _validFishNames
+end
+
 -- Strips all variant prefixes and weight/rarity suffixes, returns just the base fish name.
 local function StripSuffixes(name)
 	-- Remove weight/rarity suffix first: "Bass [Rare] - 5.2kg" -> "Bass"
 	local stripped = name:match("^(.-) %-%s*[%d%.]+kg$") or name
 	stripped = stripped:match("^(.-)%s*%[.-%]$") or stripped
 
-	-- Repeatedly strip any known variant prefix from the front
+	-- 접두사 제거 전에 현재 이름 자체가 실제 물고기인지 먼저 확인
+	-- (예: "Gold Fish"는 물고기 이름이므로 "Gold" 접두사 제거 안 함)
+	local validNames = getValidFishNames()
+	if validNames[stripped:lower()] then
+		return stripped
+	end
+
+	-- 실제 물고기 이름이 아닐 때만 variant prefix 제거 시도
 	local changed = true
 	while changed do
 		changed = false
 		for _, prefix in ipairs(VARIANT_PREFIXES_ORDERED) do
 			local pattern = "^" .. prefix .. " "
 			if stripped:find(pattern) then
-				stripped = stripped:gsub(pattern, "", 1)
-				changed = true
-				break
+				local candidate = stripped:gsub(pattern, "", 1)
+				-- 제거 결과가 실제 물고기 이름인 경우에만 제거
+				if validNames[candidate:lower()] then
+					stripped = candidate
+					changed = true
+					break
+				end
 			end
 		end
 	end
