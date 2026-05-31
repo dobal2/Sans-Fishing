@@ -1011,7 +1011,7 @@ local function grantInviteProgress(inviterId)
 				for _, container in ipairs({ inviter:FindFirstChild("Backpack"), inviter.Character }) do
 					if container then
 						for _, tool in ipairs(container:GetChildren()) do
-							if tool:IsA("Tool") then tool:Destroy() end
+							if tool:IsA("Tool") and tool:FindFirstChild("CastRod") then tool:Destroy() end
 						end
 					end
 				end
