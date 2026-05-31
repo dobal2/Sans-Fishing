@@ -24,8 +24,9 @@ ScrollingFrame.ClipsDescendants   = true
 ScrollingFrame.CanvasSize         = UDim2.new(0, 0, 0, 0)
 ScrollingFrame.ScrollBarThickness = 8
 ScrollingFrame.AnchorPoint        = Vector2.new(0, 0)
-ScrollingFrame.Position           = UDim2.new(0, 0, 0.224, 0)  -- Title+Button 아래
+ScrollingFrame.Position           = UDim2.new(0, 0, 0.224, 0)
 ScrollingFrame.Size               = UDim2.new(1, 0, 1, 0)
+ScrollingFrame.Interactable       = true
 
 local function formatTime(seconds)
 	if seconds >= 60 then
