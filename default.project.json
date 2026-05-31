@@ -154,9 +154,6 @@
       },
       "FishTrapCore": {
         "$path": "src2/ServerScriptService/FishTrapCore.luau"
-      },
-      "FeedbackHandler": {
-        "$path": "src2/ServerScriptService/FeedbackHandler.server.luau"
       }
     },
 
