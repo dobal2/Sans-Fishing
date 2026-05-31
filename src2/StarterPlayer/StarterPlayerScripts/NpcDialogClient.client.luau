@@ -255,10 +255,9 @@ local feedbackDialog = nil
 local function initFeedbackNPC()
 	local npc = workspace:WaitForChild("FeedbackNPC", 20)
 	if not npc then return end
-	local root  = npc:WaitForChild("HumanoidRootPart", 5)
-	local head  = npc:WaitForChild("Head", 5)
-	-- ProximityPrompt은 HumanoidRootPart 안에 있음
-	local prompt = root and root:WaitForChild("ProximityPrompt", 5)
+	local root   = npc:WaitForChild("HumanoidRootPart", 5)
+	local head   = npc:WaitForChild("Head", 5)
+	local prompt = npc:WaitForChild("ProximityPrompt", 5)  -- 모델 바로 아래
 	if not root or not head or not prompt then return end
 
 	local dialog = DialogModule.new("Feedback", root, head, prompt)

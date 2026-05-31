@@ -25,13 +25,16 @@ robuxHighlight.Parent = robuxShop
 local voidQuestHighlight = voidQuestGiver and (voidQuestGiver:FindFirstChild("Highlight") or Instance.new("Highlight"))
 if voidQuestHighlight and voidQuestGiver then voidQuestHighlight.Parent = voidQuestGiver end
 
--- Add Feedback NPC Highlight
+-- Add Feedback NPC Highlight (다른 NPC와 동일: 흰색, Occluded, 초기 투명)
 local feedbackHighlight = feedbackNPC and (feedbackNPC:FindFirstChild("Highlight") or Instance.new("Highlight"))
 if feedbackHighlight and feedbackNPC then
-	feedbackHighlight.OutlineColor = Color3.fromRGB(100, 200, 255)
-	feedbackHighlight.FillColor    = Color3.fromRGB(100, 200, 255)
-	feedbackHighlight.FillTransparency = 0.85
-	feedbackHighlight.Parent = feedbackNPC
+	feedbackHighlight.DepthMode           = Enum.HighlightDepthMode.Occluded
+	feedbackHighlight.OutlineColor        = Color3.fromRGB(255, 255, 255)
+	feedbackHighlight.FillColor           = Color3.fromRGB(255, 255, 255)
+	feedbackHighlight.FillTransparency    = 1
+	feedbackHighlight.OutlineTransparency = 1
+	feedbackHighlight.Enabled            = true
+	feedbackHighlight.Parent             = feedbackNPC
 end
 
 local RANGE = 10
@@ -206,8 +209,7 @@ while true do
 	-- Feedback NPC
 	if feedbackNPC then
 		local feedbackNearby = isPlayerNearby(feedbackNPC, RANGE)
-		local hrp = feedbackNPC:FindFirstChild("HumanoidRootPart")
-		local prompt = hrp and hrp:FindFirstChildOfClass("ProximityPrompt")
+		local prompt = feedbackNPC:FindFirstChildOfClass("ProximityPrompt")  -- 모델 바로 아래
 		local canInteractFeedback = prompt and prompt.Enabled
 		local shouldShowFeedbackHighlight = feedbackNearby and canInteractFeedback
 
