@@ -5,6 +5,11 @@ local ServerStorage = game:GetService("ServerStorage")
 local datamanager = require(script.DataManager)
 local leaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 
+local soldNotification = nil
+task.spawn(function()
+	soldNotification = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
+end)
+
 -- Per-player daily random quest handler registry (populated in PlayerAdded, cleared on leave)
 local dailyRandomQuestHandlers = {}
 local dailyGiveQuestHandlers = {}
@@ -214,6 +219,9 @@ checkSequentialQuestComplete = function(plr, questFolder, questData)
 	if coins then
 		coins.Value = coins.Value + questData.rewardCoins
 		leaderstatsDataManager:UpdateData(plr, "Coins", coins.Value)
+		if soldNotification and questData.rewardCoins > 0 then
+			soldNotification:FireClient(plr, questData.rewardCoins, false)
+		end
 	end
 
 	-- Advance index in data
@@ -696,6 +704,9 @@ Players.PlayerAdded:Connect(function(plr)
 		if coins then
 			coins.Value = coins.Value + rewardCoins
 			leaderstatsDataManager:UpdateData(plr, "Coins", coins.Value)
+			if soldNotification and rewardCoins > 0 then
+				soldNotification:FireClient(plr, rewardCoins, false)
+			end
 		end
 
 		local saveData = datamanager:GetData(plr)
