@@ -87,10 +87,14 @@ local function createQuestFrame(questData)
 	if rewardText then
 		if questData.rewardBubble and questData.rewardBubble ~= "" then
 			rewardText.Text = "Reward: " .. questData.rewardBubble
+		elseif questData.questType == "invite" then
+			rewardText.Text = "Reward: Invite Rod"
 		elseif questData.rewardFP and questData.rewardFP > 0 then
 			rewardText.Text = "Reward: " .. formatNumber(questData.rewardFP) .. " FishingPoints"
-		else
+		elseif questData.rewardCoins and questData.rewardCoins > 0 then
 			rewardText.Text = "Reward: " .. formatNumber(questData.rewardCoins) .. " Coins"
+		else
+			rewardText.Text = "Reward: ?"
 		end
 	end
 
