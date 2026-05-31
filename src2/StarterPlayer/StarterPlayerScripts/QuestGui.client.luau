@@ -159,8 +159,17 @@ local function updateQuestList()
 		return
 	end
 
-	local questCount = 0
+	-- 순서: 1=daily_playtime, 2=normal(sequential), 3=invite, 4=daily_give
+	local ORDER = {
+		daily_playtime = 1,
+		normal         = 2,
+		sequential     = 2,
+		invite         = 3,
+		daily_give     = 4,
+		daily_random   = 2,
+	}
 
+	local questList = {}
 	for _, quest in pairs(activeQuests:GetChildren()) do
 		if quest:IsA("Folder") then
 			local questData = {
@@ -175,13 +184,25 @@ local function updateQuestList()
 				rewardBubble = quest:FindFirstChild("RewardBubble") and quest.RewardBubble.Value or "",
 				questType = quest:FindFirstChild("QuestType") and quest.QuestType.Value or "normal"
 			}
-
 			if questData.isReceived then
-				local newQuestFrame = createQuestFrame(questData)
-				newQuestFrame.Parent = ScrollingFrame
-				questCount = questCount + 1
+				table.insert(questList, questData)
 			end
 		end
+	end
+
+	-- 순서 정렬
+	table.sort(questList, function(a, b)
+		local oa = ORDER[a.questType] or 99
+		local ob = ORDER[b.questType] or 99
+		return oa < ob
+	end)
+
+	local questCount = 0
+	for i, questData in ipairs(questList) do
+		local newQuestFrame = createQuestFrame(questData)
+		newQuestFrame.LayoutOrder = i
+		newQuestFrame.Parent = ScrollingFrame
+		questCount = questCount + 1
 	end
 
 	if questCount == 0 then
