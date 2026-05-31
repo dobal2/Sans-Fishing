@@ -853,6 +853,30 @@ Players.PlayerAdded:Connect(function(plr)
 
 		local inviteCount = data.InviteCount or 0
 
+		-- ActiveQuests 폴더에 invite 퀘스트 등록 (QuestGui에 표시되도록)
+		local ls = plr:FindFirstChild("leaderstats")
+		local questsFolder = ls and ls:FindFirstChild("Quests")
+		local activeQuestsFolder = questsFolder and questsFolder:FindFirstChild("ActiveQuests")
+		if activeQuestsFolder and not activeQuestsFolder:FindFirstChild("invite_rod_quest") then
+			local inviteFolder = Instance.new("Folder")
+			inviteFolder.Name = "invite_rod_quest"
+
+			local function sv(n, v) local o = Instance.new("StringValue"); o.Name = n; o.Value = v; o.Parent = inviteFolder end
+			local function iv(n, v) local o = Instance.new("IntValue");    o.Name = n; o.Value = v; o.Parent = inviteFolder end
+			local function bv(n, v) local o = Instance.new("BoolValue");   o.Name = n; o.Value = v; o.Parent = inviteFolder end
+
+			sv("QuestName",        "Send 3 Invites")
+			sv("QuestDescription", "Send game invites to 3 friends")
+			sv("QuestType",        "invite")
+			sv("RewardBubble",     "Invite Rod")  -- RewardText에 "Reward: Invite Rod" 로 표시됨
+			iv("CurrentProgress",  inviteCount)
+			iv("RequiredProgress", INVITE_REQUIRED)
+			iv("RewardCoins",      0)
+			bv("IsReceived",       true)
+
+			inviteFolder.Parent = activeQuestsFolder
+		end
+
 		-- 현재 진행도 전송
 		inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
 
@@ -867,6 +891,13 @@ Players.PlayerAdded:Connect(function(plr)
 			d.InviteCount = (d.InviteCount or 0) + 1
 			inviteCount = d.InviteCount
 			datamanager:UpdateData(plr, "InviteCount", inviteCount)
+
+			-- QuestGui 폴더 진행도 업데이트
+			local ls2 = plr:FindFirstChild("leaderstats")
+			local aqf = ls2 and ls2:FindFirstChild("Quests") and ls2.Quests:FindFirstChild("ActiveQuests")
+			local invFolder = aqf and aqf:FindFirstChild("invite_rod_quest")
+			local cp = invFolder and invFolder:FindFirstChild("CurrentProgress")
+			if cp then cp.Value = inviteCount end
 
 			-- 진행도 업데이트 전송
 			inviteProgressRemote:FireClient(plr, inviteCount, INVITE_REQUIRED)
@@ -898,6 +929,12 @@ Players.PlayerAdded:Connect(function(plr)
 						local backpack = plr:FindFirstChild("Backpack")
 						if backpack then rodTool:Clone().Parent = backpack end
 					end
+
+					-- QuestGui에서 invite 퀘스트 폴더 제거
+					local ls3 = plr:FindFirstChild("leaderstats")
+					local aqf2 = ls3 and ls3:FindFirstChild("Quests") and ls3.Quests:FindFirstChild("ActiveQuests")
+					local invF = aqf2 and aqf2:FindFirstChild("invite_rod_quest")
+					if invF then invF:Destroy() end
 
 					local noticeEvent = getNoticeEvent()
 					if noticeEvent then
