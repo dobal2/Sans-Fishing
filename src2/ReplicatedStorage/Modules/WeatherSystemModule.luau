@@ -70,20 +70,10 @@ local function setDayCyclePause(paused)
 end
 
 local function updateSnowPartState(weatherName)
-	if not snowPart then return end
+	-- 클라이언트 Snow 모듈이 시각 효과를 담당하므로 SnowPart 배치 비활성화
+	-- 워크스페이스에 남아있는 SnowPart가 있으면 제거
 	local existing = workspace:FindFirstChild("SnowPart")
-	if weatherName == "Snow" then
-		if not existing then
-			local clone = snowPart:Clone()
-			clone.Name = "SnowPart"
-			clone.Anchored = true
-			clone.CanCollide = false
-			clone.Position = Vector3.new(0, 50, 0)
-			clone.Parent = workspace
-		end
-	else
-		if existing then existing:Destroy() end
-	end
+	if existing then existing:Destroy() end
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
