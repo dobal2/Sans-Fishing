@@ -634,14 +634,15 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	end
 
 	if luckBonus > 0 then
+		-- 배수를 0.55배로 축소해 고가 로드 간 수렴을 방지
 		local rarityScale = {
-			Uncommon = 1.0,
-			Rare     = 1.2,
-			Epic     = 1.5,
-			Legendary= 2.0,
-			Mystic   = 2.5,
-			Fantasy  = 3.5,
-			Unknown  = 5.0,
+			Uncommon  = 0.55,
+			Rare      = 0.66,
+			Epic      = 0.825,
+			Legendary = 1.10,
+			Mystic    = 1.375,
+			Fantasy   = 1.925,
+			Unknown   = 2.75,
 		}
 		for r, scale in pairs(rarityScale) do
 			finalChances[r] = finalChances[r] * (1 + luckBonus * scale)
@@ -663,8 +664,8 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		end
 	end
 
-	-- Guarantee Common is at least 10% regardless of luck
-	local COMMON_MIN = 10
+	-- Guarantee Common is at least 5% regardless of luck
+	local COMMON_MIN = 5
 	if (finalChances["Common"] or 0) < COMMON_MIN then
 		finalChances["Common"] = COMMON_MIN
 		local othersTotal = 0

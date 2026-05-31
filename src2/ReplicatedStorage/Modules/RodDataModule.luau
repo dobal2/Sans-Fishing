@@ -37,7 +37,9 @@ local function getSmartPosition(object)
 	return Vector3.new(0, 0, 0)
 end
 
--- luck: % bonus applied to rare+ fish chances
+-- luck 표시값 규칙: FishDataModule.luau의 ROD_LUCK_BONUS 테이블 값 × 100 = luck 문자열 숫자
+-- 예) ROD_LUCK_BONUS.VoidRod = 10.00 → luck = "+1000%"
+-- 두 파일의 값을 동시에 수정해야 상점 표시와 실제 확률이 일치한다
 RodData.Rods = {
 	["FishingRod"] = {
 		price = 0,

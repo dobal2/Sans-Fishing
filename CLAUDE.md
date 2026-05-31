@@ -4,6 +4,14 @@
 
 새 스크립트 파일을 만들 때는 **반드시** `default.project.json`에도 등록해야 한다. 등록하지 않으면 Rojo가 Studio에 싱크하지 않아 스크립트가 동작하지 않는다. 파일 생성과 `default.project.json` 수정은 항상 같이 한다.
 
+### 낚싯대 luck 수치 동기화 규칙
+
+**`RodDataModule.luau`의 `luck` 표시값과 `FishDataModule.luau`의 `ROD_LUCK_BONUS` 테이블은 항상 같이 수정해야 한다.**
+
+- 공식: `luck 표시 숫자 = ROD_LUCK_BONUS 값 × 100`
+- 예) `ROD_LUCK_BONUS.VoidRod = 10.00` → `luck = "+1000%"`
+- 한쪽만 고치면 상점 표시와 실제 확률이 달라진다. 두 파일을 반드시 동시에 수정할 것.
+
 ## 스크립트 편집 규칙 (필수)
 
 Rojo sync 범위 안의 스크립트를 수정할 때는 **파일시스템(Edit)과 스튜디오(multi_edit) 반드시 동시에** 수정한다. 한쪽만 고치면 다음번 Rojo 싱크나 재시작 때 버전이 어긋난다. 이 실수가 반복된 이력이 있으므로 절대 한쪽만 수정하지 말 것.
