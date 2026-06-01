@@ -1,209 +1,291 @@
--- Server script for ServerScriptService
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
--- DataStore setup
-local DailyRewardStore = DataStoreService:GetDataStore("DailyRewards")
+local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+
+local DailyRewardStore = DataStoreService:GetDataStore("DailyRewards2")
 
 local miscRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
 local ClaimDailyReward = miscRemotes:WaitForChild("ClaimDailyReward")
 local CheckDailyReward = miscRemotes:WaitForChild("CheckDailyReward")
 
--- Daily reward settings (different reward per day)
+-- FishCaughtBindable을 서버 시작 시 한 번만 resolve (핸들러 안에서 WaitForChild 하지 않음)
+local FishCaughtBindable = ServerScriptService:WaitForChild("FishCaughtBindable", 30)
+
+local DailyResetBindable = Instance.new("BindableEvent")
+DailyResetBindable.Name = "DailyResetBindable"
+DailyResetBindable.Parent = ServerScriptService
+
+local DailySkipBindable = Instance.new("BindableEvent")
+DailySkipBindable.Name = "DailySkipBindable"
+DailySkipBindable.Parent = ServerScriptService
+
 local DAILY_REWARDS = {
-	[1] = {type = "Coins", amount = 2000, name = "2000 Coins"},
-	[2] = {type = "Bubble", toolName = "Strength Bubble", name = "Strength Bubble"},
-	[3] = {type = "Coins", amount = 10000, name = "10000 Coins"},
-	[4] = {type = "Bubble", toolName = "SizeBuff Bubble", name = "SizeBuff Bubble"},
-	[5] = {type = "Coins", amount = 30000, name = "30000 Coins"},
-	[6] = {type = "Bubble", toolName = "Luck Bubble", name = "Luck Bubble"},
-	[7] = {type = "Coins", amount = 200000, name = "200000 Coins"}
+	[1] = { type = "Coins",  amount = 500 },
+	[2] = { type = "Rod",    rodName = "EquinoxRod" },
+	[3] = { type = "Fish",   fishName = "Sans" },
+	[4] = { type = "Coins",  amount = 150000 },
+	[5] = { type = "Fish",   fishName = "Nyan Cat" },
+	[6] = { type = "Coins",  amount = 300000 },
+	[7] = { type = "Rod",    rodName = "SilkRod" },
 }
 
--- Request rate limiting to prevent exploits
-local PlayerRequestTimes = {}
-local REQUEST_COOLDOWN = 1 -- 1 second cooldown
+-- Check/Claim 쿨다운 분리
+local CheckCooldowns = {}
+local ClaimCooldowns = {}
 
--- Get current day (UTC)
+-- 중복 클레임 방지 락
+local claimInProgress = {}
+
 local function getCurrentDay()
-	return math.floor(os.time() / 86400) -- 86400 seconds = 1 day
+	return math.floor(os.time() / 86400)
 end
 
--- Calculate consecutive days
-local function getConsecutiveDays(lastClaimDay, currentDay)
-	if lastClaimDay == nil then
-		return 0
-	elseif currentDay - lastClaimDay == 1 then
-		return 1 -- Consecutive
-	else
-		return 0 -- Streak broken
-	end
-end
-
--- Load player data
-local function loadPlayerData(player)
-	local success, data = pcall(function()
-		return DailyRewardStore:GetAsync(player.UserId)
+local function loadData(player)
+	local ok, data = pcall(function()
+		return DailyRewardStore:GetAsync(tostring(player.UserId))
 	end)
-
-	if success and data then
-		return data
-	else
-		return {
-			lastClaimDay = nil,
-			consecutiveDays = 0
-		}
-	end
+	if ok and data then return data end
+	return { lastClaimDay = nil, streak = 0 }
 end
 
--- Save player data
-local function savePlayerData(player, data)
-	local success = pcall(function()
-		DailyRewardStore:SetAsync(player.UserId, data)
-	end)
-	return success
+-- 저장 실패 시 재시도 1회, 성공 여부 반환
+local function saveData(player, data)
+	for attempt = 1, 2 do
+		local ok = pcall(function()
+			DailyRewardStore:SetAsync(tostring(player.UserId), data)
+		end)
+		if ok then return true end
+		if attempt < 2 then task.wait(1) end
+	end
+	return false
 end
 
--- Request rate limit check
-local function canMakeRequest(player)
-	local userId = player.UserId
-	local currentTime = tick()
-
-	if PlayerRequestTimes[userId] then
-		if currentTime - PlayerRequestTimes[userId] < REQUEST_COOLDOWN then
-			return false
-		end
-	end
-
-	PlayerRequestTimes[userId] = currentTime
+local function canRequest(cooldowns, player)
+	local now = tick()
+	local last = cooldowns[player.UserId]
+	if last and now - last < 1 then return false end
+	cooldowns[player.UserId] = now
 	return true
 end
 
--- Give reward
+local function computeDay(data)
+	local today = getCurrentDay()
+	local streak = data.streak or 0
+	local last = data.lastClaimDay
+
+	if last == nil then
+		return 1
+	elseif today - last == 1 then
+		local next = streak + 1
+		if next > 7 then next = 1 end
+		return next
+	elseif today == last then
+		return streak
+	else
+		return 1
+	end
+end
+
 local function giveReward(player, reward)
 	if reward.type == "Coins" then
-		-- Add coins to leaderstats
-		local leaderstats = player:WaitForChild("leaderstats")
-		if leaderstats then
-			local money = leaderstats:WaitForChild("leaderstats")
-			if money then
-				money.Value = money.Value + reward.amount
-				return true
-			end
-		end
+		local ls = player:FindFirstChild("leaderstats")
+		local coins = ls and ls:FindFirstChild("Coins")
+		if not coins then return false end
+		local newVal = coins.Value + reward.amount
+		coins.Value = newVal
+		LeaderstatsDataManager:UpdateData(player, "Coins", newVal)
+		local soldNotification = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
+		soldNotification:FireClient(player, reward.amount, false)
+		return true
 
-	elseif reward.type == "Bubble" then
-		-- Add tool to backpack
-		local tool = ServerStorage:WaitForChild("Bubbles"):FindFirstChild(reward.toolName)
-		if tool then
-			local clonedTool = tool:Clone()
-			clonedTool.Parent = player.Backpack
-			return true
+	elseif reward.type == "Rod" then
+		local rodTool = ServerStorage:FindFirstChild(reward.rodName)
+		if not rodTool then
+			warn("[DailyReward] Rod not found in ServerStorage:", reward.rodName)
+			return false
 		end
+		local ls = player:FindFirstChild("leaderstats")
+		local rodsFolder = ls and ls:FindFirstChild("Rods")
+		if rodsFolder then
+			local bv = rodsFolder:FindFirstChild(reward.rodName)
+			if not bv then
+				bv = Instance.new("BoolValue")
+				bv.Name = reward.rodName
+				bv.Parent = rodsFolder
+			end
+			bv.Value = true
+		end
+		local data = LeaderstatsDataManager:GetData(player)
+		if data then
+			if not data.Rods then data.Rods = {} end
+			data.Rods[reward.rodName] = true
+			LeaderstatsDataManager:UpdateData(player, "Rods", data.Rods)
+			data.CurrentRod = reward.rodName
+			LeaderstatsDataManager:UpdateData(player, "CurrentRod", reward.rodName)
+		end
+		if ls then
+			local currentRodVal = ls:FindFirstChild("CurrentRod")
+			if currentRodVal then currentRodVal.Value = reward.rodName end
+		end
+		local starterGear = player:FindFirstChild("StarterGear")
+		if starterGear then
+			for _, tool in ipairs(starterGear:GetChildren()) do
+				if tool:IsA("Tool") and tool:FindFirstChild("CastRod") then tool:Destroy() end
+			end
+			rodTool:Clone().Parent = starterGear
+		end
+		local backpack = player:FindFirstChild("Backpack")
+		if backpack then
+			for _, tool in ipairs(backpack:GetChildren()) do
+				if tool:IsA("Tool") and tool:FindFirstChild("CastRod") then tool:Destroy() end
+			end
+			if player.Character then
+				for _, tool in ipairs(player.Character:GetChildren()) do
+					if tool:IsA("Tool") and tool:FindFirstChild("CastRod") then tool:Destroy() end
+				end
+			end
+			rodTool:Clone().Parent = backpack
+		end
+		return true
+
+	elseif reward.type == "Fish" then
+		if not FishCaughtBindable then
+			warn("[DailyReward] FishCaughtBindable not available")
+			return false
+		end
+		local FishData = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
+		local fishInfo = nil
+		for _, rarity in ipairs(FishData.Rarities or {}) do
+			for _, fish in ipairs(rarity.fishes or {}) do
+				if fish.fishName == reward.fishName then
+					local minW = math.max(fish.minWeight or 1, 10)
+					local maxW = math.min(fish.maxWeight or 100, 99)
+					if minW > maxW then minW = maxW end
+					local randWeight = math.floor((minW + math.random() * (maxW - minW)) * 10 + 0.5) / 10
+					fishInfo = {
+						fishName      = fish.fishName,
+						name          = rarity.name,
+						weight        = randWeight,
+						minWeight     = fish.minWeight or 1,
+						maxWeight     = fish.maxWeight or 100,
+						value         = fish.value or 0,
+						isFrozen      = false,
+						isFestival    = false,
+						isSansVariant = false,
+						isGoldVariant = false,
+					}
+					break
+				end
+			end
+			if fishInfo then break end
+		end
+		if not fishInfo then
+			warn("[DailyReward] Fish not found in FishDataModule:", reward.fishName)
+			return false
+		end
+		FishCaughtBindable:Fire(player, fishInfo)
+		return true
 	end
 
 	return false
 end
 
--- Check daily reward
 CheckDailyReward.OnServerEvent:Connect(function(player)
-	if not canMakeRequest(player) then
-		return -- Spam prevention
-	end
-
-	local playerData = loadPlayerData(player)
-	local currentDay = getCurrentDay()
-
-	-- Check if already claimed today
-	local canClaim = playerData.lastClaimDay ~= currentDay
-	local consecutiveDays = playerData.consecutiveDays
-
-	if playerData.lastClaimDay and currentDay - playerData.lastClaimDay == 1 then
-		consecutiveDays = consecutiveDays + 1
-	elseif playerData.lastClaimDay ~= currentDay then
-		consecutiveDays = 1
-	end
-
-	-- Reset to day 1 after 7 days
-	if consecutiveDays > 7 then
-		consecutiveDays = 1
-	end
-
-	local nextReward = DAILY_REWARDS[consecutiveDays]
-
+	if not canRequest(CheckCooldowns, player) then return end
+	local data = loadData(player)
+	local today = getCurrentDay()
+	local canClaim = data.lastClaimDay ~= today
+	local day = computeDay(data)
 	CheckDailyReward:FireClient(player, {
 		canClaim = canClaim,
-		consecutiveDays = consecutiveDays,
-		nextReward = nextReward
+		day = day,
+		streak = data.streak or 0,
 	})
 end)
 
--- Claim daily reward
 ClaimDailyReward.OnServerEvent:Connect(function(player)
-	if not canMakeRequest(player) then
-		return -- Spam prevention
-	end
+	if not canRequest(ClaimCooldowns, player) then return end
 
-	local playerData = loadPlayerData(player)
-	local currentDay = getCurrentDay()
+	-- Race condition 방지 락
+	if claimInProgress[player.UserId] then return end
+	claimInProgress[player.UserId] = true
 
-	-- Prevent duplicate claims
-	if playerData.lastClaimDay == currentDay then
-		ClaimDailyReward:FireClient(player, {
-			success = false,
-			message = "You have already claimed your reward today!"
-		})
-		return
-	end
+	local ok_outer = pcall(function()
+		local data = loadData(player)
+		local today = getCurrentDay()
 
-	-- Calculate consecutive days
-	local consecutiveDays = playerData.consecutiveDays
-	if playerData.lastClaimDay and currentDay - playerData.lastClaimDay == 1 then
-		consecutiveDays = consecutiveDays + 1
-	else
-		consecutiveDays = 1
-	end
-
-	-- Reset to day 1 after 7 days
-	if consecutiveDays > 7 then
-		consecutiveDays = 1
-	end
-
-	local reward = DAILY_REWARDS[consecutiveDays]
-
-	-- Give reward
-	local success = giveReward(player, reward)
-
-	if success then
-		-- Update data
-		playerData.lastClaimDay = currentDay
-		playerData.consecutiveDays = consecutiveDays
-
-		local saveSuccess = savePlayerData(player, playerData)
-
-		if saveSuccess then
-			ClaimDailyReward:FireClient(player, {
-				success = true,
-				reward = reward,
-				consecutiveDays = consecutiveDays
-			})
-		else
-			ClaimDailyReward:FireClient(player, {
-				success = false,
-				message = "An error occurred while saving data."
-			})
+		if data.lastClaimDay == today then
+			ClaimDailyReward:FireClient(player, { success = false, reason = "already_claimed" })
+			return
 		end
-	else
+
+		local day = computeDay(data)
+		local reward = DAILY_REWARDS[day]
+		if not reward then
+			ClaimDailyReward:FireClient(player, { success = false, reason = "no_reward" })
+			return
+		end
+
+		local ok = giveReward(player, reward)
+		if not ok then
+			ClaimDailyReward:FireClient(player, { success = false, reason = "give_failed" })
+			return
+		end
+
+		-- 보상 지급 성공 → 저장 (실패 시 클라이언트에 알림)
+		data.lastClaimDay = today
+		data.streak = day
+		local saved = saveData(player, data)
+		if not saved then
+			-- 저장 실패: 클라이언트에는 성공으로 표시하되 warn (보상은 이미 줬으므로)
+			warn("[DailyReward] DataStore save failed for", player.Name, "day", day)
+		end
+
 		ClaimDailyReward:FireClient(player, {
-			success = false,
-			message = "An error occurred while giving the reward."
+			success = true,
+			day = day,
+			reward = reward,
+			equippedRod  = (reward.type == "Rod")  and reward.rodName  or nil,
+			equippedFish = (reward.type == "Fish") and reward.fishName or nil,
 		})
+	end)
+
+	if not ok_outer then
+		warn("[DailyReward] Claim handler error for", player.Name)
 	end
+
+	claimInProgress[player.UserId] = nil
 end)
 
--- Clean up request records when player leaves
+DailyResetBindable.Event:Connect(function(player)
+	local data = { lastClaimDay = nil, streak = 0 }
+	saveData(player, data)
+	ClaimDailyReward:FireClient(player, { success = false, reason = "reset" })
+	CheckDailyReward:FireClient(player, { canClaim = true, day = 1, streak = 0 })
+end)
+
+DailySkipBindable.Event:Connect(function(player)
+	local data = loadData(player)
+	local today = getCurrentDay()
+	local day = computeDay(data)
+	local nextDay = day < 7 and day + 1 or 1
+	data.lastClaimDay = today - 1
+	data.streak = nextDay - 1  -- computeDay가 streak+1을 반환하므로 nextDay-1로 저장
+	saveData(player, data)
+	CheckDailyReward:FireClient(player, {
+		canClaim = true,
+		day = nextDay,
+		streak = data.streak,
+		openGui = true,
+	})
+end)
+
 Players.PlayerRemoving:Connect(function(player)
-	PlayerRequestTimes[player.UserId] = nil
+	CheckCooldowns[player.UserId] = nil
+	ClaimCooldowns[player.UserId] = nil
+	claimInProgress[player.UserId] = nil
 end)

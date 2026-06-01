@@ -182,6 +182,24 @@ RodData.Rods = {
 		power = "Special",
 		weight = "Special",
 	},
+	["EquinoxRod"] = {
+		price = 0,
+		storageName = "EquinoxRod",
+		displayName = "Equinox Rod",
+		position = Vector3.new(0, 0, 0),
+		luck = "+95%",
+		power = "+50%",
+		weight = "3 ~ 150kg",
+	},
+	["SilkRod"] = {
+		price = 0,
+		storageName = "SilkRod",
+		displayName = "Silk Rod",
+		position = Vector3.new(0, 0, 0),
+		luck = "+520%",
+		power = "+82%",
+		weight = "3 ~ 300kg",
+	},
 }
 
 return RodData

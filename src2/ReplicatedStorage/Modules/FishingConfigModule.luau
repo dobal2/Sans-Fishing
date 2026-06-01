@@ -50,6 +50,12 @@ return {
 		RodPower = 1.5,
 		DifficultyMod = 0.55
 	},
+	EquinoxRod = {
+		Distance = 110,
+		Rarity = "Legendary",
+		RodPower = 1.5,
+		DifficultyMod = 0.55
+	},
 	UnknownRod = {
 		Distance = 115,
 		Rarity = "Unknown",
@@ -87,6 +93,12 @@ return {
 		DifficultyMod = 0.15
 	},
 	FlameRod = {
+		Distance = 130,
+		Rarity = "Unobtainable",
+		RodPower = 1.82,
+		DifficultyMod = 0.12
+	},
+	SilkRod = {
 		Distance = 130,
 		Rarity = "Unobtainable",
 		RodPower = 1.82,

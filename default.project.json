@@ -154,6 +154,9 @@
       },
       "FishTrapCore": {
         "$path": "src2/ServerScriptService/FishTrapCore.luau"
+      },
+      "DailyRewardServer": {
+        "$path": "src2/ServerScriptService/DailyRewardServer.server.luau"
       }
     },
 
@@ -372,6 +375,9 @@
         },
         "RobuxRodGui": {
           "$path": "src2/StarterPlayer/StarterPlayerScripts/RobuxRodGui.client.luau"
+        },
+        "DailyRewards": {
+          "$path": "src2/StarterPlayer/StarterPlayerScripts/DailyRewards.client.luau"
         }
       },
       "StarterCharacterScripts": {

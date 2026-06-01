@@ -533,7 +533,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 
 	-- luck bubble buff: handled via luckBonus after rod/skill bonuses are summed
 
-	-- Rod-based max weight bonus (adds to maxW cap, up to 200kg)
+	-- Rod-based max weight bonus (adds to maxW cap)
 	local ROD_MAX_WEIGHT_BONUS = {
 		FishingRod  = 0,
 		["Silver Rod"]   = 10,
@@ -550,8 +550,14 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		ArcaneRod    = 150,
 		FlameRod     = 175,
 		VoidRod      = 200,
+		SilkRod      = 300,
+	}
+	-- Per-rod weight cap override (default 200)
+	local ROD_WEIGHT_CAP = {
+		SilkRod = 300,
 	}
 	local weightBonus = ROD_MAX_WEIGHT_BONUS[rodName] or 0
+	local weightCap = ROD_WEIGHT_CAP[rodName] or 200
 
 	-- WeightUp skill: extra probability shift toward heavier brackets
 	local weightUpShift = 0
@@ -574,6 +580,8 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		MagneticRod       = 0.70,
 		InviteRod         = 0.80,
 		BoneRod           = 0.95,
+		EquinoxRod        = 0.95,
+		SilkRod           = 5.20,
 		CloverRod         = 1.05,
 		RainbowRod        = 1.50,
 		UnknownRod        = 2.20,
@@ -705,7 +713,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 				if rarity.name == forced then
 					local selectedFish = selectRandomFishFromRarity(rarity)
 					local minW = selectedFish.minWeight or 1
-					local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
+					local maxW = math.min(weightCap, (selectedFish.maxWeight or minW) + weightBonus)
 					local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
 					weight = math.min(maxW, weight * EventState.WeightMultiplier)
 					weight = math.floor(weight * 10 + 0.5) / 10
@@ -738,7 +746,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 			local selectedFish = selectRandomFishFromRarity(entry.rarity)
 
 			local minW = selectedFish.minWeight or 1
-			local maxW = math.min(200, (selectedFish.maxWeight or minW) + weightBonus)
+			local maxW = math.min(weightCap, (selectedFish.maxWeight or minW) + weightBonus)
 			local weight = getFixedProbabilityWeight(minW, maxW, rodName, weightUpShift)
 			weight = math.min(maxW, weight * EventState.WeightMultiplier)
 			weight = math.floor(weight * 10 + 0.5) / 10
@@ -1056,8 +1064,8 @@ if RunService:IsServer() then
 
 		local ROD_LUCK_BONUS_CHECK = {
 			"FishingRod", "Silver Rod", "GoldRod", "CrystalRod", "MagneticRod",
-			"BoneRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
-			"ElectricRod", "RealisticRod", "ArcaneRod", "FlameRod", "VoidRod",
+			"BoneRod", "EquinoxRod", "CloverRod", "RainbowRod", "UnknownRod", "RobuxRod",
+			"ElectricRod", "RealisticRod", "ArcaneRod", "FlameRod", "VoidRod", "SilkRod",
 		}
 		local ROD_WEIGHT_TIER_CHECK = ROD_LUCK_BONUS_CHECK
 		local ROD_MAX_WEIGHT_BONUS_CHECK = ROD_LUCK_BONUS_CHECK

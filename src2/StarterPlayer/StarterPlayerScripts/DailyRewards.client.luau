@@ -1,117 +1,265 @@
--- 기존 GUI 구조와 연동하는 로컬 스크립트 (UI 생성 없음)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local player = Players.LocalPlayer
+local robuxBuySound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("RobuxBuySound")
 
--- 리모트 이벤트 대기
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
 local miscRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc")
 local ClaimDailyReward = miscRemotes:WaitForChild("ClaimDailyReward")
 local CheckDailyReward = miscRemotes:WaitForChild("CheckDailyReward")
 
--- 기존 GUI 요소들 찾기
-local dailyRewardsGui = player.PlayerGui:WaitForChild("DailyRewards")
-local shopFrame = dailyRewardsGui:WaitForChild("ShopFrame")
-local container = shopFrame:WaitForChild("Container")
-local buttonFrame = dailyRewardsGui:WaitForChild("ButtonFrame")
-local claimButton = buttonFrame:WaitForChild("ClaimButton")
+local gui = playerGui:WaitForChild("DailyRewards")
+local dailyRewardFrame = gui:WaitForChild("DailyReward")
+local main = dailyRewardFrame:WaitForChild("Main")
 
--- 변수들
-local currentRewardData = nil
-local isProcessing = false
+local buttonFrame = dailyRewardFrame:FindFirstChild("Button")
+if buttonFrame then buttonFrame.Visible = false end
 
--- Day 프레임들과 UIStroke 찾기
+local currentDay = 1
+local canClaim = false
+local claiming = false
+
+local uiScale = dailyRewardFrame:FindFirstChildOfClass("UIScale")
+if not uiScale then
+	uiScale = Instance.new("UIScale")
+	uiScale.Parent = dailyRewardFrame
+end
+uiScale.Scale = 0
+
+local TWEEN_IN  = TweenInfo.new(0.35, Enum.EasingStyle.Back,  Enum.EasingDirection.Out)
+local TWEEN_OUT = TweenInfo.new(0.2,  Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+
 local dayFrames = {}
-local dayStrokes = {}
-
 for i = 1, 7 do
-	local dayFrame = container:FindFirstChild("Day" .. i)
-	if dayFrame then
-		dayFrames[i] = dayFrame
-		-- UIStroke 찾기 (없으면 생성)
-		local uiStroke = dayFrame:FindFirstChild("UIStroke")
-		if not uiStroke then
-			uiStroke = Instance.new("UIStroke")
-			uiStroke.Color = Color3.fromRGB(0, 255, 0) -- 초록색 테두리
-			uiStroke.Thickness = 3
-			uiStroke.Enabled = false -- 기본적으로 비활성화
-			uiStroke.Parent = dayFrame
-		end
-		dayStrokes[i] = uiStroke
-	end
+	dayFrames[i] = main:FindFirstChild("Day" .. i)
 end
 
--- Day 프레임 업데이트 함수
-local function updateDayFrames(data)
-	-- 모든 UIStroke 비활성화
+local function setDayActive(dayIndex, active)
+	local frame = dayFrames[dayIndex]
+	if not frame then return end
+	local stroke = frame:FindFirstChild("UIStroke")
+	if stroke then stroke.Enabled = active end
+	local claimUIStroke = frame:FindFirstChild("ClaimUIStroke")
+	if claimUIStroke then claimUIStroke.Enabled = active end
+	local claimText = frame:FindFirstChild("ClaimText")
+	if claimText then
+		if active then claimText.Text = "CLAIM" end
+		claimText.Visible = active
+	end
+	local claimButton = frame:FindFirstChild("ClaimButton")
+	if claimButton then claimButton.Visible = active end
+	frame.BackgroundTransparency = active and 0 or 0.45
+end
+
+local function hideFrame()
+	local t = TweenService:Create(uiScale, TWEEN_OUT, { Scale = 0 })
+	t:Play()
+	t.Completed:Once(function()
+		dailyRewardFrame.Visible = false
+	end)
+end
+
+local function showFrame()
+	dailyRewardFrame.Visible = true
+	uiScale.Scale = 0
+	TweenService:Create(uiScale, TWEEN_IN, { Scale = 1 }):Play()
+end
+
+local function refreshUI(data)
+	currentDay = data.day or 1
+	canClaim = data.canClaim == true
 	for i = 1, 7 do
-		if dayStrokes[i] then
-			dayStrokes[i].Enabled = false
-		end
+		setDayActive(i, false)
 	end
-
-	-- 현재 연속 출석일에 해당하는 Day 프레임의 UIStroke 활성화 및 깜빡이기
-	if data.consecutiveDays and data.consecutiveDays > 0 and data.consecutiveDays <= 7 then
-		if dayStrokes[data.consecutiveDays] then
-			local currentStroke = dayStrokes[data.consecutiveDays]
-			currentStroke.Enabled = true
-
-			-- 자연스러운 깜빡이기 효과
-			local blinkTween = TweenService:Create(
-				currentStroke,
-				TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-				{Transparency = 0.3}
-			)
-			blinkTween:Play()
-		end
-	end
-end
-
--- GUI 업데이트
-local function updateGui(data)
-	currentRewardData = data
-
-	-- Day 프레임들 업데이트
-	updateDayFrames(data)
-end
-
--- 이벤트 연결
-claimButton.MouseButton1Click:Connect(function()
-	if not currentRewardData or not currentRewardData.canClaim or isProcessing then
-		return
-	end
-
-	isProcessing = true
-
-	ClaimDailyReward:FireServer()
-end)
-
--- 서버 응답 처리
-CheckDailyReward.OnClientEvent:Connect(function(data)
-	updateGui(data)
-end)
-
-ClaimDailyReward.OnClientEvent:Connect(function(result)
-	isProcessing = false
-
-	if result.success then
-		-- GUI 업데이트를 위해 다시 확인
-		CheckDailyReward:FireServer()
+	if canClaim then
+		setDayActive(currentDay, true)
 	else
-		-- 실패 시 그냥 다시 확인
-		CheckDailyReward:FireServer()
+		local frame = dayFrames[currentDay]
+		if frame then
+			frame.BackgroundTransparency = 0.6
+			local claimText = frame:FindFirstChild("ClaimText")
+			if claimText then
+				claimText.Text = "✓ Claimed"
+				claimText.Visible = true
+			end
+			local claimUIStroke = frame:FindFirstChild("ClaimUIStroke")
+			if claimUIStroke then claimUIStroke.Enabled = true end
+		end
+	end
+end
+
+-- 각 Day ClaimButton 연결
+for i = 1, 7 do
+	local frame = dayFrames[i]
+	if not frame then continue end
+	local claimButton = frame:FindFirstChild("ClaimButton")
+	if not claimButton then continue end
+	claimButton.MouseButton1Click:Connect(function()
+		if claiming or not canClaim or currentDay ~= i then return end
+		claiming = true
+		claimButton.Active = false
+
+		-- claiming 타임아웃: 서버 무응답 시 10초 후 자동 해제
+		task.delay(10, function()
+			if claiming then
+				claiming = false
+				claimButton.Active = true
+			end
+		end)
+
+		ClaimDailyReward:FireServer()
+	end)
+end
+
+-- 서버: 상태 응답
+CheckDailyReward.OnClientEvent:Connect(function(data)
+	refreshUI(data)
+	if data.openGui then
+		showFrame()
+	elseif not data.canClaim then
+		dailyRewardFrame.Visible = false
+		uiScale.Scale = 0
 	end
 end)
 
--- 플레이어 입장 시 확인
-player.CharacterAdded:Connect(function()
-	task.wait(2)
+-- 서버: 클레임 결과
+ClaimDailyReward.OnClientEvent:Connect(function(data)
+	claiming = false
+	for i = 1, 7 do
+		local frame = dayFrames[i]
+		if frame then
+			local cb = frame:FindFirstChild("ClaimButton")
+			if cb then cb.Active = true end
+		end
+	end
+
+	if data.reason == "reset" or data.reason == "already_claimed" then return end
+	if not data.success then return end
+
+	canClaim = false
+	robuxBuySound:Play()
+	hideFrame()
+
+	-- 로드 보상 장착
+	if data.equippedRod then
+		task.spawn(function()
+			task.wait(0.3)
+			local char = player.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local backpack = player:FindFirstChild("Backpack")
+			if hum and backpack then
+				local tool = backpack:FindFirstChild(data.equippedRod)
+				if tool then hum:EquipTool(tool) end
+			end
+		end)
+	end
+
+	-- 물고기 보상: FishDataAddedRemote 오면 장착
+	if data.equippedFish then
+		local fishName = data.equippedFish
+		task.spawn(function()
+			local fishAddedRemote = miscRemotes:FindFirstChild("FishDataAddedRemote")
+			if fishAddedRemote then
+				local conn
+				-- 타임아웃: 5초 내 응답 없으면 폴링으로 전환
+				local done = false
+				task.delay(5, function()
+					if not done and conn then conn:Disconnect() end
+				end)
+				conn = fishAddedRemote.OnClientEvent:Connect(function()
+					done = true
+					conn:Disconnect()
+					task.wait(0.1)
+					local char = player.Character
+					local hum = char and char:FindFirstChildOfClass("Humanoid")
+					local backpack = player:FindFirstChild("Backpack")
+					if not hum or not backpack then return end
+					for _, t in ipairs(backpack:GetChildren()) do
+						if t:IsA("Tool") and t.Name:find(fishName, 1, true) then
+							hum:EquipTool(t)
+							return
+						end
+					end
+				end)
+			else
+				-- 폴백 폴링 (0.5초 딜레이 후 시작)
+				task.wait(0.5)
+				local deadline = tick() + 4
+				while tick() < deadline do
+					local char = player.Character
+					local hum = char and char:FindFirstChildOfClass("Humanoid")
+					local backpack = player:FindFirstChild("Backpack")
+					if hum and backpack then
+						for _, t in ipairs(backpack:GetChildren()) do
+							if t:IsA("Tool") and t.Name:find(fishName, 1, true) then
+								hum:EquipTool(t)
+								return
+							end
+						end
+					end
+					task.wait(0.2)
+				end
+			end
+		end)
+	end
+
+	-- NoticeFrame 알림
+	local noticeEvent = ReplicatedStorage:FindFirstChild("Remotes")
+		and ReplicatedStorage.Remotes:FindFirstChild("Notice")
+		and ReplicatedStorage.Remotes.Notice:FindFirstChild("NoticeEventForClient")
+	if noticeEvent then
+		local r = data.reward
+		local msg = ""
+		if r.type == "Coins" then
+			msg = string.format("Daily Reward Day %d: +%d Coins!", data.day, r.amount)
+		elseif r.type == "Rod" then
+			msg = string.format("Daily Reward Day %d: %s!", data.day, r.rodName)
+		elseif r.type == "Fish" then
+			msg = string.format("Daily Reward Day %d: %s!", data.day, r.fishName)
+		end
+		if msg ~= "" then noticeEvent:Fire(msg) end
+	end
+end)
+
+-- 접속 시 DataReady 후 상태 요청 → canClaim일 때만 열기
+task.spawn(function()
+	local dataReady = player:WaitForChild("DataReady", 30)
+	if dataReady then
+		repeat task.wait(0.5) until dataReady.Value == true
+	else
+		task.wait(3)
+	end
+
+	local opened = false
+	local conn
+	-- 타임아웃: 10초 내 응답 없으면 conn 정리
+	task.delay(10, function()
+		if not opened and conn then conn:Disconnect() end
+	end)
+	conn = CheckDailyReward.OnClientEvent:Connect(function(data)
+		if not opened then
+			opened = true
+			conn:Disconnect()
+			if data.canClaim then
+				task.wait(1)
+				showFrame()
+			end
+		end
+	end)
 	CheckDailyReward:FireServer()
 end)
 
--- 이미 캐릭터가 있다면
-if player.Character then
-	task.wait(2)
-	CheckDailyReward:FireServer()
-end
+-- 외부 토글용 BindableEvent
+local openBindable = Instance.new("BindableEvent")
+openBindable.Name = "OpenDailyRewards"
+openBindable.Parent = playerGui
+openBindable.Event:Connect(function()
+	if dailyRewardFrame.Visible then
+		hideFrame()
+	else
+		showFrame()
+	end
+end)

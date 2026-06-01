@@ -86,6 +86,8 @@ local Permissions = {
 		dailyquestreset = true,
 		dailyquestcomplete = true,
 		dailyquestgive = true,
+		dailyreset = true,
+		dailyskip = true,
 		afkreconnect = true,
 		trapfill = true,
 		setstreak = true,
@@ -1524,6 +1526,34 @@ local function command(plr, chat)
 						MessagingService:PublishAsync("GlobalShutdown", {seconds = minutes * 60, reason = reason})
 					end)
 				end
+			end
+		end
+	end
+
+	-- :dailyreset [target] -- daily reward streak + lastClaimDay 초기화
+	if chat:lower():sub(1, #Prefix + 10) == Prefix .. "dailyreset" then
+		if hasPermission(plr, "dailyreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local resetBE = ServerScriptService:FindFirstChild("DailyResetBindable")
+			for _, v in pairs(foundPlayers) do
+				if resetBE then resetBE:Fire(v) end
+				announceRemote:FireClient(plr, "Daily reward reset: " .. v.Name, "SYSTEM")
+			end
+		end
+	end
+
+	-- :dailyskip [target] -- streak+1 건너뜀 (오늘 클레임 없이 다음 날로)
+	if chat:lower():sub(1, #Prefix + 9) == Prefix .. "dailyskip" then
+		if hasPermission(plr, "dailyskip") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local skipBE = ServerScriptService:FindFirstChild("DailySkipBindable")
+			for _, v in pairs(foundPlayers) do
+				if skipBE then skipBE:Fire(v) end
+				announceRemote:FireClient(plr, "Daily reward skipped: " .. v.Name, "SYSTEM")
 			end
 		end
 	end

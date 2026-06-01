@@ -75,7 +75,37 @@ end
 donationIcon:bindEvent("selected", openDonation)
 donationIcon:bindEvent("deselected", closeDonation)
 
--- Close button wiring
+-- ── Invite icon ───────────────────────────────────────────────────
+local SocialService = game:GetService("SocialService")
+local isInvitePromptOpen = false
+
+local function canSendGameInvite()
+	local success, canSend = pcall(function()
+		return SocialService:CanSendGameInviteAsync(player)
+	end)
+	return success and canSend
+end
+
+local canInvite = canSendGameInvite()
+
+local inviteIcon = Icon.new()
+	:setLabel("Invite")
+
+inviteIcon:bindEvent("selected", function()
+	inviteIcon:deselect()
+	if isInvitePromptOpen or not canInvite then return end
+	isInvitePromptOpen = true
+	local success, result = pcall(function()
+		SocialService:PromptGameInvite(player)
+	end)
+	if not success then
+		warn("Failed to open invite prompt:", result)
+	end
+	task.wait(1)
+	isInvitePromptOpen = false
+end)
+
+-- ── Close button wiring
 task.spawn(function()
 	task.wait(1)
 	local frame = getDonationFrame()

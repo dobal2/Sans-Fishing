@@ -55,6 +55,9 @@ local function formatPlayTime(seconds)
 	end
 end
 
+local MAX_RETRIES = 3
+local RETRY_DELAY = 2
+
 local function sendWebhook(url, title, color, authorName, authorUrl, authorIconUrl, fields, description)
 	local embed = {
 		["title"] = title,
@@ -81,13 +84,17 @@ local function sendWebhook(url, title, color, authorName, authorUrl, authorIconU
 		["avatar_url"] = "https://tr.rbxcdn.com/180DAY-d4f5c02f9a3a7e4d2a6b1c8e3f0a9b7d/420/420/Image/Webp/noFilter",
 		["embeds"] = { embed },
 	}
+	local body = HttpService:JSONEncode(data)
 
-	local ok, err = pcall(HttpService.PostAsync, HttpService, url,
-		HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
-	if not ok then
-		warn("Webhook failed:", err)
-		if url ~= ERROR_WEBHOOK_URL then
-			sendWebhook(ERROR_WEBHOOK_URL, "Webhook Error", 16711680, nil, nil, nil, nil,
+	for attempt = 1, MAX_RETRIES do
+		local ok, err = pcall(HttpService.PostAsync, HttpService, url,
+			body, Enum.HttpContentType.ApplicationJson)
+		if ok then return end
+		warn(string.format("Webhook failed (attempt %d/%d): %s", attempt, MAX_RETRIES, tostring(err)))
+		if attempt < MAX_RETRIES then
+			task.wait(RETRY_DELAY)
+		elseif url ~= ERROR_WEBHOOK_URL then
+			task.spawn(sendWebhook, ERROR_WEBHOOK_URL, "Webhook Error", 16711680, nil, nil, nil, nil,
 				string.format("URL: `%s`\nError: `%s`", url, tostring(err)))
 		end
 	end
@@ -129,7 +136,14 @@ Players.PlayerAdded:Connect(function(player)
 	playerJoinTimes[player.UserId] = tick()
 	if RunService:IsStudio() then return end
 
-	task.delay(5, function()
+	task.spawn(function()
+		-- DataReady 대기 (최대 30초) 후 전송
+		local dataReady = player:WaitForChild("DataReady", 30)
+		if dataReady then
+			repeat task.wait(0.5) until dataReady.Value == true or not player:IsDescendantOf(Players)
+		else
+			task.wait(5)
+		end
 		if not player:IsDescendantOf(Players) then return end
 		local data = datamanager:GetData(player)
 		local fields = buildPlayerFields(data, 0)
@@ -148,14 +162,19 @@ Players.PlayerRemoving:Connect(function(player)
 
 	if RunService:IsStudio() then return end
 
+	-- 데이터를 미리 캡처 (PlayerRemoving 이후엔 GetData가 nil 반환할 수 있음)
 	local data = datamanager:GetData(player)
 	local fields = buildPlayerFields(data, sessionTime)
 	table.insert(fields, 1, { name = "⏱️ 이번 세션", value = formatPlayTime(sessionTime), inline = true })
-	sendWebhook(
-		LEFT_WEBHOOK_URL, "🚪 플레이어 퇴장", 0xE74C3C,
-		player.Name, getProfileUrl(player.UserId), getAvatarUrl(player.UserId),
-		fields
-	)
+
+	-- task.spawn으로 non-blocking 처리 (서버 종료 시에도 가능한 한 전송)
+	task.spawn(function()
+		sendWebhook(
+			LEFT_WEBHOOK_URL, "🚪 플레이어 퇴장", 0xE74C3C,
+			player.Name, getProfileUrl(player.UserId), getAvatarUrl(player.UserId),
+			fields
+		)
+	end)
 end)
 
 -- Record join time for players already in server on script start
