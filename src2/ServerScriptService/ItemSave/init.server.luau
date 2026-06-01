@@ -622,29 +622,33 @@ local function safeValueRatio(weight, minW, maxW)
 end
 
 Players.PlayerAdded:Connect(function(player)
-	local timeout = 60
+	local TIMEOUT = 40
+
+	-- DataReady 대기: WaitForChild + Value 체크로 즉각 반응
+	local dataReadyVal = player:WaitForChild("DataReady", TIMEOUT)
+	if not dataReadyVal then
+		warn("ItemSave: DataReady timeout for", player.Name)
+		local itemReady = Instance.new("BoolValue")
+		itemReady.Name  = "ItemReady"
+		itemReady.Value = true
+		itemReady.Parent = player
+		return
+	end
+	if not dataReadyVal.Value then
+		local deadline = tick() + TIMEOUT
+		repeat task.wait(0.1) until dataReadyVal.Value == true
+			or not player:IsDescendantOf(Players)
+			or tick() > deadline
+	end
+	if not player:IsDescendantOf(Players) then return end
+
+	-- DataManager:GetData 대기: 0.1초 간격으로 폴링
 	local elapsed = 0
-
 	repeat
-		task.wait(1)
-		elapsed += 1
+		task.wait(0.1)
+		elapsed += 0.1
 		if not player:IsDescendantOf(Players) then return end
-		if elapsed >= timeout then
-			warn("ItemSave: DataReady timeout for", player.Name)
-			local itemReady = Instance.new("BoolValue")
-			itemReady.Name  = "ItemReady"
-			itemReady.Value = true
-			itemReady.Parent = player
-			return
-		end
-	until player:FindFirstChild("DataReady") and player:FindFirstChild("DataReady").Value == true
-
-	elapsed = 0
-	repeat
-		task.wait(1)
-		elapsed += 1
-		if not player:IsDescendantOf(Players) then return end
-		if elapsed >= timeout then
+		if elapsed >= TIMEOUT then
 			warn("ItemSave: DataManager timeout for", player.Name)
 			local itemReady = Instance.new("BoolValue")
 			itemReady.Name  = "ItemReady"
