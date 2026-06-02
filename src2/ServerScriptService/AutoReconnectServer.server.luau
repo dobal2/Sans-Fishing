@@ -29,7 +29,7 @@ getAutoFishing.OnServerInvoke = function(player)
 	local ls = player:FindFirstChild("leaderstats")
 	local currentRod = ls and ls:FindFirstChild("CurrentRod")
 	if currentRod and currentRod.Value ~= "" then
-		local rodData = RodDataModule[currentRod.Value]
+		local rodData = RodDataModule.Rods and RodDataModule.Rods[currentRod.Value]
 		rodName = (rodData and rodData.storageName) or currentRod.Value
 	end
 
@@ -60,7 +60,7 @@ Players.PlayerAdded:Connect(function(player)
 	end
 	data = dataManager:GetData(player)
 	if data and data.AutoFishingOn then
-		task.spawn(rotateCharacter90, player)
+		-- Client handles auto-fishing rotation after character and rod are fully ready.
 	end
 end)
 

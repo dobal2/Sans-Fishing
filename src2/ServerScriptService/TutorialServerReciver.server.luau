@@ -5,6 +5,7 @@ local AnalyticsService = game:GetService("AnalyticsService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local datamanager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
+local soldNotification = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Sell"):WaitForChild("SoldNotification")
 
 -- Create tutorial complete remote event if not found
 local tutorialCompleteRemote = ReplicatedStorage:FindFirstChild("TutorialCompleteRemote")
@@ -43,6 +44,7 @@ tutorialGoldRewardRemote.OnServerEvent:Connect(function(player)
 	if coinsVal then
 		coinsVal.Value = coinsVal.Value + 3000
 		datamanager:UpdateData(player, "Coins", coinsVal.Value)
+		soldNotification:FireClient(player, 3000, false)
 	end
 end)
 

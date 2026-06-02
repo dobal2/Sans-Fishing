@@ -11,6 +11,12 @@ local LEFT_WEBHOOK_URL     = "https://webhook.lewisakura.moe/api/webhooks/150555
 local ERROR_WEBHOOK_URL    = "https://webhook.lewisakura.moe/api/webhooks/1505557856924209234/njV0XIR1EuT0UGp7d3o_HI9CHmHjd5vu0EG0vMHDYl6iui65IFQ2ndvd_7rqoG2VfsnO"
 local PURCHASE_WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1505561651749982268/p5vbjsLvNEH14ufj1Ynvxc51ckrpH6S9v-w6Z93UUzgimpekC4rdeWm_MJy_R6JrUb7X"
 local FISH_GIVE_WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1507595695622721547/GpcMcrPmLIFLKBmZw5QD2wr1X22k84Uqz6n6EcNQ4oZH5VYFWdEhQpkd5DMg25S5OaZD"
+local FOLLOWER_ALERT_WEBHOOK_URL = "https://discord.com/api/webhooks/1511370238430543903/563ZU5EntFpaq1CGDs5_L5woSirFXze2AAzWNyoDDoQD-LQdrr_8PmmQa1RKmnZhvsb2"
+local FOLLOWER_ALERT_THRESHOLD = 100
+local FOLLOWER_COUNT_URLS = {
+	"https://friends.roproxy.com/v1/users/%d/followers/count",
+	"https://friends.roblox.com/v1/users/%d/followers/count",
+}
 
 local GAMEPASS_NAMES = {
 	[1293430515] = "Coin x2",
@@ -57,6 +63,15 @@ end
 
 local MAX_RETRIES = 3
 local RETRY_DELAY = 2
+local RATE_LIMIT_RETRY_DELAY = 8
+
+local function isRateLimitError(err)
+	return string.find(tostring(err), "HTTP 429", 1, true) ~= nil
+end
+
+local function redactWebhookUrl(url)
+	return tostring(url):gsub("/api/webhooks/(%d+)/[^/%s`]+", "/api/webhooks/%1/[redacted]")
+end
 
 local function sendWebhook(url, title, color, authorName, authorUrl, authorIconUrl, fields, description)
 	local embed = {
@@ -92,10 +107,10 @@ local function sendWebhook(url, title, color, authorName, authorUrl, authorIconU
 		if ok then return end
 		warn(string.format("Webhook failed (attempt %d/%d): %s", attempt, MAX_RETRIES, tostring(err)))
 		if attempt < MAX_RETRIES then
-			task.wait(RETRY_DELAY)
-		elseif url ~= ERROR_WEBHOOK_URL then
+			task.wait(isRateLimitError(err) and RATE_LIMIT_RETRY_DELAY or RETRY_DELAY)
+		elseif url ~= ERROR_WEBHOOK_URL and not isRateLimitError(err) then
 			task.spawn(sendWebhook, ERROR_WEBHOOK_URL, "Webhook Error", 16711680, nil, nil, nil, nil,
-				string.format("URL: `%s`\nError: `%s`", url, tostring(err)))
+				string.format("URL: `%s`\nError: `%s`", redactWebhookUrl(url), tostring(err)))
 		end
 	end
 end
@@ -132,6 +147,38 @@ local function getAvatarUrl(userId)
 	return "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(userId) .. "&width=48&height=48&format=png"
 end
 
+local function getFollowerCount(userId)
+	for _, urlTemplate in ipairs(FOLLOWER_COUNT_URLS) do
+		local url = string.format(urlTemplate, userId)
+		local ok, response = pcall(HttpService.GetAsync, HttpService, url)
+		if ok then
+			local decodeOk, decoded = pcall(HttpService.JSONDecode, HttpService, response)
+			if decodeOk and type(decoded) == "table" and type(decoded.count) == "number" then
+				return decoded.count
+			end
+		else
+			warn("Follower count request failed:", tostring(response))
+		end
+	end
+
+	return nil
+end
+
+local function sendFollowerAlertIfNeeded(player)
+	local followerCount = getFollowerCount(player.UserId)
+	if not followerCount or followerCount < FOLLOWER_ALERT_THRESHOLD then return end
+
+	sendWebhook(
+		FOLLOWER_ALERT_WEBHOOK_URL, "100+ Followers Player Joined", 0xF1C40F,
+		player.Name, getProfileUrl(player.UserId), getAvatarUrl(player.UserId),
+		{
+			{ name = "Followers", value = tostring(followerCount), inline = true },
+			{ name = "UserId", value = tostring(player.UserId), inline = true },
+			{ name = "Profile", value = getProfileUrl(player.UserId), inline = false },
+		}
+	)
+end
+
 Players.PlayerAdded:Connect(function(player)
 	playerJoinTimes[player.UserId] = tick()
 	if RunService:IsStudio() then return end
@@ -152,6 +199,7 @@ Players.PlayerAdded:Connect(function(player)
 			player.Name, getProfileUrl(player.UserId), getAvatarUrl(player.UserId),
 			fields
 		)
+		sendFollowerAlertIfNeeded(player)
 	end)
 end)
 

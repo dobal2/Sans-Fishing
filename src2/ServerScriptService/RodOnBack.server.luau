@@ -5,7 +5,7 @@ local ROD_SET = {
 	FishingRod=true, ["Silver Rod"]=true, GoldRod=true, CrystalRod=true, MagneticRod=true,
 	BoneRod=true, CloverRod=true, RainbowRod=true, UnknownRod=true, RobuxRod=true,
 	ElectricRod=true, RealisticRod=true, BlockyRod=true, ArcaneRod=true, VoidRod=true,
-	FriendRod=true, FlameRod=true,
+	FriendRod=true, FlameRod=true, EquinoxRod=true, SilkRod=true,
 }
 
 local function removeBackRod(character)
@@ -42,6 +42,7 @@ local function showBackRod(character, toolName)
 	local ROD_OFFSETS = {
 		FishingRod = CFrame.new(1, 1.5, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)),
 		FriendRod  = CFrame.new(0, 0.5, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)),
+		SilkRod    = CFrame.new(-0.4, -0.1, 0.55) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-30)),
 	}
 
 	local weld = Instance.new("Weld")

@@ -385,7 +385,7 @@ local function handleWeatherChange(newWeather)
 
 	if newWeather == "Rain" then
 		pcall(function()
-			SnowModule:Disable(TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
+			SnowModule:Disable()
 		end)
 		local success, err = pcall(function()
 			task.wait(0.5)
@@ -410,7 +410,7 @@ local function handleWeatherChange(newWeather)
 	elseif newWeather == "Firework" then
 		pcall(function() RainModule:Disable() end)
 		pcall(function()
-			SnowModule:Disable(TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
+			SnowModule:Disable()
 		end)
 
 		-- Clear night atmosphere so fireworks look vivid against a dark sky
@@ -440,7 +440,7 @@ local function handleWeatherChange(newWeather)
 	else -- Clear
 		pcall(function() RainModule:Disable() end)
 		pcall(function()
-			SnowModule:Disable(TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
+			SnowModule:Disable()
 		end)
 
 		applyClearLighting()

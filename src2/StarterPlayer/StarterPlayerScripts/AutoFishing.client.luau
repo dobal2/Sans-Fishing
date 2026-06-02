@@ -9,6 +9,27 @@ local AUTO_RECONNECT_TIME = 19 * 60  -- 19 minutes
 local autoReconnectRequest = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("AutoReconnectRequest")
 local getAutoFishing = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("GetAutoFishing")
 
+local function rotateCharacterForAuto()
+	local char = player.Character
+	if not char then return end
+	if char:GetAttribute("AutoFishingRotated") == true then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hrp or not hum or hum.Health <= 0 then return end
+
+	local pos = hrp.Position
+	local currentAngle = math.atan2(hrp.CFrame.LookVector.X, hrp.CFrame.LookVector.Z)
+	local newAngle = currentAngle + math.rad(90)
+	hum.AutoRotate = false
+	hrp.CFrame = CFrame.new(pos) * CFrame.Angles(0, newAngle, 0)
+	char:SetAttribute("AutoFishingRotated", true)
+	task.delay(0.25, function()
+		if hum.Parent and player:GetAttribute("AutoFishing") ~= true then
+			hum.AutoRotate = true
+		end
+	end)
+end
+
 -- 접속 시 auto 상태 복원
 task.spawn(function()
 	if not player.Character then player.CharacterAdded:Wait() end
@@ -43,6 +64,9 @@ task.spawn(function()
 	else
 		task.wait(2)
 	end
+	rotateCharacterForAuto()
+	task.wait(0.15)
+	rotateCharacterForAuto()
 	player:SetAttribute("AutoFishing", true)
 end)
 
@@ -131,10 +155,12 @@ end
 
 player.CharacterAdded:Connect(function(char)
 	equipTime = tick()
+	char:SetAttribute("AutoFishingRotated", false)
 	watchEquip(char)
 end)
 if player.Character then
 	equipTime = tick()
+	player.Character:SetAttribute("AutoFishingRotated", false)
 	watchEquip(player.Character)
 end
 
@@ -144,6 +170,7 @@ player.AttributeChanged:Connect(function(attr)
 		fishingEndedAt = tick()
 	end
 	if attr == "AutoFishing" and player:GetAttribute("AutoFishing") == true then
+		rotateCharacterForAuto()
 		local soon = tick() - AUTO_CAST_COOLDOWN + AUTO_ENABLE_DELAY
 		lastCastTime = soon
 		fishingEndedAt = soon
@@ -225,6 +252,7 @@ RunService.Heartbeat:Connect(function()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum or hum.Health <= 0 then return end
 
+		rotateCharacterForAuto()
 		lastCastTime = now
 		local autoCastEvent = tool:FindFirstChild("AutoCastEvent")
 		if autoCastEvent then

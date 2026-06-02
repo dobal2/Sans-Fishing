@@ -7,6 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 
 local ItemsFolder = ServerStorage:WaitForChild("Fishes")
 local DataManager = require(script.DataManager)
@@ -623,15 +624,23 @@ end
 
 Players.PlayerAdded:Connect(function(player)
 	local TIMEOUT = 40
+	local function failItemLoad(reason)
+		warn("ItemSave: " .. reason .. " for", player.Name)
+		if player:IsDescendantOf(Players) then
+			local ok, err = pcall(function()
+				TeleportService:Teleport(game.PlaceId, player)
+			end)
+			if not ok then
+				warn("ItemSave: Rejoin teleport failed for", player.Name, err)
+				player:Kick("Item data loading failed. Please rejoin.")
+			end
+		end
+	end
 
 	-- DataReady 대기: WaitForChild + Value 체크로 즉각 반응
 	local dataReadyVal = player:WaitForChild("DataReady", TIMEOUT)
 	if not dataReadyVal then
-		warn("ItemSave: DataReady timeout for", player.Name)
-		local itemReady = Instance.new("BoolValue")
-		itemReady.Name  = "ItemReady"
-		itemReady.Value = true
-		itemReady.Parent = player
+		failItemLoad("DataReady timeout")
 		return
 	end
 	if not dataReadyVal.Value then
@@ -641,6 +650,10 @@ Players.PlayerAdded:Connect(function(player)
 			or tick() > deadline
 	end
 	if not player:IsDescendantOf(Players) then return end
+	if not dataReadyVal.Value then
+		failItemLoad("DataReady value timeout")
+		return
+	end
 
 	-- DataManager:GetData 대기: 0.1초 간격으로 폴링
 	local elapsed = 0
@@ -649,11 +662,7 @@ Players.PlayerAdded:Connect(function(player)
 		elapsed += 0.1
 		if not player:IsDescendantOf(Players) then return end
 		if elapsed >= TIMEOUT then
-			warn("ItemSave: DataManager timeout for", player.Name)
-			local itemReady = Instance.new("BoolValue")
-			itemReady.Name  = "ItemReady"
-			itemReady.Value = true
-			itemReady.Parent = player
+			failItemLoad("DataManager timeout")
 			return
 		end
 	until DataManager:GetData(player)

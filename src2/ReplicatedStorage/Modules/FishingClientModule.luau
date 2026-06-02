@@ -419,9 +419,9 @@ function FishingClient:_processFishingInput()
 		self:_updateProgressBar()
 		self:_triggerHitShake("strong")
 		pcall(function()
-			HapticService:SetMotor(Enum.UserInputType.Gamepad1, Enum.VibrationMotor.Large, 1)
-			task.delay(0.12, function()
-				HapticService:SetMotor(Enum.UserInputType.Gamepad1, Enum.VibrationMotor.Large, 0)
+			HapticService:SetMotor(Enum.UserInputType.Gamepad1, Enum.VibrationMotor.Small, 0.6)
+			task.delay(0.08, function()
+				HapticService:SetMotor(Enum.UserInputType.Gamepad1, Enum.VibrationMotor.Small, 0)
 			end)
 		end)
 
@@ -1262,6 +1262,10 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	local wasReelingPlaying = self.reelingAnimationTrack and self.reelingAnimationTrack.IsPlaying
 
 	self:_closeGui() -- Remove existing GUI
+	if not self.tool or not self.player or self.tool.Parent ~= self.player.Character then return end
+
+	local playerGui = self.player:FindFirstChild("PlayerGui")
+	if not playerGui then return end
 
 	local Config = require(ReplicatedStorage.Modules:WaitForChild("FishingConfigModule"))
 	local FishDifficulty = require(ReplicatedStorage.Modules:WaitForChild("FishDifficultyModule"))
@@ -1289,13 +1293,14 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	self.strongZoneProgress = FishDifficulty.GetProgressGain("strong", difficulty)
 	self.normalZoneProgress = FishDifficulty.GetProgressGain("normal", difficulty)
 
-	self.newGUI = GUI:Clone()
-	self.newGUI.Parent = self.player:WaitForChild("PlayerGui")
-	self.newGUI.Enabled = true
-	self.newGUI:SetAttribute("FishRarity", rarity)
+	local newGUI = GUI:Clone()
+	self.newGUI = newGUI
+	newGUI.Parent = playerGui
+	newGUI.Enabled = true
+	newGUI:SetAttribute("FishRarity", rarity)
 
 	-- DoublePower 프레임: Power x2 게임패스(1290056221) 보유 시 숨김, 없으면 구매 버튼 연결
-	local doublePowerFrame = self.newGUI:FindFirstChild("DoublePower")
+	local doublePowerFrame = newGUI:FindFirstChild("DoublePower")
 	if doublePowerFrame then
 		local POWER_X2_PASS = 1290056221
 		local MarketplaceService = game:GetService("MarketplaceService")
@@ -1321,12 +1326,18 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 		end
 	end
 
-	self.frame = self.newGUI:WaitForChild("GaugeFrame")
+	if self.tool.Parent ~= self.player.Character then
+		if self.newGUI == newGUI then self.newGUI = nil end
+		newGUI:Destroy()
+		return
+	end
+
+	self.frame = newGUI:WaitForChild("GaugeFrame")
 	self.slider = self.frame:WaitForChild("InFrame"):WaitForChild("Slider")
 	self.hitZone = self.frame:WaitForChild("InFrame"):WaitForChild("HitZone")
 	self.strongZone = self.hitZone:WaitForChild("StrongZone")
 
-	self.progressBar = self.newGUI:WaitForChild("ProgressBar")
+	self.progressBar = newGUI:WaitForChild("ProgressBar")
 	self.progressFill = self.progressBar:WaitForChild("Fill")
 
 	self.originalFramePosition = self.frame.Position

@@ -1470,12 +1470,34 @@ function FishingServer:_resolveFishing(player, result)
 
 			-- Notify ItemSave to record fish data (no longer adding Tool to Backpack here)
 			local FishCaughtBindable = game:GetService("ServerScriptService"):FindFirstChild("FishCaughtBindable")
+			local doubleCatchFishInfo = nil
+			local bobberFx = fishInfo.bobberFx
+			if bobberFx and bobberFx.doubleCatchChance and bobberFx.doubleCatchChance > 0 and math.random() < bobberFx.doubleCatchChance then
+				doubleCatchFishInfo = table.clone(fishInfo)
+			end
+
 			if FishCaughtBindable then
 				FishCaughtBindable:Fire(player, fishInfo)
+				if doubleCatchFishInfo then
+					FishCaughtBindable:Fire(player, doubleCatchFishInfo)
+				end
 			else
 				-- Fallback: create tool and add to backpack if BindableEvent not found
 				local backpackTool = createFishTool(fishInfo)
 				backpackTool.Parent = player:FindFirstChild("Backpack")
+				if doubleCatchFishInfo then
+					local secondBackpackTool = createFishTool(doubleCatchFishInfo)
+					secondBackpackTool.Parent = player:FindFirstChild("Backpack")
+				end
+			end
+
+			if doubleCatchFishInfo then
+				local noticeRemote = ReplicatedStorage:FindFirstChild("Remotes")
+					and ReplicatedStorage.Remotes:FindFirstChild("Notice")
+					and ReplicatedStorage.Remotes.Notice:FindFirstChild("ShowNoticeEvent")
+				if noticeRemote then
+					noticeRemote:FireClient(player, "Double Catch! +1 fish")
+				end
 			end
 
 			-- Update consecutive catch streak

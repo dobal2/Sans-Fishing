@@ -66,6 +66,7 @@ PE.Parent = Emitter
 local enabled      = false
 local connections  = {}
 local frame        = 0
+local tweenToken   = 0
 
 -- 수면 Y: Water 파트는 CanCollide=false라 raycast에 안 걸림 → 직접 구함
 local WATER_SURFACE_Y = -3.69
@@ -139,6 +140,10 @@ local function disconnectLoop()
 	for _, c in ipairs(connections) do c:Disconnect() end
 	connections = {}
 	PE.Enabled = false
+	PE.Rate = 0
+	pcall(function()
+		PE:Clear()
+	end)
 	Emitter.Parent = nil
 	frame = 0
 end
@@ -150,6 +155,8 @@ local Snow = {}
 function Snow:Enable(tweenInfo)
 	if enabled then return end
 	enabled = true
+	tweenToken += 1
+	local token = tweenToken
 	connectLoop()
 
 	if tweenInfo then
@@ -157,10 +164,18 @@ function Snow:Enable(tweenInfo)
 		local nv = Instance.new("NumberValue")
 		nv.Value = 0
 		nv.Changed:Connect(function(v)
+			if token ~= tweenToken then
+				nv:Destroy()
+				return
+			end
 			PE.Rate = math.floor(v)
 			PE.Enabled = v > 0
 		end)
-		TweenService:Create(nv, tweenInfo, { Value = SNOW_RATE }):Play()
+		local tween = TweenService:Create(nv, tweenInfo, { Value = SNOW_RATE })
+		tween.Completed:Once(function()
+			nv:Destroy()
+		end)
+		tween:Play()
 	else
 		PE.Rate    = SNOW_RATE
 		PE.Enabled = true
@@ -170,17 +185,28 @@ end
 function Snow:Disable(tweenInfo)
 	if not enabled then return end
 	enabled = false
+	tweenToken += 1
 
 	if tweenInfo then
 		local nv = Instance.new("NumberValue")
+		local token = tweenToken
 		nv.Value = SNOW_RATE
 		nv.Changed:Connect(function(v)
+			if token ~= tweenToken then
+				nv:Destroy()
+				return
+			end
 			PE.Rate = math.floor(v)
 			if v <= 0 then
 				disconnectLoop()
 			end
 		end)
-		TweenService:Create(nv, tweenInfo, { Value = 0 }):Play()
+		local tween = TweenService:Create(nv, tweenInfo, { Value = 0 })
+		tween.Completed:Once(function()
+			disconnectLoop()
+			nv:Destroy()
+		end)
+		tween:Play()
 	else
 		disconnectLoop()
 	end

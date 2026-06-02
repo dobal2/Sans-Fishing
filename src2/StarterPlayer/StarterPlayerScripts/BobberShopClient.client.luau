@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -15,6 +16,14 @@ local ROBUX_BOBBER_GAMEPASS_ID = 1853589181
 
 local mainGui = playerGui:WaitForChild("Main")
 local bobberFrame = mainGui:WaitForChild("Bobber")
+local bobberScale = bobberFrame:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+local CLOSED_SCALE = 0.55
+bobberScale.Name = "OpenScale"
+bobberScale.Scale = CLOSED_SCALE
+bobberScale.Parent = bobberFrame
+
+local OPEN_TWEEN = TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local CLOSE_TWEEN = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 local titleLabel   = bobberFrame:WaitForChild("Title")
 local descLabel    = bobberFrame:WaitForChild("Desc")
@@ -31,6 +40,8 @@ local currentBobberName = nil
 local currentSlotIndex  = nil
 local isBuying = false
 local cachedRobuxBobberOwned = nil
+local frameTween = nil
+local closeToken = 0
 
 task.spawn(function()
 	local ok, owns = pcall(function()
@@ -90,10 +101,27 @@ local function updateBuyButton(price)
 end
 
 local function closeFrame_()
-	bobberFrame.Visible = false
+	closeToken += 1
+	local token = closeToken
+	if frameTween then frameTween:Cancel() end
+	frameTween = TweenService:Create(bobberScale, CLOSE_TWEEN, {Scale = CLOSED_SCALE})
+	frameTween:Play()
+	frameTween.Completed:Once(function()
+		if token ~= closeToken then return end
+		bobberFrame.Visible = false
+	end)
 	currentBobberName = nil
 	currentSlotIndex = nil
 	isBuying = false
+end
+
+local function showFrame()
+	closeToken += 1
+	if frameTween then frameTween:Cancel() end
+	bobberScale.Scale = CLOSED_SCALE
+	bobberFrame.Visible = true
+	frameTween = TweenService:Create(bobberScale, OPEN_TWEEN, {Scale = 1})
+	frameTween:Play()
 end
 
 local function openFrame(bobberName, slotIndex)
@@ -127,7 +155,7 @@ local function openFrame(bobberName, slotIndex)
 	end
 
 	updateBuyButton(data.price or 0)
-	bobberFrame.Visible = true
+	showFrame()
 end
 
 openBobberShopRemote.OnClientEvent:Connect(function(bobberName, slotIndex, justPurchased)
@@ -149,7 +177,7 @@ openBobberShopRemote.OnClientEvent:Connect(function(bobberName, slotIndex, justP
 		buyBtn.Active = false
 		if onGradient then onGradient.Enabled = false end
 		if offGradient then offGradient.Enabled = true end
-		bobberFrame.Visible = true
+		showFrame()
 		return
 	end
 	openFrame(bobberName, slotIndex)
