@@ -17,12 +17,15 @@ local FISH_RARITY = {
 	["Shark"] = "Mystic", ["Ray"] = "Mystic",
 	["Undyine"] = "Fantasy", ["Sans"] = "Fantasy", ["Electric Fish"] = "Fantasy",
 	["Unknown"] = "Unknown", ["Nyan Cat"] = "Unknown",
+	["Determination"] = "Soul",
+	["Patience"] = "Soul", ["Bravery"] = "Soul", ["Integrity"] = "Soul",
+	["Perseverance"] = "Soul", ["Kindness"] = "Soul", ["Justice"] = "Soul",
 }
 
 -- 기본 보상 (기존의 반토막)
 local DISCOVER_REWARDS = {
 	Common = 25, Uncommon = 75, Rare = 200, Epic = 500,
-	Legendary = 1500, Mystic = 4000, Fantasy = 12500, Unknown = 50000,
+	Legendary = 1500, Mystic = 4000, Fantasy = 12500, Unknown = 50000, Soul = 150000,
 }
 
 -- 변이 보상 (기본의 2배)

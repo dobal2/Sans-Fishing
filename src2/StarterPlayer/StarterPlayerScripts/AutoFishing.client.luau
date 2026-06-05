@@ -9,6 +9,15 @@ local AUTO_RECONNECT_TIME = 19 * 60  -- 19 minutes
 local autoReconnectRequest = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("AutoReconnectRequest")
 local getAutoFishing = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("GetAutoFishing")
 
+local function restoreAutoRotate()
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.AutoRotate = true
+	end
+end
+
 local function rotateCharacterForAuto()
 	local char = player.Character
 	if not char then return end
@@ -24,7 +33,7 @@ local function rotateCharacterForAuto()
 	hrp.CFrame = CFrame.new(pos) * CFrame.Angles(0, newAngle, 0)
 	char:SetAttribute("AutoFishingRotated", true)
 	task.delay(0.25, function()
-		if hum.Parent and player:GetAttribute("AutoFishing") ~= true then
+		if hum.Parent then
 			hum.AutoRotate = true
 		end
 	end)
@@ -64,9 +73,6 @@ task.spawn(function()
 	else
 		task.wait(2)
 	end
-	rotateCharacterForAuto()
-	task.wait(0.15)
-	rotateCharacterForAuto()
 	player:SetAttribute("AutoFishing", true)
 end)
 
@@ -170,12 +176,17 @@ player.AttributeChanged:Connect(function(attr)
 		fishingEndedAt = tick()
 	end
 	if attr == "AutoFishing" and player:GetAttribute("AutoFishing") == true then
-		rotateCharacterForAuto()
 		local soon = tick() - AUTO_CAST_COOLDOWN + AUTO_ENABLE_DELAY
 		lastCastTime = soon
 		fishingEndedAt = soon
 		equipTime = soon
 		afkTimer = 0
+	elseif attr == "AutoFishing" and player:GetAttribute("AutoFishing") ~= true then
+		restoreAutoRotate()
+		local char = player.Character
+		if char then
+			char:SetAttribute("AutoFishingRotated", false)
+		end
 	end
 end)
 
@@ -245,7 +256,10 @@ RunService.Heartbeat:Connect(function()
 		if player:GetAttribute("IsFishing") == true then return end
 
 		local tool = getCurrentRodTool()
-		if not tool then return end
+		if not tool then
+			restoreAutoRotate()
+			return
+		end
 
 		local char = player.Character
 		if not char then return end

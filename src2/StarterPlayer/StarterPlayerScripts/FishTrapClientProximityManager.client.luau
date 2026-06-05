@@ -1,10 +1,75 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local workspace = game:GetService("Workspace")
 local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local shopRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop")
+local openFishTrapShop = shopRemotes:WaitForChild("OpenFishTrapShop")
+local buyFishTrapRemote = shopRemotes:WaitForChild("BuyFishTrapRemote")
+local buySound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Buy SFX")
 
 -- Robux Fish Trap gamepass ID
 local ROBUX_FISHTRAP_GAMEPASS_ID = 1423175879
+local CLOSED_SCALE = 0.55
+local OPEN_TWEEN = TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local CLOSE_TWEEN = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+local FISH_TRAP_DATA = {
+	BasicFishTrap = {
+		displayName = "Basic Fish Trap",
+		price = 30000,
+		desc = "Capacity: 20 fish  |  Luck +10%  |  Catch Time: 10 min",
+	},
+	AdvancedFishTrap = {
+		displayName = "Advanced Fish Trap",
+		price = 200000,
+		desc = "Capacity: 30 fish  |  Luck +35%  |  Catch Time: 8 min",
+	},
+	MasterFishTrap = {
+		displayName = "Master Fish Trap",
+		price = 600000,
+		desc = "Capacity: 40 fish  |  Luck +75%  |  Catch Time: 6 min",
+	},
+	RobuxFishTrap = {
+		displayName = "Robux Fish Trap",
+		price = 0,
+		desc = "Capacity: 60 fish  |  Luck +150%  |  Catch Time: 5 min",
+	},
+}
+
+local FISH_TRAP_OBJECT_TEXT = {
+	BasicFishTrap = "Basic Fish Trap",
+	AdvancedFishTrap = "Advanced Fish Trap",
+	MasterFishTrap = "Master Fish Trap",
+	RobuxFishTrap = "Robux Fish Trap",
+}
+
+local mainGui = playerGui:WaitForChild("Main")
+local fishTrapFrame = mainGui:WaitForChild("FishTrap")
+local fishTrapScale = fishTrapFrame:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+fishTrapScale.Name = "OpenScale"
+fishTrapScale.Scale = CLOSED_SCALE
+fishTrapScale.Parent = fishTrapFrame
+
+local titleLabel = fishTrapFrame:WaitForChild("Title")
+local descLabel = fishTrapFrame:WaitForChild("Desc")
+local priceLabel = fishTrapFrame:WaitForChild("Price")
+local equipFrame = fishTrapFrame:WaitForChild("Equip")
+local buyBtn = equipFrame:WaitForChild("TextButton")
+local buyLabel = equipFrame:WaitForChild("TextLabel")
+local onGradient = buyBtn:FindFirstChild("OnGradient")
+local offGradient = buyBtn:FindFirstChild("OffGradient")
+local closeFrame = fishTrapFrame:WaitForChild("Close")
+local closeBtn = closeFrame:WaitForChild("TextButton")
+
+local currentFishTrapName = nil
+local isBuying = false
+local cachedRobuxFishTrapOwned = nil
+local frameTween = nil
+local closeToken = 0
 
 -- Check gamepass ownership
 local function hasGamepass(player, gamepassId)
@@ -14,11 +79,148 @@ local function hasGamepass(player, gamepassId)
 	return success and result
 end
 
+task.spawn(function()
+	cachedRobuxFishTrapOwned = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
+end)
+
+local function formatCoins(n)
+	local s = tostring(math.floor(n))
+	local result = ""
+	local len = #s
+	for i = 1, len do
+		if i > 1 and (len - i + 1) % 3 == 0 then result = result .. "," end
+		result = result .. s:sub(i, i)
+	end
+	return result
+end
+
+local function getCoins()
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local coins = leaderstats and leaderstats:FindFirstChild("Coins")
+	return coins and coins.Value or 0
+end
+
+local function getFishTrapState(fishTrapName)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local fishTrapsFolder = leaderstats and leaderstats:FindFirstChild("FishTraps")
+	local currentFishTrap = leaderstats and leaderstats:FindFirstChild("CurrentFishTrap")
+	local currentFishTrapValue = currentFishTrap and currentFishTrap:FindFirstChild("Value")
+	local fishTrapBool = fishTrapsFolder and fishTrapsFolder:FindFirstChild(fishTrapName)
+	local owned = fishTrapBool and fishTrapBool.Value == true
+
+	if fishTrapName == "RobuxFishTrap" and cachedRobuxFishTrapOwned then
+		owned = true
+	end
+
+	return owned, currentFishTrapValue and currentFishTrapValue.Value == fishTrapName
+end
+
+local function setButtonState(active, label, enabledGradient)
+	buyBtn.Active = active
+	buyBtn.AutoButtonColor = active
+	buyLabel.Text = label
+	if onGradient then onGradient.Enabled = enabledGradient end
+	if offGradient then offGradient.Enabled = not enabledGradient end
+end
+
+local function updateBuyButton()
+	if not currentFishTrapName then return end
+
+	local data = FISH_TRAP_DATA[currentFishTrapName]
+	if not data then return end
+
+	local owned, equipped = getFishTrapState(currentFishTrapName)
+	if equipped then
+		setButtonState(false, "Equipped", false)
+		return
+	end
+
+	if owned then
+		setButtonState(true, "Equip", true)
+		return
+	end
+
+	if currentFishTrapName == "RobuxFishTrap" then
+		setButtonState(true, "Buy (Robux)", true)
+		return
+	end
+
+	local canAfford = getCoins() >= data.price
+	setButtonState(canAfford, canAfford and "Buy" or "Not Enough Coins", canAfford)
+end
+
+local function closeFrame_()
+	closeToken += 1
+	local token = closeToken
+	if frameTween then frameTween:Cancel() end
+	frameTween = TweenService:Create(fishTrapScale, CLOSE_TWEEN, {Scale = CLOSED_SCALE})
+	frameTween:Play()
+	frameTween.Completed:Once(function()
+		if token ~= closeToken then return end
+		fishTrapFrame.Visible = false
+	end)
+	currentFishTrapName = nil
+	isBuying = false
+end
+
+local function showFrame()
+	closeToken += 1
+	if frameTween then frameTween:Cancel() end
+	fishTrapScale.Scale = CLOSED_SCALE
+	fishTrapFrame.Visible = true
+	frameTween = TweenService:Create(fishTrapScale, OPEN_TWEEN, {Scale = 1})
+	frameTween:Play()
+end
+
+local function openFrame(fishTrapName)
+	local data = FISH_TRAP_DATA[fishTrapName]
+	if not data then return end
+
+	currentFishTrapName = fishTrapName
+	titleLabel.Text = data.displayName
+	descLabel.Text = data.desc
+
+	local owned = getFishTrapState(fishTrapName)
+	if fishTrapName == "RobuxFishTrap" then
+		if owned then
+			priceLabel.Text = "Already Owned"
+		else
+			priceLabel.Text = "\u{E002} ..."
+			task.spawn(function()
+				local ok, info = pcall(function()
+					return MarketplaceService:GetProductInfo(ROBUX_FISHTRAP_GAMEPASS_ID, Enum.InfoType.GamePass)
+				end)
+				if currentFishTrapName ~= "RobuxFishTrap" then return end
+				if ok and info and info.PriceInRobux then
+					priceLabel.Text = "\u{E002} " .. info.PriceInRobux
+				else
+					priceLabel.Text = "\u{E002} Robux"
+				end
+			end)
+		end
+	else
+		priceLabel.Text = formatCoins(data.price) .. " Coins"
+	end
+
+	updateBuyButton()
+	showFrame()
+end
+
+local function waitForPrompt(modelName)
+	local model = workspace:WaitForChild(modelName)
+	local prompt = model:FindFirstChildWhichIsA("ProximityPrompt", true)
+	while not prompt do
+		model.DescendantAdded:Wait()
+		prompt = model:FindFirstChildWhichIsA("ProximityPrompt", true)
+	end
+	return prompt
+end
+
 -- Find ProximityPrompts
-local basicProximity = workspace:WaitForChild("Basic FishtrapMainModel"):WaitForChild("ProximityPrompt")
-local advancedProximity = workspace:WaitForChild("T2 FishtrapMainModel"):WaitForChild("ProximityPrompt")
-local masterProximity = workspace:WaitForChild("T3 FishtrapMainModel"):WaitForChild("ProximityPrompt")
-local robuxProximity = workspace:WaitForChild("Robux FishtrapMainModel"):WaitForChild("ProximityPrompt")
+local basicProximity = waitForPrompt("Basic FishtrapMainModel")
+local advancedProximity = waitForPrompt("T2 FishtrapMainModel")
+local masterProximity = waitForPrompt("T3 FishtrapMainModel")
+local robuxProximity = waitForPrompt("Robux FishtrapMainModel")
 
 -- Fish Trap mapping (ProximityPrompt -> Fish Trap name)
 local proximityToFishTrap = {
@@ -28,50 +230,18 @@ local proximityToFishTrap = {
 	[robuxProximity] = "RobuxFishTrap"
 }
 
+for proximity, fishTrapName in pairs(proximityToFishTrap) do
+	local trapName = fishTrapName
+	proximity.Triggered:Connect(function()
+		openFrame(trapName)
+	end)
+end
+
 -- Update ActionText for a ProximityPrompt
 local function updateProximityText(proximity, fishTrapName)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then return end
-
-	local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
-	local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
-	if not (fishTrapsFolder and currentFishTrap) then return end
-
-	local fishTrapBool = fishTrapsFolder:FindFirstChild(fishTrapName)
-	local currentFishTrapValue = currentFishTrap:FindFirstChild("Value")
-	if not (fishTrapBool and currentFishTrapValue) then return end
-
-	-- Special handling for RobuxFishTrap
-	if fishTrapName == "RobuxFishTrap" then
-		local hasRobuxGamepass = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
-		if not hasRobuxGamepass then
-			-- 게임패스 없음: 가격 텍스트 유지 (ObjectText는 건드리지 않음)
-			proximity.ActionText = "Buy (Robux)"
-		elseif fishTrapBool.Value then
-			if currentFishTrapValue.Value == fishTrapName then
-				proximity.ActionText = "Equipped"
-			else
-				proximity.ActionText = "Equip"
-			end
-		else
-			proximity.ActionText = "Claim"
-		end
-		return
-	end
-
-	-- Normal Fish Trap handling
-	if fishTrapBool.Value then
-		-- 소유함: 가격 텍스트 숨기고 Equip/Equipped 표시
-		if currentFishTrapValue.Value == fishTrapName then
-			proximity.ActionText = "Equipped"
-		else
-			proximity.ActionText = "Equip"
-		end
-		proximity.ObjectText = ""  -- 소유했으면 가격 텍스트 제거
-	else
-		-- 미소유: ActionText를 "Buy"로 고정해 Studio 기본값이 보이는 타이밍 버그 방지
-		proximity.ActionText = "Buy"
-	end
+	proximity.ActionText = "View"
+	proximity.HoldDuration = 0
+	proximity.ObjectText = FISH_TRAP_OBJECT_TEXT[fishTrapName] or "Fish Trap"
 end
 
 -- Update all ProximityPrompts
@@ -130,6 +300,7 @@ local function waitForLeaderstats()
 
 	currentValue.Changed:Connect(function()
 		updateAllProximityTexts() -- Update all texts when equipped fish trap changes
+		updateBuyButton()
 	end)
 
 	-- Periodically check gamepass status changes
@@ -152,3 +323,36 @@ task.spawn(function()
 	player:WaitForChild("DataReady", 60)
 	waitForLeaderstats()
 end)
+
+openFishTrapShop.OnClientEvent:Connect(function(fishTrapName)
+	openFrame(fishTrapName)
+end)
+
+buyBtn.MouseButton1Click:Connect(function()
+	if not currentFishTrapName then return end
+	local data = FISH_TRAP_DATA[currentFishTrapName]
+	if not data then return end
+
+	local owned, equipped = getFishTrapState(currentFishTrapName)
+	if equipped then return end
+	if isBuying then return end
+
+	if not owned and currentFishTrapName ~= "RobuxFishTrap" and getCoins() < data.price then
+		updateBuyButton()
+		return
+	end
+
+	isBuying = true
+	if not owned and currentFishTrapName ~= "RobuxFishTrap" then
+		buySound:Play()
+	end
+	buyFishTrapRemote:FireServer(currentFishTrapName)
+	task.delay(1, function()
+		isBuying = false
+		updateBuyButton()
+	end)
+end)
+
+closeBtn.MouseButton1Click:Connect(closeFrame_)
+
+fishTrapFrame.Visible = false

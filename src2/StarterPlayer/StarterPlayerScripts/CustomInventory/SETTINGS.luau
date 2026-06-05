@@ -187,7 +187,30 @@ local RARITY_COLORS = {
 	Mystic    = Color3.fromRGB(255, 100, 50),
 	Fantasy   = Color3.fromRGB(135, 206, 235),
 	Unknown   = Color3.fromRGB(10, 10, 10),
+	Soul      = Color3.fromRGB(255, 45, 45),
 }
+
+local SOUL_COLORS = {
+	Determination = Color3.fromRGB(255, 45, 45),
+	Patience = Color3.fromRGB(0, 255, 255),
+	Bravery = Color3.fromRGB(255, 128, 0),
+	Integrity = Color3.fromRGB(45, 120, 255),
+	Perseverance = Color3.fromRGB(170, 70, 255),
+	Kindness = Color3.fromRGB(60, 220, 80),
+	Justice = Color3.fromRGB(255, 230, 40),
+}
+
+local function getFishDisplayColor(fishItem)
+	if fishItem and fishItem.rarity == "Soul" then
+		local text = tostring(fishItem.fishName or fishItem.name or "")
+		for soulName, color in pairs(SOUL_COLORS) do
+			if text:find(soulName, 1, true) then
+				return color
+			end
+		end
+	end
+	return RARITY_COLORS[fishItem and fishItem.rarity] or Color3.fromRGB(80, 80, 80)
+end
 
 local function createFishSlotFrame(fishItem, index)
 	local frame = toolButton:Clone()
@@ -202,7 +225,7 @@ local function createFishSlotFrame(fishItem, index)
 		nameLabel.Text = truncateName(fishItem.name)
 		nameLabel.Visible = true
 		-- Rarity color tint
-		local rarityColor = RARITY_COLORS[fishItem.rarity]
+		local rarityColor = getFishDisplayColor(fishItem)
 		if rarityColor then
 			nameLabel.TextColor3 = rarityColor
 		end
@@ -245,8 +268,7 @@ local function createFishSlotFrame(fishItem, index)
 		stroke.Color = Color3.new(1, 1, 1)
 		frame.Image = SETTINGS.EQUIPPED_IMAGEID
 	else
-		local rarityColor = RARITY_COLORS[fishItem.rarity]
-		stroke.Color = rarityColor and rarityColor or Color3.fromRGB(80, 80, 80)
+		stroke.Color = getFishDisplayColor(fishItem)
 	end
 	stroke.Parent = frame
 
@@ -356,8 +378,7 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 	if nameLabel then
 		nameLabel.Text = truncateName(fishItem.name)
 		nameLabel.Visible = true
-		local rarityColor = RARITY_COLORS[fishItem.rarity]
-		nameLabel.TextColor3 = rarityColor or Color3.new(1, 1, 1)
+		nameLabel.TextColor3 = getFishDisplayColor(fishItem)
 	end
 	local iconLabel = slotFrame:FindFirstChild("toolIcon")
 	if iconLabel then iconLabel.Image = ""; iconLabel.Visible = false end
@@ -375,8 +396,7 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 		stroke.Color = Color3.new(1, 1, 1)
 		slotFrame.Image = SETTINGS.EQUIPPED_IMAGEID
 	else
-		local rarityColor = RARITY_COLORS[fishItem.rarity]
-		stroke.Color = rarityColor and rarityColor or Color3.fromRGB(80, 80, 80)
+		stroke.Color = getFishDisplayColor(fishItem)
 		slotFrame.Image = SETTINGS.DEFAULT_IMAGEID
 	end
 
@@ -580,7 +600,7 @@ local function setHotBarFishSlot(slotIndex, fishIndex)
 				local gfName = ghostFrame:FindFirstChild("toolName")
 				if gfName then
 					gfName.Text = truncateName(fishItem.name)
-					local rarityColor = RARITY_COLORS[fishItem.rarity]
+					local rarityColor = getFishDisplayColor(fishItem)
 					if rarityColor then gfName.TextColor3 = rarityColor end
 				end
 				ghostFrame.Size = slotFrame.Size
@@ -833,7 +853,7 @@ rebuildFishInventory = function()
 					local gfName = ghostFrame:FindFirstChild("toolName")
 					if gfName then
 						gfName.Text = truncateName(fishItem.name)
-						local rarityColor = RARITY_COLORS[fishItem.rarity]
+						local rarityColor = getFishDisplayColor(fishItem)
 						if rarityColor then gfName.TextColor3 = rarityColor end
 					end
 					ghostFrame.Size = frame.Size

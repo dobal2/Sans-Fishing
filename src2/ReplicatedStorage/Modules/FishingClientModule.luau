@@ -15,6 +15,8 @@ local SuccessSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Succ
 local SuccessBellSound = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("success bell")
 local GUI = ReplicatedStorage:WaitForChild("FishingGui")
 local RandomGen = Random.new()
+local ANIMATION_FADE_TIME = 0.15
+local PREDICTED_WAITING_DELAY = 0.55
 
 -- Tutorial event
 local tutorialEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("TutorialEvent")
@@ -74,6 +76,7 @@ function FishingClient.init(tool)
 	self.strongZone = nil
 	self.baitThrown = false
 	self.baitThrowTime = 0
+	self.castSequence = 0
 	self.cancelDelay = 2
 
 	-- Shake effect variables
@@ -132,12 +135,7 @@ function FishingClient.init(tool)
 			local targetPosition = currentPosition + (lookDirection * 50)
 			targetPosition = Vector3.new(targetPosition.X, currentPosition.Y, targetPosition.Z)
 
-			self.locked = true
-			self.baitThrown = true
-			self.baitThrowTime = tick()
-			self:_stopHoldingAnimation()
-			self:_playFishingAnimation()
-			tutorialEvent:Fire("baitThrow_success")
+			self:_beginPredictedCast()
 
 			task.delay(0.3, function()
 				if self.baitThrown and not self.newGUI then
@@ -156,6 +154,38 @@ end
 -- Inventory is now unlimited; this function always returns false.
 function FishingClient:_isInventoryFull()
 	return false
+end
+
+function FishingClient:_beginPredictedCast()
+	self.castSequence += 1
+	local castSequence = self.castSequence
+
+	self.locked = true
+	self.baitThrown = true
+	self.baitThrowTime = tick()
+	self:_stopHoldingAnimation()
+	self:_playFishingAnimation()
+	tutorialEvent:Fire("baitThrow_success")
+
+	task.delay(PREDICTED_WAITING_DELAY, function()
+		if self.castSequence ~= castSequence then return end
+		if not self.baitThrown or self.newGUI then return end
+		if self.reelingAnimationTrack and self.reelingAnimationTrack.IsPlaying then return end
+		self:_playWaitingAnimation()
+	end)
+end
+
+function FishingClient:_playPredictedReeling()
+	if self.waitingAnimationTrack then
+		self.waitingAnimationTrack:Stop(ANIMATION_FADE_TIME)
+		self.waitingAnimationTrack = nil
+	end
+	if self.fishingAnimationTrack then
+		self.fishingAnimationTrack:Stop(ANIMATION_FADE_TIME)
+		self.fishingAnimationTrack = nil
+	end
+	self:_stopHoldingAnimation()
+	self:_playReelingAnimation()
 end
 
 -- Fast position + rotation compound shake effect
@@ -323,6 +353,12 @@ end
 
 -- Randomize hit zone position
 function FishingClient:_resetHitZone(hitSizeRange)
+	if hitSizeRange then
+		self.currentHitSizeRange = hitSizeRange
+	else
+		hitSizeRange = self.currentHitSizeRange
+	end
+
 	local hitSizeX
 	if hitSizeRange then
 		hitSizeX = RandomGen:NextNumber(hitSizeRange.min, hitSizeRange.max)
@@ -499,6 +535,7 @@ local RARITY_BASE_INTENSITY = {
 	Mystic    = 0.27,
 	Fantasy   = 0.36,
 	Unknown   = 0.46,
+	Soul      = 0.58,
 }
 
 function FishingClient:_startCameraShake(rarity, fishWeight)
@@ -615,7 +652,7 @@ function FishingClient:_playHoldingAnimation(holdingFish)
 	end
 
 	if self.holdingAnimationTrack then
-		self.holdingAnimationTrack:Stop()
+		self.holdingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.holdingAnimationTrack.Destroy then
 			self.holdingAnimationTrack:Destroy()
 		end
@@ -673,7 +710,7 @@ end
 
 function FishingClient:_stopHoldingAnimation()
 	if self.holdingAnimationTrack then
-		self.holdingAnimationTrack:Stop()
+		self.holdingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.holdingAnimationTrack.Destroy then
 			self.holdingAnimationTrack:Destroy()
 		end
@@ -700,14 +737,14 @@ function FishingClient:_playFishingAnimation()
 
 	-- Also stop FishBaitEat and Reeling animations
 	if self.fishBaitEatAnimationTrack then
-		self.fishBaitEatAnimationTrack:Stop()
+		self.fishBaitEatAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.fishBaitEatAnimationTrack.Destroy then
 			self.fishBaitEatAnimationTrack:Destroy()
 		end
 		self.fishBaitEatAnimationTrack = nil
 	end
 	if self.reelingAnimationTrack then
-		self.reelingAnimationTrack:Stop()
+		self.reelingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.reelingAnimationTrack.Destroy then
 			self.reelingAnimationTrack:Destroy()
 		end
@@ -715,7 +752,7 @@ function FishingClient:_playFishingAnimation()
 	end
 
 	if self.fishingAnimationTrack then
-		self.fishingAnimationTrack:Stop()
+		self.fishingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.fishingAnimationTrack.Destroy then
 			self.fishingAnimationTrack:Destroy()
 		end
@@ -731,7 +768,7 @@ function FishingClient:_playFishingAnimation()
 			self.fishingAnimationTrack = result
 			self.fishingAnimationTrack.Priority = Enum.AnimationPriority.Action
 			self.fishingAnimationTrack.Looped = false
-			self.fishingAnimationTrack:Play()
+			self.fishingAnimationTrack:Play(ANIMATION_FADE_TIME)
 
 			self.fishingAnimationTrack.Ended:Connect(function()
 				self.fishingAnimationTrack = nil
@@ -757,7 +794,8 @@ function FishingClient:_playWaitingAnimation()
 	end
 
 	if self.waitingAnimationTrack then
-		self.waitingAnimationTrack:Stop()
+		if self.waitingAnimationTrack.IsPlaying then return end
+		self.waitingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.waitingAnimationTrack.Destroy then
 			self.waitingAnimationTrack:Destroy()
 		end
@@ -773,7 +811,7 @@ function FishingClient:_playWaitingAnimation()
 			self.waitingAnimationTrack = result
 			self.waitingAnimationTrack.Priority = Enum.AnimationPriority.Action
 			self.waitingAnimationTrack.Looped = true
-			self.waitingAnimationTrack:Play()
+			self.waitingAnimationTrack:Play(ANIMATION_FADE_TIME)
 		else
 			warn("Client: Failed to load waiting animation:", result)
 		end
@@ -811,7 +849,7 @@ function FishingClient:_playFinishAnimation()
 
 	-- Stop all other tracks immediately
 	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-		track:Stop(0)
+		track:Stop(ANIMATION_FADE_TIME)
 	end
 	self.fishingAnimationTrack = nil
 	self.waitingAnimationTrack = nil
@@ -838,7 +876,7 @@ function FishingClient:_playFinishAnimation()
 	track.Looped = false
 	self.finishAnimationTrack = track
 
-	track:Play()
+	track:Play(ANIMATION_FADE_TIME)
 
 	-- Wait for finish animation to end; use a timeout as safety in case Ended fires late
 	task.spawn(function()
@@ -884,7 +922,7 @@ function FishingClient:_playFishFailAnimation()
 
 	-- 기존 트랙 정지
 	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-		track:Stop(0)
+		track:Stop(ANIMATION_FADE_TIME)
 	end
 	self.fishingAnimationTrack = nil
 	self.waitingAnimationTrack = nil
@@ -901,7 +939,7 @@ function FishingClient:_playFishFailAnimation()
 	track.Priority = Enum.AnimationPriority.Action4
 	track.Looped = false
 	self.fishFailAnimationTrack = track
-	track:Play()
+	track:Play(ANIMATION_FADE_TIME)
 
 	task.spawn(function()
 		local done = false
@@ -941,7 +979,7 @@ function FishingClient:_playFishBaitEatAnimation()
 
 	-- Stop existing bait eat animation
 	if self.fishBaitEatAnimationTrack then
-		self.fishBaitEatAnimationTrack:Stop()
+		self.fishBaitEatAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.fishBaitEatAnimationTrack.Destroy then
 			self.fishBaitEatAnimationTrack:Destroy()
 		end
@@ -957,7 +995,7 @@ function FishingClient:_playFishBaitEatAnimation()
 			self.fishBaitEatAnimationTrack = result
 			self.fishBaitEatAnimationTrack.Priority = Enum.AnimationPriority.Action
 			self.fishBaitEatAnimationTrack.Looped = false
-			self.fishBaitEatAnimationTrack:Play()
+			self.fishBaitEatAnimationTrack:Play(ANIMATION_FADE_TIME)
 			-- After FishBaitEat finishes naturally, transition to Reeling loop.
 			-- If fishBaitEatAnimationTrack is nil here it was stopped externally (e.g. success/fail),
 			-- so don't start Reeling.
@@ -982,7 +1020,8 @@ function FishingClient:_playReelingAnimation()
 	animator.Parent = humanoid
 
 	if self.reelingAnimationTrack then
-		self.reelingAnimationTrack:Stop()
+		if self.reelingAnimationTrack.IsPlaying then return end
+		self.reelingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		self.reelingAnimationTrack = nil
 	end
 
@@ -994,7 +1033,7 @@ function FishingClient:_playReelingAnimation()
 			self.reelingAnimationTrack = result
 			self.reelingAnimationTrack.Priority = Enum.AnimationPriority.Action
 			self.reelingAnimationTrack.Looped = true
-			self.reelingAnimationTrack:Play()
+			self.reelingAnimationTrack:Play(ANIMATION_FADE_TIME)
 		else
 			warn("Client: Failed to load reeling animation:", result)
 		end
@@ -1015,7 +1054,7 @@ end
 
 function FishingClient:_stopAllAnimations()
 	if self.fishingAnimationTrack then
-		self.fishingAnimationTrack:Stop()
+		self.fishingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.fishingAnimationTrack.Destroy then
 			self.fishingAnimationTrack:Destroy()
 		end
@@ -1023,7 +1062,7 @@ function FishingClient:_stopAllAnimations()
 	end
 
 	if self.waitingAnimationTrack then
-		self.waitingAnimationTrack:Stop()
+		self.waitingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.waitingAnimationTrack.Destroy then
 			self.waitingAnimationTrack:Destroy()
 		end
@@ -1031,13 +1070,13 @@ function FishingClient:_stopAllAnimations()
 	end
 
 	if self.fishFailAnimationTrack then
-		self.fishFailAnimationTrack:Stop()
+		self.fishFailAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		self.fishFailAnimationTrack = nil
 	end
 
 	-- Never stop finish animation if it's currently playing
 	if self.finishAnimationTrack and not self.finishAnimationTrack.IsPlaying then
-		self.finishAnimationTrack:Stop()
+		self.finishAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.finishAnimationTrack.Destroy then
 			self.finishAnimationTrack:Destroy()
 		end
@@ -1045,7 +1084,7 @@ function FishingClient:_stopAllAnimations()
 	end
 
 	if self.holdingAnimationTrack then
-		self.holdingAnimationTrack:Stop()
+		self.holdingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.holdingAnimationTrack.Destroy then
 			self.holdingAnimationTrack:Destroy()
 		end
@@ -1053,14 +1092,14 @@ function FishingClient:_stopAllAnimations()
 	end
 
 	if self.fishBaitEatAnimationTrack then
-		self.fishBaitEatAnimationTrack:Stop()
+		self.fishBaitEatAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.fishBaitEatAnimationTrack.Destroy then
 			self.fishBaitEatAnimationTrack:Destroy()
 		end
 		self.fishBaitEatAnimationTrack = nil
 	end
 	if self.reelingAnimationTrack then
-		self.reelingAnimationTrack:Stop()
+		self.reelingAnimationTrack:Stop(ANIMATION_FADE_TIME)
 		if self.reelingAnimationTrack.Destroy then
 			self.reelingAnimationTrack:Destroy()
 		end
@@ -1127,13 +1166,8 @@ function FishingClient:_bind()
 				local targetPosition = currentPosition + (lookDirection * castDistance)
 				targetPosition = Vector3.new(targetPosition.X, currentPosition.Y, targetPosition.Z)
 
-				-- Raft style: play animation immediately on client, then fire server after delay
-				self.locked = true
-				self.baitThrown = true
-				self.baitThrowTime = tick()
-				self:_stopHoldingAnimation()
-				self:_playFishingAnimation()
-				tutorialEvent:Fire("baitThrow_success")
+				-- Play the local cast flow immediately; the server still validates the catch.
+				self:_beginPredictedCast()
 
 				task.delay(0.3, function()
 					if self.baitThrown and not self.newGUI then
@@ -1175,11 +1209,11 @@ function FishingClient:_bind()
 			end
 
 			-- Stop all except finish
-			if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(); self.fishingAnimationTrack = nil end
-			if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(); self.waitingAnimationTrack = nil end
-			if self.fishBaitEatAnimationTrack then self.fishBaitEatAnimationTrack:Stop(); self.fishBaitEatAnimationTrack = nil end
-			if self.reelingAnimationTrack then self.reelingAnimationTrack:Stop(); self.reelingAnimationTrack = nil end
-			if self.holdingAnimationTrack then self.holdingAnimationTrack:Stop(); self.holdingAnimationTrack = nil end
+			if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.fishingAnimationTrack = nil end
+			if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.waitingAnimationTrack = nil end
+			if self.fishBaitEatAnimationTrack then self.fishBaitEatAnimationTrack:Stop(ANIMATION_FADE_TIME); self.fishBaitEatAnimationTrack = nil end
+			if self.reelingAnimationTrack then self.reelingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.reelingAnimationTrack = nil end
+			if self.holdingAnimationTrack then self.holdingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.holdingAnimationTrack = nil end
 
 			self:_stopCameraShake()
 
@@ -1200,10 +1234,7 @@ function FishingClient:_bind()
 		end
 
 		if data == "keep_waiting_animation" then
-			if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(); self.waitingAnimationTrack = nil end
-			if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(); self.fishingAnimationTrack = nil end
-			self:_stopHoldingAnimation()
-			self:_playReelingAnimation()
+			self:_playPredictedReeling()
 			return
 		end
 
@@ -1223,6 +1254,7 @@ function FishingClient:_bind()
 			return
 		end
 
+		self:_playPredictedReeling()
 		self.lastFishWeight = data.fishWeight or 0
 		self.lastFishMinWeight = data.fishMinWeight or 0
 		self.lastFishMaxWeight = data.fishMaxWeight or 0
@@ -1355,9 +1387,16 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	end
 
 	local hitSizeBonus = toolConfig and toolConfig.HitZoneBonus or 1
+	local minHitSizeByRarity = {
+		Common = 0.22,
+		Uncommon = 0.20,
+		Rare = 0.18,
+		Epic = 0.16,
+	}
+	local minHitSize = minHitSizeByRarity[rarity] or 0
 	local bonusHitSize = {
-		min = math.min(0.35, difficulty.hitSize.min * hitSizeBonus),
-		max = math.min(0.40, difficulty.hitSize.max * hitSizeBonus),
+		min = math.max(minHitSize, math.min(0.35, difficulty.hitSize.min * hitSizeBonus)),
+		max = math.max(minHitSize + 0.03, math.min(0.40, difficulty.hitSize.max * hitSizeBonus)),
 	}
 	self:_resetHitZone(bonusHitSize)
 	self:_startSlider(difficulty.speed)
@@ -1464,11 +1503,11 @@ function FishingClient:_closeGui()
 	self:_stopCameraShake()
 
 	-- Stop all in-progress fishing animations; caller is responsible for what plays next
-	if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(); self.fishingAnimationTrack = nil end
-	if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(); self.waitingAnimationTrack = nil end
-	if self.fishBaitEatAnimationTrack then self.fishBaitEatAnimationTrack:Stop(); self.fishBaitEatAnimationTrack = nil end
-	if self.reelingAnimationTrack then self.reelingAnimationTrack:Stop(); self.reelingAnimationTrack = nil end
-	if self.holdingAnimationTrack then self.holdingAnimationTrack:Stop(); self.holdingAnimationTrack = nil end
+	if self.fishingAnimationTrack then self.fishingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.fishingAnimationTrack = nil end
+	if self.waitingAnimationTrack then self.waitingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.waitingAnimationTrack = nil end
+	if self.fishBaitEatAnimationTrack then self.fishBaitEatAnimationTrack:Stop(ANIMATION_FADE_TIME); self.fishBaitEatAnimationTrack = nil end
+	if self.reelingAnimationTrack then self.reelingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.reelingAnimationTrack = nil end
+	if self.holdingAnimationTrack then self.holdingAnimationTrack:Stop(ANIMATION_FADE_TIME); self.holdingAnimationTrack = nil end
 end
 
 local function playBaitSplashEffect(pos)

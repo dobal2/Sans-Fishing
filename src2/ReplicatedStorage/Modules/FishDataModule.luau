@@ -106,6 +106,19 @@ FishData.Rarities = {
 			{ fishName = "Unknown", value = 50232, model = fishFolder:WaitForChild("Unknown"), minWeight = 1.0, maxWeight = 100.0 },
 			{ fishName = "Nyan Cat", value = 56028, model = fishFolder:WaitForChild("Nyan Cat"), minWeight = 1.0, maxWeight = 100.0 }
 		}
+	},
+	{
+		name = "Soul",
+		chance = 0.01,
+		fishes = {
+			{ fishName = "Determination", value = 120000, model = fishFolder:WaitForChild("Determination"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Patience", value = 120000, model = fishFolder:WaitForChild("Patience"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Bravery", value = 120000, model = fishFolder:WaitForChild("Bravery"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Integrity", value = 120000, model = fishFolder:WaitForChild("Integrity"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Perseverance", value = 120000, model = fishFolder:WaitForChild("Perseverance"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Kindness", value = 120000, model = fishFolder:WaitForChild("Kindness"), minWeight = 1.0, maxWeight = 100.0 },
+			{ fishName = "Justice", value = 120000, model = fishFolder:WaitForChild("Justice"), minWeight = 1.0, maxWeight = 100.0 }
+		}
 	}
 }
 
@@ -489,14 +502,15 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 
 	-- Base probabilities (exactly 100%)
 	local baseChances = {
-		["Common"] = 50.0,
+		["Common"] = 50.09,
 		["Uncommon"] = 25.0,
 		["Rare"] = 13.0,
 		["Epic"] = 6.5,
 		["Legendary"] = 3.0,
 		["Mystic"] = 1.8,
 		["Fantasy"] = 0.5,
-		["Unknown"] = 0.1
+		["Unknown"] = 0.1,
+		["Soul"] = 0.01
 	}
 
 	-- Check gamepasses
@@ -520,14 +534,15 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 	-- Adjust probabilities with luck gamepass (exactly 100%)
 	if hasLuckPass then
 		baseChances = {
-			["Common"] = 37.4,
+			["Common"] = 37.39,
 			["Uncommon"] = 21.07,
 			["Rare"] = 14.33,
 			["Epic"] = 14.0,
 			["Legendary"] = 8.0,
 			["Mystic"] = 4.0,
 			["Fantasy"] = 1.0,
-			["Unknown"] = 0.2
+			["Unknown"] = 0.2,
+			["Soul"] = 0.01
 		}
 	end
 
@@ -591,6 +606,11 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		ArcaneRod         = 6.50,
 		FlameRod          = 8.00,
 		VoidRod           = 10.00,
+
+		BasicFishTrap     = 0.10,
+		AdvancedFishTrap  = 0.35,
+		MasterFishTrap    = 0.75,
+		RobuxFishTrap     = 1.50,
 	}
 	local luckBonus = ROD_LUCK_BONUS[rodName] or 0
 
@@ -652,6 +672,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 			Mystic    = 1.375,
 			Fantasy   = 1.925,
 			Unknown   = 2.75,
+			Soul      = 7.91,
 		}
 		for r, scale in pairs(rarityScale) do
 			finalChances[r] = finalChances[r] * (1 + luckBonus * scale)

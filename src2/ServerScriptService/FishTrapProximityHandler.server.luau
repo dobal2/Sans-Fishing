@@ -2,13 +2,21 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local buyFishTrapBindable = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishTrapBindable")
+local shopRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop")
+local openFishTrapShop = shopRemotes:WaitForChild("OpenFishTrapShop")
 
 local TRAP_MODELS = {
 	["Basic FishtrapMainModel"] = "BasicFishTrap",
 	["T2 FishtrapMainModel"]    = "AdvancedFishTrap",
 	["T3 FishtrapMainModel"]    = "MasterFishTrap",
 	["Robux FishtrapMainModel"] = "RobuxFishTrap",
+}
+
+local TRAP_OBJECT_TEXT = {
+	BasicFishTrap = "Basic Fish Trap",
+	AdvancedFishTrap = "Advanced Fish Trap",
+	MasterFishTrap = "Master Fish Trap",
+	RobuxFishTrap = "Robux Fish Trap",
 }
 
 local function findPrompt(model)
@@ -24,9 +32,14 @@ for modelName, trapType in pairs(TRAP_MODELS) do
 	if model then
 		local prompt = findPrompt(model)
 		if prompt then
+			prompt.ActionText = "View"
+			prompt.ObjectText = TRAP_OBJECT_TEXT[trapType] or "Fish Trap"
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = 10
+
 			local t = trapType
 			prompt.Triggered:Connect(function(plr)
-				buyFishTrapBindable:Fire(plr, t)
+				openFishTrapShop:FireClient(plr, t)
 			end)
 		end
 	end

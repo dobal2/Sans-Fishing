@@ -18,7 +18,9 @@ local FISH_TRAP_DATA = {
 	["RobuxFishTrap"]    = 0,
 }
 
-local buyFishTrapBindable = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("BuyFishTrapBindable")
+local shopRemotes = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop")
+local buyFishTrapBindable = shopRemotes:WaitForChild("BuyFishTrapBindable")
+local buyFishTrapRemote = shopRemotes:WaitForChild("BuyFishTrapRemote")
 local showNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
 
 local function hasGamepass(player, gamepassId)
@@ -87,7 +89,7 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 	end
 end)
 
-buyFishTrapBindable.Event:Connect(function(plr, fishTrapName)
+local function handleFishTrapPurchase(plr, fishTrapName)
 	local fishTrapPrice = FISH_TRAP_DATA[fishTrapName]
 	if not fishTrapPrice then
 		warn("Unknown Fish Trap:", fishTrapName)
@@ -161,7 +163,10 @@ buyFishTrapBindable.Event:Connect(function(plr, fishTrapName)
 
 	local msg = equipFishTrap(plr, fishTrapName) and "Fish Trap purchased successfully!" or "Fish Trap purchased but failed to equip!"
 	showNoticeEvent:FireClient(plr, msg)
-end)
+end
+
+buyFishTrapBindable.Event:Connect(handleFishTrapPurchase)
+buyFishTrapRemote.OnServerEvent:Connect(handleFishTrapPurchase)
 
 game.Players.PlayerRemoving:Connect(function(player)
 	pendingGamepassPurchases[player.UserId] = nil

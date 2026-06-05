@@ -7,10 +7,10 @@ local function generateTrapId()
 end
 
 local FISHTRAP_CONFIGS = {
-	["BasicFishTrap"]    = { catchInterval = 600, maxCapacity = 20, rodType = "BasicRod"  },
-	["AdvancedFishTrap"] = { catchInterval = 600, maxCapacity = 30, rodType = "SteelRod"  },
-	["MasterFishTrap"]   = { catchInterval = 600, maxCapacity = 40, rodType = "GoldRod"   },
-	["RobuxFishTrap"]    = { catchInterval = 600, maxCapacity = 60, rodType = "RobuxRod", displayName = "Robux Fish Trap" },
+	["BasicFishTrap"]    = { catchInterval = 600, maxCapacity = 20 },
+	["AdvancedFishTrap"] = { catchInterval = 480, maxCapacity = 30 },
+	["MasterFishTrap"]   = { catchInterval = 360, maxCapacity = 40 },
+	["RobuxFishTrap"]    = { catchInterval = 300, maxCapacity = 60, displayName = "Robux Fish Trap" },
 }
 
 local ProfileStore = ProfileService.New("FishingGameStore", {})
@@ -205,7 +205,7 @@ function DataManager:RestorePlayerFishTraps(player)
 					if ok and FishData then
 						local storedFish = trapData.storedFish or {}
 						for _ = 1, offlineCatches do
-							local fishInfo = FishData.GetRandomFish(config.rodType, nil, true)
+							local fishInfo = FishData.GetRandomFish(trapType, nil, true)
 							if fishInfo then
 								table.insert(storedFish, {
 									name = fishInfo.name, fishName = fishInfo.fishName,

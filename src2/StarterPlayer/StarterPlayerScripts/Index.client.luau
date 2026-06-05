@@ -56,10 +56,19 @@ local FishRarities = {
 	{ name="Mystic",    chance=2,    fishes={ {fishName="Shark",value=4500},{fishName="Ray",value=4200} } },
 	{ name="Fantasy",   chance=0.5,  fishes={ {fishName="Undyine",value=9000},{fishName="Sans",value=11111},{fishName="Electric Fish",value=13333} } },
 	{ name="Unknown",   chance=0.1,  fishes={ {fishName="Unknown",value=50000},{fishName="Nyan Cat",value=56000} } },
+	{ name="Soul",      chance=0.02, fishes={
+		{fishName="Determination",value=120000},
+		{fishName="Patience",value=120000},
+		{fishName="Bravery",value=120000},
+		{fishName="Integrity",value=120000},
+		{fishName="Perseverance",value=120000},
+		{fishName="Kindness",value=120000},
+		{fishName="Justice",value=120000},
+	} },
 }
 
 -- halved base rewards
-local DISCOVER_REWARDS = { Common=25,Uncommon=75,Rare=200,Epic=500,Legendary=1500,Mystic=4000,Fantasy=12500,Unknown=50000 }
+local DISCOVER_REWARDS = { Common=25,Uncommon=75,Rare=200,Epic=500,Legendary=1500,Mystic=4000,Fantasy=12500,Unknown=50000,Soul=150000 }
 local VARIANT_MULTIPLIER = 2
 
 local VARIANT_PREFIXES = { "Gold", "Frozen", "Festival", "Sans" }
@@ -69,7 +78,27 @@ local rarityColors = {
 	Rare=Color3.fromRGB(5,188,255),     Epic=Color3.fromRGB(162,12,255),
 	Legendary=Color3.fromRGB(255,0,221),Mystic=Color3.fromRGB(255,217,2),
 	Fantasy=Color3.fromRGB(64,224,208), Unknown=Color3.fromRGB(0,0,0),
+	Soul=Color3.fromRGB(255,45,45),
 }
+
+local soulColors = {
+	Determination = Color3.fromRGB(255, 45, 45),
+	Patience = Color3.fromRGB(0, 255, 255),
+	Bravery = Color3.fromRGB(255, 128, 0),
+	Integrity = Color3.fromRGB(45, 120, 255),
+	Perseverance = Color3.fromRGB(170, 70, 255),
+	Kindness = Color3.fromRGB(60, 220, 80),
+	Justice = Color3.fromRGB(255, 230, 40),
+}
+
+local function getSoulColor(fishName, fallback)
+	for soulName, color in pairs(soulColors) do
+		if fishName:find(soulName, 1, true) then
+			return color
+		end
+	end
+	return fallback
+end
 
 local catAccentColors = {
 	Normal   = Color3.fromRGB(255, 255, 255),
@@ -176,6 +205,13 @@ local VP_ZOOM  = 1.2
 
 local VP_OVERRIDES = {
 	["Unknown"]       = { pitch = -20, yaw = 45, zoom = 3.5 },
+	["Determination"] = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Patience"]      = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Bravery"]       = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Integrity"]     = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Perseverance"]  = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Kindness"]      = { pitch = -5, yaw = 0, zoom = 2.2 },
+	["Justice"]       = { pitch = -5, yaw = 0, zoom = 2.2 },
 	["Electric Fish"] = { pitch = -10, yaw = 45, zoom = 0.9 },
 	["Nyan Cat"]      = { pitch = -10, yaw = 30, zoom = 0.9 },
 }
@@ -381,6 +417,9 @@ local function createFishIndexUI()
 		local baseName    = entry.baseName
 		local rarityName  = entry.rarityName
 		local rarityColor = rarityColors[rarityName] or Color3.fromRGB(255, 255, 255)
+		if rarityName == "Soul" then
+			rarityColor = getSoulColor(displayName, rarityColor)
+		end
 
 		local isDiscovered
 		if isVariant then

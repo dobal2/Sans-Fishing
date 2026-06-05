@@ -12,6 +12,28 @@ local VALID_TRAPS = { BasicFishTrap=true, AdvancedFishTrap=true, MasterFishTrap=
 
 local FishTrapManager = {}
 
+local function hideEquippedFishTrapTool(player, trapName)
+	local character = player.Character
+	if not character then return end
+
+	local tool = character:FindFirstChild(trapName)
+	if not tool or not tool:IsA("Tool") then return end
+
+	tool:SetAttribute("PlacedTransparent", true)
+	for _, descendant in ipairs(tool:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 1
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+		elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+			descendant.Transparency = 1
+		elseif descendant:IsA("ParticleEmitter") or descendant:IsA("Trail") or descendant:IsA("Beam") then
+			descendant.Enabled = false
+		end
+	end
+end
+
 function FishTrapManager.GetPlayerTrapCount(player)
 	local playerData = DataManager:GetData(player)
 	if not playerData then return 0 end
@@ -89,6 +111,7 @@ PlaceFishTrapRemote.OnServerEvent:Connect(function(player, trapName, position, r
 	local snappedPosition = Vector3.new(position.X, TRAP_PLACE_Y, position.Z)
 	local trapId = FishTrapManager.PlaceFishTrap(player, trapName, snappedPosition, rot)
 	if trapId then
+		hideEquippedFishTrapTool(player, trapName)
 		ShowNoticeEvent:FireClient(player, "Fish Trap placed!")
 	else
 		ShowNoticeEvent:FireClient(player, "Failed to place Fish Trap!")

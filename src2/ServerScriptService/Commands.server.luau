@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 local LeaderstatsDataManager = require(ServerScriptService:WaitForChild("leaderstats"):WaitForChild("DataManager"))
 local ItemSaveDataManager = require(ServerScriptService:WaitForChild("ItemSave"):WaitForChild("DataManager"))
@@ -80,6 +81,7 @@ local Permissions = {
 		bobberreset = true,
 		bobberrestock = true,
 		rodreset = true,
+		fishtrapreset = true,
 		tutorialreset = true,
 		updatelogreset = true,
 		questreset = true,
@@ -612,13 +614,13 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :common/:uncommon/:rare/:epic/:legendary/:mystic/:fantasy/:unknown [target]
+	-- :common/:uncommon/:rare/:epic/:legendary/:mystic/:fantasy/:unknown/:soul [target]
 	-- Forces the next normal fish catch to that rarity (one-time)
 	do
 		local VALID_RARITIES = {
 			common="Common", uncommon="Uncommon", rare="Rare",
 			epic="Epic", legendary="Legendary", mystic="Mystic",
-			fantasy="Fantasy", unknown="Unknown"
+			fantasy="Fantasy", unknown="Unknown", soul="Soul"
 		}
 		local lowerChat = chat:lower()
 		for cmdKey, rarityName in pairs(VALID_RARITIES) do
@@ -636,7 +638,7 @@ local function command(plr, chat)
 		end
 	end
 
-	-- :rf <epic|legendary|mystic|fantasy|unknown> [target]
+	-- :rf <epic|legendary|mystic|fantasy|unknown|soul> [target]
 	-- Forces next RandomFish gacha pull to that rarity (one-time)
 	if chat:lower():sub(1, #Prefix + 2) == Prefix .. "rf" then
 		if hasPermission(plr, "forcerandomfish") then
@@ -645,7 +647,7 @@ local function command(plr, chat)
 			local targetName = args[3] or plr.Name
 			local GACHA_RARITIES = {
 				epic="Epic", legendary="Legendary", mystic="Mystic",
-				fantasy="Fantasy", unknown="Unknown"
+				fantasy="Fantasy", unknown="Unknown", soul="Soul"
 			}
 			local forcedRarity = rarityArg and GACHA_RARITIES[rarityArg]
 			if forcedRarity then
@@ -663,7 +665,7 @@ local function command(plr, chat)
 			local args = string.split(chat, " ")
 			local GACHA_RARITIES = {
 				epic="Epic", legendary="Legendary", mystic="Mystic",
-				fantasy="Fantasy", unknown="Unknown"
+				fantasy="Fantasy", unknown="Unknown", soul="Soul"
 			}
 			local count = 1
 			local forcedRarity = nil
@@ -713,12 +715,12 @@ local function command(plr, chat)
 				ArcaneRod=6.00, VoidRod=10.00,
 			}
 			local BASE_CHANCES = {
-				Common=46.9, Uncommon=25, Rare=15, Epic=8,
-				Legendary=3, Mystic=1.5, Fantasy=0.5, Unknown=0.1,
+				Common=50.09, Uncommon=25, Rare=13, Epic=6.5,
+				Legendary=3, Mystic=1.8, Fantasy=0.5, Unknown=0.1, Soul=0.01,
 			}
 			local RARITY_SCALE = {
 				Uncommon=1.0, Rare=1.2, Epic=1.5,
-				Legendary=2.0, Mystic=2.5, Fantasy=3.5, Unknown=5.0,
+				Legendary=2.0, Mystic=2.5, Fantasy=3.5, Unknown=5.0, Soul=7.91,
 			}
 
 			for _, v in pairs(foundPlayers) do
@@ -767,7 +769,7 @@ local function command(plr, chat)
 				local total = 0
 				for _, w in pairs(chances) do total += w end
 
-				local order = {"Common","Uncommon","Rare","Epic","Legendary","Mystic","Fantasy","Unknown"}
+				local order = {"Common","Uncommon","Rare","Epic","Legendary","Mystic","Fantasy","Unknown","Soul"}
 				local lines = {string.format("=== %s | Rod:%s Luck:%.2f%s%s ===",
 					v.Name, rodName, luckBonus,
 					hasLuckPass and " x2pass" or "",
@@ -1014,6 +1016,66 @@ local function command(plr, chat)
 					end
 				end
 				announceRemote:FireClient(v, "Your rods have been reset to FishingRod.", "SYSTEM")
+			end
+		end
+	end
+
+	-- :fishtrapreset [target] -- reset owned/equipped fish traps and placed trap data
+	if chat:lower():sub(1, #Prefix + 13) == Prefix .. "fishtrapreset" then
+		if hasPermission(plr, "fishtrapreset") then
+			local args = string.split(chat, " ")
+			local targetName = args[2] or plr.Name
+			local foundPlayers = findPlayers(plr, targetName)
+			local fishTrapNames = {
+				BasicFishTrap = true,
+				AdvancedFishTrap = true,
+				MasterFishTrap = true,
+				RobuxFishTrap = true,
+			}
+			for _, v in pairs(foundPlayers) do
+				local leaderstats = v:FindFirstChild("leaderstats")
+				if leaderstats then
+					local fishTrapsFolder = leaderstats:FindFirstChild("FishTraps")
+					if fishTrapsFolder then
+						for _, fishTrap in ipairs(fishTrapsFolder:GetChildren()) do
+							if fishTrap:IsA("BoolValue") then
+								fishTrap.Value = false
+							end
+						end
+					end
+					local currentFishTrap = leaderstats:FindFirstChild("CurrentFishTrap")
+					local currentValue = currentFishTrap and currentFishTrap:FindFirstChild("Value")
+					if currentValue then currentValue.Value = "" end
+				end
+
+				for _, container in ipairs({ v:FindFirstChild("Backpack"), v:FindFirstChild("StarterGear"), v.Character }) do
+					if container then
+						for _, tool in ipairs(container:GetChildren()) do
+							if tool:IsA("Tool") and fishTrapNames[tool.Name] then
+								tool:Destroy()
+							end
+						end
+					end
+				end
+
+				for _, instance in ipairs(Workspace:GetDescendants()) do
+					if instance:IsA("Model") then
+						local ownerValue = instance:FindFirstChild("Owner")
+						local trapTypeValue = instance:FindFirstChild("TrapType")
+						if ownerValue and ownerValue:IsA("StringValue") and ownerValue.Value == v.Name
+							and trapTypeValue and trapTypeValue:IsA("StringValue") and fishTrapNames[trapTypeValue.Value] then
+							instance:Destroy()
+						end
+					end
+				end
+
+				LeaderstatsDataManager:UpdateData(v, "FishTraps", {})
+				LeaderstatsDataManager:UpdateData(v, "CurrentFishTrap", "")
+				if FishTrapDataManager.ClearAllPlayerTrapData then
+					FishTrapDataManager:ClearAllPlayerTrapData(v)
+				end
+				announceRemote:FireClient(v, "Your fish traps have been reset.", "SYSTEM")
+				announceRemote:FireClient(plr, "Fish traps reset: " .. v.Name, "SYSTEM")
 			end
 		end
 	end
@@ -1357,10 +1419,10 @@ local function command(plr, chat)
 	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "trapfill" then
 		if hasPermission(plr, "trapfill") then
 			local FISHTRAP_CONFIGS = {
-				["BasicFishTrap"]    = { maxCapacity = 30, rodType = "BasicRod" },
-				["AdvancedFishTrap"] = { maxCapacity = 40, rodType = "SteelRod" },
-				["MasterFishTrap"]   = { maxCapacity = 50, rodType = "GoldRod" },
-				["RobuxFishTrap"]    = { maxCapacity = 100, rodType = "RobuxRod" },
+				["BasicFishTrap"]    = { maxCapacity = 30 },
+				["AdvancedFishTrap"] = { maxCapacity = 40 },
+				["MasterFishTrap"]   = { maxCapacity = 50 },
+				["RobuxFishTrap"]    = { maxCapacity = 100 },
 			}
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
@@ -1379,7 +1441,7 @@ local function command(plr, chat)
 					local storedFish = trap.storedFish or {}
 					local toFill = config.maxCapacity - #storedFish
 					for _ = 1, toFill do
-						local fishInfo = FishDataModule.GetRandomFish(config.rodType, nil)
+						local fishInfo = FishDataModule.GetRandomFish(trapType, nil)
 						if fishInfo then
 							table.insert(storedFish, {
 								name      = fishInfo.name,

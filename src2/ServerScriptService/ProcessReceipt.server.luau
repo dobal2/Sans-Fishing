@@ -54,6 +54,13 @@ local FISH_POOL = {
 	{ name="Electric Fish",   rarity="Fantasy",   chance=2,    value=9333  },
 	{ name="Unknown",         rarity="Unknown",   chance=1,    value=35000 },
 	{ name="Nyan Cat",        rarity="Unknown",   chance=1,    value=39200 },
+	{ name="Determination",   rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Patience",        rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Bravery",         rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Integrity",       rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Perseverance",    rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Kindness",        rarity="Soul",      chance=0.4,  value=84000 },
+	{ name="Justice",         rarity="Soul",      chance=0.4,  value=84000 },
 }
 
 local GACHA_RARITY_SCALE = {
@@ -62,6 +69,7 @@ local GACHA_RARITY_SCALE = {
 	Mystic    = 2.0,
 	Fantasy   = 2.5,
 	Unknown   = 0.6,
+	Soul      = 0.2,
 }
 
 local GACHA_BASE_LUCK = 20

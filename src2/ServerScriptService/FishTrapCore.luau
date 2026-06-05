@@ -12,10 +12,10 @@ local ShowNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("
 local FISH_TRAP_HARVEST_PRODUCT_ID = 3381869322
 
 local FISHTRAP_CONFIGS = {
-	BasicFishTrap    = { catchIntervalOnline = 300, catchIntervalOffline = 600, maxCapacity = 20, rodType = "BasicRod",  displayName = "Basic Fish Trap"    },
-	AdvancedFishTrap = { catchIntervalOnline = 300, catchIntervalOffline = 600, maxCapacity = 30, rodType = "SteelRod",  displayName = "Advanced Fish Trap" },
-	MasterFishTrap   = { catchIntervalOnline = 300, catchIntervalOffline = 600, maxCapacity = 40, rodType = "GoldRod",   displayName = "Master Fish Trap"   },
-	RobuxFishTrap    = { catchIntervalOnline = 300, catchIntervalOffline = 600, maxCapacity = 60, rodType = "RobuxRod",  displayName = "Robux Fish Trap"    },
+	BasicFishTrap    = { catchInterval = 600, maxCapacity = 20, displayName = "Basic Fish Trap"    },
+	AdvancedFishTrap = { catchInterval = 480, maxCapacity = 30, displayName = "Advanced Fish Trap" },
+	MasterFishTrap   = { catchInterval = 360, maxCapacity = 40, displayName = "Master Fish Trap"   },
+	RobuxFishTrap    = { catchInterval = 300, maxCapacity = 60, displayName = "Robux Fish Trap"    },
 }
 
 local FishTrapCore = {}
@@ -85,12 +85,10 @@ function FishTrapCore.init(fishTrap)
 	local trapId   = trapIdValue   and trapIdValue.Value   or nil
 	local trapType = trapTypeValue and trapTypeValue.Value or "BasicFishTrap"
 
-	local cfg                    = FISHTRAP_CONFIGS[trapType] or FISHTRAP_CONFIGS.BasicFishTrap
-	local CATCH_INTERVAL_ONLINE  = cfg.catchIntervalOnline
-	local CATCH_INTERVAL_OFFLINE = cfg.catchIntervalOffline
-	local MAX_CAPACITY           = cfg.maxCapacity
-	local ROD_TYPE               = cfg.rodType
-	local DISPLAY_NAME           = cfg.displayName
+	local cfg            = FISHTRAP_CONFIGS[trapType] or FISHTRAP_CONFIGS.BasicFishTrap
+	local CATCH_INTERVAL = cfg.catchInterval
+	local MAX_CAPACITY   = cfg.maxCapacity
+	local DISPLAY_NAME   = cfg.displayName
 
 	if nameLabel then nameLabel.Text = DISPLAY_NAME end
 	if owner then proximity.ObjectText = owner .. "'s Fish Trap" end
@@ -110,7 +108,7 @@ function FishTrapCore.init(fishTrap)
 			return
 		end
 		local remaining = math.max(0, nextCatchTime - tick())
-		local pct = math.max(0, 1 - remaining / CATCH_INTERVAL_ONLINE)
+		local pct = math.max(0, 1 - remaining / CATCH_INTERVAL)
 		nextText.Text = string.format("%d:%02d", math.floor(remaining/60), math.floor(remaining%60))
 		nextFill.Size = UDim2.new(pct, 0, 1, 0)
 	end
@@ -275,7 +273,7 @@ function FishTrapCore.init(fishTrap)
 
 	local function catchFish()
 		if #storedFish >= MAX_CAPACITY then return end
-		local fishInfo = FishData.GetRandomFish(ROD_TYPE, nil, true)
+		local fishInfo = FishData.GetRandomFish(trapType, nil, true)
 		if fishInfo then
 			table.insert(storedFish, fishInfo)
 			saveTrapData()
@@ -287,15 +285,15 @@ function FishTrapCore.init(fishTrap)
 		if isRunning then return end
 		isRunning = true
 		local now = tick()
-		if nextCatchTime <= 0 or nextCatchTime > now + CATCH_INTERVAL_ONLINE then
-			nextCatchTime = now + CATCH_INTERVAL_ONLINE
+		if nextCatchTime <= 0 or nextCatchTime > now + CATCH_INTERVAL then
+			nextCatchTime = now + CATCH_INTERVAL
 		end
 		task.spawn(function()
 			while isRunning do
 				local now = tick()
 				if now >= nextCatchTime and #storedFish < MAX_CAPACITY then
 					catchFish()
-					nextCatchTime = now + CATCH_INTERVAL_ONLINE
+					nextCatchTime = now + CATCH_INTERVAL
 				end
 				updateNextCatchUI()
 				if math.floor(now) % 60 == 0 then saveTrapData() end

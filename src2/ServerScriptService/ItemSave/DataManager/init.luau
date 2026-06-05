@@ -40,10 +40,12 @@ end
 Players.PlayerAdded:Connect(OnPlayerAdded)
 
 local function OnPlayerRemoving(player)
-	local profile = Profiles[player]
-	if profile and profile:IsActive() then
-		profile:EndSession()
-	end
+	task.delay(0.25, function()
+		local profile = Profiles[player]
+		if profile and profile:IsActive() then
+			profile:EndSession()
+		end
+	end)
 end
 Players.PlayerRemoving:Connect(OnPlayerRemoving)
 

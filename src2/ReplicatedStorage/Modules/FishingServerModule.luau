@@ -1688,11 +1688,12 @@ local RARITY_EXCLAMATION_COLOR = {
 	Mystic    = Color3.fromRGB(255, 80, 80),
 	Fantasy   = Color3.fromRGB(100, 220, 255),
 	Unknown   = Color3.fromRGB(255, 255, 255),
+	Soul      = Color3.fromRGB(255, 45, 45),
 }
 
 local RARITY_SCALE = {
 	Common = 1.0, Uncommon = 1.1, Rare = 1.2,
-	Epic = 1.3, Legendary = 1.5, Mystic = 1.6, Fantasy = 1.8, Unknown = 2.0,
+	Epic = 1.3, Legendary = 1.5, Mystic = 1.6, Fantasy = 1.8, Unknown = 2.0, Soul = 2.3,
 }
 
 function FishingServer:_showFishCaughtNotice(rarity)

@@ -96,6 +96,11 @@ local function isPreviewableFish(tool)
 	return tool:IsA("Tool") and fishValue and fishValue.Value > 0
 end
 
+local function isSoulFish(tool)
+	local fishRarity = tool and tool:FindFirstChild("FishRarity")
+	return fishRarity and fishRarity:IsA("StringValue") and fishRarity.Value == "Soul"
+end
+
 local function getFriendsOnlineCount(player)
 	local count = 0
 	for _, other in ipairs(Players:GetPlayers()) do
@@ -187,7 +192,7 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 
 	if choice == "Option1" then
 		-- Sell all unlocked fish from data table
-		local baseValue, soldCount = SellFishBindable:Invoke(player, "all")
+		local baseValue, soldCount, soulCount, totalCount = SellFishBindable:Invoke(player, "all")
 		if soldCount > 0 then
 			totalEarned = calculateFinalValue(baseValue, player, hasDoubleGamepass)
 			coins.Value += totalEarned
@@ -197,14 +202,32 @@ sellChoiceEvent.OnServerEvent:Connect(function(player, choice)
 				AnalyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins",
 					totalEarned, coins.Value, "FishSell", "SellAll")
 			end)
+		elseif totalCount <= 0 then
+			soldNotificationEvent:FireClient(player, 0, true, "no_fish")
+		elseif soulCount == totalCount then
+			soldNotificationEvent:FireClient(player, 0, true, "soul_only")
 		else
-			soldNotificationEvent:FireClient(player, 0, true)
+			soldNotificationEvent:FireClient(player, 0, true, "no_sellable_fish")
 		end
 		enablePromptEvent:FireClient(player, true)
 
-	elseif choice == "Option2" then
+	elseif choice == "Option2" or choice == "Option2Confirmed" then
 		-- Sell currently equipped fish only
-		local baseValue, soldCount = SellFishBindable:Invoke(player, "equipped")
+		local equippedTool = nil
+		for _, tool in ipairs(character:GetChildren()) do
+			if isPreviewableFish(tool) then
+				equippedTool = tool
+				break
+			end
+		end
+		if choice ~= "Option2Confirmed" and isSoulFish(equippedTool) then
+			soldNotificationEvent:FireClient(player, -2, true)
+			enablePromptEvent:FireClient(player, true)
+			return
+		end
+
+		local sellMode = (choice == "Option2Confirmed") and "equipped_soul_confirmed" or "equipped"
+		local baseValue, soldCount = SellFishBindable:Invoke(player, sellMode)
 		if soldCount > 0 then
 			totalEarned = calculateFinalValue(baseValue, player, hasDoubleGamepass)
 			coins.Value += totalEarned

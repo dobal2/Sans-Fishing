@@ -22,7 +22,7 @@ FishCaughtBindable.Name = "FishCaughtBindable"
 FishCaughtBindable.Parent = ServerScriptService
 
 -- BindableFunction: SellShopHandler calls this to sell fish from data table
--- Returns: totalBaseValue (number), itemsSoldCount (number)
+-- Returns: totalBaseValue (number), itemsSoldCount (number), soulCount (number), totalCount (number)
 local SellFishBindable = Instance.new("BindableFunction")
 SellFishBindable.Name = "SellFishBindable"
 SellFishBindable.Parent = ServerScriptService
@@ -31,6 +31,7 @@ SellFishBindable.Parent = ServerScriptService
 local PlayerFishData = {}       -- [player] = { {name, fishName, rarity, weight, value, isLocked, isFrozen, isFestival}, ... }
 local PlayerEquippedIndex = {}  -- [player] = index or nil
 local PlayerEquippedTool = {}   -- [player] = Tool instance or nil
+local PlayerLeaving = {}        -- [player] = true while final inventory save is running
 local EquipCooldowns = {}       -- [player] = last equip timestamp
 
 -- Debounce batch-save
@@ -303,6 +304,11 @@ local function saveCurrentInventory(player)
 	for _, fishItem in ipairs(fishList) do
 		table.insert(newItemsData, {
 			name          = fishItem.name,
+			fishName      = fishItem.fishName,
+			rarity        = fishItem.rarity,
+			weight        = fishItem.weight,
+			value         = fishItem.value,
+			baseValue     = fishItem.baseValue,
 			isLocked      = fishItem.isLocked      or false,
 			isFrozen      = fishItem.isFrozen      or false,
 			isFestival    = fishItem.isFestival    or false,
@@ -446,7 +452,7 @@ cloneAndEquipFish = function(player, index)
 		if newParent == nil or (newParent ~= player.Backpack and newParent ~= player.Character) then
 			-- 리스폰 중이면 데이터 삭제하지 않음 (새 Character로 교체되는 과정에서 발동될 수 있음)
 			local isRespawning = player:GetAttribute("IsRespawning")
-			if isRespawning then
+			if isRespawning or PlayerLeaving[player] or not player:IsDescendantOf(Players) then
 				PlayerEquippedTool[player]  = nil
 				PlayerEquippedIndex[player] = nil
 				return
@@ -705,11 +711,11 @@ Players.PlayerAdded:Connect(function(player)
 		-- Fish items: parse data and store in PlayerFishData table
 		local success, errorMsg = pcall(function()
 			local fishData = GetFishDataByName(itemName)
-			if not fishData then
-				error("No fish data: " .. itemName)
-			end
 
 			local weight = ExtractWeightFromName(itemName)
+			if not weight and type(itemEntry) == "table" then
+				weight = tonumber(itemEntry.weight)
+			end
 			if not weight then
 				error("Weight extraction failed: " .. itemName)
 			end
@@ -732,13 +738,24 @@ Players.PlayerAdded:Connect(function(player)
 				-- Gold variant: name must start with "Gold " AND base fish name
 				-- does NOT start with "Gold" (e.g. "Gold Fish" is not a variant)
 				local goldPrefix = itemName:match("^Gold (.+)%s*%[")
-				hasGold = goldPrefix ~= nil and fishData.fishName:sub(1, 4):lower() ~= "gold"
+				local baseFishName = (fishData and fishData.fishName) or itemName:match("^(.-)%s*%[") or itemName
+				hasGold = goldPrefix ~= nil and baseFishName:sub(1, 4):lower() ~= "gold"
 			end
 
-			local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
-			local baseValue  = fishData.value or 0
+			local savedRarity = type(itemEntry) == "table" and itemEntry.rarity or nil
+			local savedFishName = type(itemEntry) == "table" and itemEntry.fishName or nil
+			local savedValue = type(itemEntry) == "table" and tonumber(itemEntry.value) or nil
+			local savedBaseValue = type(itemEntry) == "table" and tonumber(itemEntry.baseValue) or nil
+
+			local minW, maxW = 1, 1
+			local baseValue = savedBaseValue or savedValue or 0
+			if fishData then
+				minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
+				baseValue = fishData.value or baseValue
+			end
+
 			local valueRatio = safeValueRatio(weight, minW, maxW)
-			local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+			local adjustedValue = savedValue or math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
 
 			local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
 				WeatherSystemModule.WeatherTypes.Firework and
@@ -750,12 +767,13 @@ Players.PlayerAdded:Connect(function(player)
 			if hasGold     then adjustedValue = math.floor(adjustedValue * 2.0) end
 
 			-- Reconstruct fishName (with variant prefix) from itemName
-			local fishName = itemName:match("^(.-)%s*%[") or fishData.fishName
+			local fishName = itemName:match("^(.-)%s*%[") or savedFishName or (fishData and fishData.fishName) or itemName
+			local rarityName = (fishData and fishData.name) or savedRarity or itemName:match("%[(.-)%]") or "Common"
 
 			local fishItem = {
 				name      = itemName,
 				fishName  = fishName,
-				rarity    = fishData.name,
+				rarity    = rarityName,
 				weight    = weight,
 				value     = adjustedValue,
 				baseValue = baseValue,
@@ -841,6 +859,7 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 Players.PlayerRemoving:Connect(function(player)
+	PlayerLeaving[player] = true
 	-- AncestryChanged 오발동으로 장착 물고기가 데이터에서 삭제되기 전에 플래그 세팅
 	player:SetAttribute("IsRespawning", true)
 
@@ -856,6 +875,7 @@ Players.PlayerRemoving:Connect(function(player)
 	PlayerFishData[player]       = nil
 	PlayerEquippedIndex[player]  = nil
 	PlayerEquippedTool[player]   = nil
+	PlayerLeaving[player]        = nil
 	EquipCooldowns[player]       = nil
 end)
 
@@ -928,16 +948,19 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SellFishBindable handler
 -- Called by SellShopHandler to sell fish from data table.
--- mode: "all" (sell all unlocked) | "equipped" (sell currently equipped fish)
+-- mode: "all" (sell all unlocked except Soul) | "equipped" (sell currently equipped fish)
+--       "equipped_soul_confirmed" (sell equipped Soul after NPC confirmation)
 -- Returns: totalBaseValue (number), itemsSoldCount (number)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 SellFishBindable.OnInvoke = function(player, mode)
 	local fishList = PlayerFishData[player]
-	if not fishList then return 0, 0 end
+	if not fishList then return 0, 0, 0, 0 end
 
 	local totalBaseValue = 0
 	local itemsSoldCount = 0
+	local totalCount = #fishList
+	local soulCount = 0
 
 	if mode == "all" then
 		-- Sell all unlocked fish
@@ -945,7 +968,10 @@ SellFishBindable.OnInvoke = function(player, mode)
 		local equippedIdx = PlayerEquippedIndex[player]
 
 		for i, fishItem in ipairs(fishList) do
-			if fishItem.isLocked then
+			if fishItem.rarity == "Soul" then
+				soulCount += 1
+			end
+			if fishItem.isLocked or fishItem.rarity == "Soul" then
 				table.insert(remaining, fishItem)
 			else
 				-- If this was the equipped fish, destroy its Tool
@@ -975,13 +1001,14 @@ SellFishBindable.OnInvoke = function(player, mode)
 			end
 		end
 
-	elseif mode == "equipped" then
+	elseif mode == "equipped" or mode == "equipped_soul_confirmed" then
 		-- Sell only the currently equipped fish
 		local equippedIdx = PlayerEquippedIndex[player]
-		if not equippedIdx then return 0, 0 end
+		if not equippedIdx then return 0, 0, 0, totalCount end
 
 		local fishItem = fishList[equippedIdx]
-		if not fishItem or fishItem.isLocked then return 0, 0 end
+		if not fishItem or fishItem.isLocked then return 0, 0, 0, totalCount end
+		if fishItem.rarity == "Soul" and mode ~= "equipped_soul_confirmed" then return 0, 0, 1, totalCount end
 
 		-- Destroy the equipped Tool
 		local tool = PlayerEquippedTool[player]
@@ -1000,5 +1027,5 @@ SellFishBindable.OnInvoke = function(player, mode)
 	end
 	scheduleSave(player)
 
-	return totalBaseValue, itemsSoldCount
+	return totalBaseValue, itemsSoldCount, soulCount, totalCount
 end

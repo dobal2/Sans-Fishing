@@ -51,6 +51,8 @@ ensureRemote(Shop, "codeEvent")
 ensureRemote(Shop, "OpenShopLocal", "BindableEvent")
 ensureRemote(Shop, "OpenRobuxShopLocal", "BindableEvent")
 ensureRemote(Shop, "BuyFishTrapBindable", "BindableEvent")
+ensureRemote(Shop, "BuyFishTrapRemote")
+ensureRemote(Shop, "OpenFishTrapShop")
 ensureRemote(Shop, "BuyBubbleBindable", "BindableEvent")
 
 -- Sell

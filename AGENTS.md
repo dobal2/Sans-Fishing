@@ -23,9 +23,15 @@ Rojo sync 범위 안의 스크립트를 수정할 때는 **파일시스템(Edit)
 
 **예외**: Studio-only 스크립트 (Rojo sync 범위 밖인 것)는 Studio 직접 수정만 가능.
 
+## 인게임 문구 규칙 (필수)
+
+플레이어에게 인게임에 표시되는 UI/대화/알림/버튼/프롬프트 문구는 **반드시 영어로 작성한다.** 작업 설명이나 주석은 별도지만, 실제 게임 화면에 나오는 텍스트에 한국어를 넣지 않는다.
+
 ## MCP / Studio 편집 주의사항
 
 - **Source gsub 편집 위험**: `execute_luau`로 스크립트 Source를 gsub 패턴으로 수정할 때 패턴이 예상보다 일찍 매칭되면 함수 정의가 통째로 잘릴 수 있음. 복잡한 gsub 대신 Source 전체를 새로 쓰는 방식이 안전함. 편집 후 반드시 핵심 함수명 포함 여부 확인.
+- **`script_read` 출력 절대 Source로 직접 사용 금지**: `script_read`는 `1544→내용` 같은 줄번호/화살표 접두사를 포함한 표시용 출력이다. 이 출력에서 Source를 복원해 파일에 쓰면 `544→`, `533→` 같은 숫자 조각이 실제 코드에 섞일 수 있다. Studio Source를 파일로 가져와야 할 때는 `execute_luau`로 `target.Source` 자체를 읽거나, 줄번호 접두사가 0개인지 검증한 뒤에만 저장할 것.
+- **동기화 검증은 마지막 개행까지 완전 일치**: Studio와 Rojo 파일을 같게 맞출 때는 코드 내용뿐 아니라 줄 수, 마지막 엔터 여부, LF/CRLF, byte length, checksum까지 비교해야 한다. 특히 마지막 줄의 빈 줄/개행 수가 다르면 아직 다르다고 판단하고 수정할 것.
 - **`require()` 캐시**: `execute_luau`로 ModuleScript Source를 수정해도 이미 `require()`된 모듈은 캐시된 결과를 반환함 — 플레이 테스트 재시작 전까지 미반영.
 - **Studio-only 스크립트**: `RodsGui`, `Main_ServerTime` 등 Rojo sync 범위 밖 스크립트는 파일시스템에 없으므로 Studio로만 편집 가능.
 

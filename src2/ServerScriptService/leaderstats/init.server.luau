@@ -165,7 +165,14 @@ Players.PlayerAdded:Connect(function(plr)
 		"Crystal Bass",
 		"Reggigash",
 		"Dust Fish",
-		"Diri"
+		"Diri",
+		"Determination",
+		"Patience",
+		"Bravery",
+		"Integrity",
+		"Perseverance",
+		"Kindness",
+		"Justice"
 	}
 
 	for _, fishTrapName in ipairs(fishTrapList) do

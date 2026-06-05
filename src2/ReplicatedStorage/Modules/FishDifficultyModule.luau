@@ -59,6 +59,13 @@ FishDifficulty.Settings = {
 		progressMultiplier = 1,
 		drainRate = 9,
 	},
+	Soul = {
+		targetProgress = 360,
+		hitSize = { min = 0.09, max = 0.15 },
+		speed = { min = 0.75, max = 1.05 },
+		progressMultiplier = 1,
+		drainRate = 12,
+	},
 }
 
 -- Adjust difficulty settings based on rod power and fish weight.

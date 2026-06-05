@@ -21,6 +21,14 @@ local openRobuxShopLocalEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitFo
 -- ─── Seller ───────────────────────────────────────────────────────────────────
 local sellerDialog = nil
 
+local function isHoldingSoulFish()
+	local character = player.Character
+	if not character then return false end
+	local tool = character:FindFirstChildWhichIsA("Tool")
+	local fishRarity = tool and tool:FindFirstChild("FishRarity")
+	return fishRarity and fishRarity:IsA("StringValue") and fishRarity.Value == "Soul"
+end
+
 local function initSeller()
 	local sellShop = workspace:WaitForChild("Sell Shop", 20)
 	if not sellShop then return end
@@ -38,6 +46,10 @@ local function initSeller()
 		"Check held fish value",
 		"No thanks",
 	})
+	dialog:addDialog("I do not recommend selling this. Are you sure?", {
+		"Yes",
+		"No",
+	})
 	sellerDialog = dialog
 
 	prompt.Triggered:Connect(function()
@@ -45,11 +57,25 @@ local function initSeller()
 		dialog:triggerDialog(player, 1)
 	end)
 
-	dialog.responded:Connect(function(idx)
+	dialog.responded:Connect(function(idx, dialogNum)
+		if dialogNum == 2 then
+			if idx == 1 then
+				sellChoiceEvent:FireServer("Option2Confirmed")
+			else
+				dialog:hideGui("Keep it safe.")
+				enablePromptEvent:FireServer(true, "seller")
+			end
+			return
+		end
+
 		if idx == 1 then
 			sellChoiceEvent:FireServer("Option1")
 		elseif idx == 2 then
-			sellChoiceEvent:FireServer("Option2")
+			if isHoldingSoulFish() then
+				dialog:triggerDialog(player, 2)
+			else
+				sellChoiceEvent:FireServer("Option2")
+			end
 		elseif idx == 3 then
 			sellChoiceEvent:FireServer("Option3")
 		else
@@ -58,11 +84,19 @@ local function initSeller()
 		end
 	end)
 
-	soldNotificationEvent.OnClientEvent:Connect(function(amount, isPreview)
+	soldNotificationEvent.OnClientEvent:Connect(function(amount, isPreview, messageType)
 		if not sellerDialog then return end
 		if isPreview then
-			if amount == -1 then
+			if messageType == "no_fish" then
+				dialog:hideGui("You don't have any fish.")
+			elseif messageType == "soul_only" then
+				dialog:hideGui("Soul fish must be sold one at a time while held.")
+			elseif messageType == "no_sellable_fish" then
+				dialog:hideGui("You don't have any fish I can sell.")
+			elseif amount == -1 then
 				dialog:hideGui("Bye!")
+			elseif amount == -2 then
+				dialog:hideGui("I do not recommend selling this.")
 			elseif amount == 0 then
 				dialog:hideGui("Hold a fish first to check its value!")
 			else

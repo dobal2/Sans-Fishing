@@ -44,6 +44,7 @@ local rarityColors = {
 	Mystic    = Color3.fromRGB(255, 217, 2),
 	Fantasy   = Color3.fromRGB(64,  224, 208),
 	Unknown   = Color3.fromRGB(0,   0,   0),
+	Soul      = Color3.fromRGB(255, 45, 45),
 }
 
 local VP_FOV   = 60
@@ -52,6 +53,7 @@ local VP_YAW   = 45
 local VP_ZOOM  = 1.2
 local VP_OVERRIDES = {
 	["Unknown"]       = { pitch = -20, yaw = 45, zoom = 3.5 },
+	["Determination"] = { pitch = -5, yaw = 0, zoom = 2.2 },
 	["Electric Fish"] = { pitch = -10, yaw = 45, zoom = 0.9 },
 	["Nyan Cat"]      = { pitch = -10, yaw = 30, zoom = 0.9 },
 }

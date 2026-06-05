@@ -13,6 +13,7 @@ local FISH_POOL_NAMES = {
 	"Shark", "Ray",
 	"Undyine", "Sans", "Electric Fish",
 	"Unknown", "Nyan Cat",
+	"Determination", "Patience", "Bravery", "Integrity", "Perseverance", "Kindness", "Justice",
 }
 
 local RARITY_COLORS = {
@@ -24,7 +25,29 @@ local RARITY_COLORS = {
 	Mystic    = Color3.fromRGB(255, 217,   2),
 	Fantasy   = Color3.fromRGB(64,  224, 208),
 	Unknown   = Color3.fromRGB(0,     0,   0),
+	Soul      = Color3.fromRGB(255,  45,  45),
 }
+
+local SOUL_COLORS = {
+	Determination = Color3.fromRGB(255, 45, 45),
+	Patience = Color3.fromRGB(0, 255, 255),
+	Bravery = Color3.fromRGB(255, 128, 0),
+	Integrity = Color3.fromRGB(45, 120, 255),
+	Perseverance = Color3.fromRGB(170, 70, 255),
+	Kindness = Color3.fromRGB(60, 220, 80),
+	Justice = Color3.fromRGB(255, 230, 40),
+}
+
+local function getDisplayColor(fishName, rarityName)
+	if rarityName == "Soul" then
+		for soulName, color in pairs(SOUL_COLORS) do
+			if fishName:find(soulName, 1, true) then
+				return color
+			end
+		end
+	end
+	return RARITY_COLORS[rarityName] or Color3.new(1, 1, 1)
+end
 
 local player = Players.LocalPlayer
 local mainGui = player.PlayerGui:WaitForChild("Main")
@@ -64,7 +87,7 @@ local function setBuyVpFish(fishName)
 
 	local cloned = handle:Clone()
 	local maxDim = math.max(cloned.Size.X, cloned.Size.Y, cloned.Size.Z)
-	local targetSize = (fishName == "Unknown" or fishName == "Nyan Cat") and 1.5 or 3
+	local targetSize = (fishName == "Unknown" or fishName == "Nyan Cat" or SOUL_COLORS[fishName]) and 1.5 or 3
 	local scale = targetSize / maxDim
 	cloned.Size = cloned.Size * scale
 	local mesh = cloned:FindFirstChildOfClass("SpecialMesh")
@@ -105,7 +128,7 @@ if not vpScale and viewport then
 end
 
 local GACHA_RARITIES = {
-	Epic=true, Legendary=true, Mystic=true, Fantasy=true, Unknown=true
+	Epic=true, Legendary=true, Mystic=true, Fantasy=true, Unknown=true, Soul=true
 }
 
 local allFishNames = FISH_POOL_NAMES
@@ -128,7 +151,7 @@ local function setVpFish(fishName, silhouette)
 
 	local cloned = handle:Clone()
 	local maxDim = math.max(cloned.Size.X, cloned.Size.Y, cloned.Size.Z)
-	local targetSize = (fishName == "Unknown" or fishName == "Nyan Cat") and 1.5 or 3
+	local targetSize = (fishName == "Unknown" or fishName == "Nyan Cat" or SOUL_COLORS[fishName]) and 1.5 or 3
 	local scale = targetSize / maxDim
 	cloned.Size = cloned.Size * scale
 	local mesh = cloned:FindFirstChildOfClass("SpecialMesh")
@@ -217,7 +240,7 @@ local function playReveal(fishName, rarityName)
 							TweenService:Create(vpScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
 						end
 
-						local rarityColor = RARITY_COLORS[rarityName] or Color3.new(1,1,1)
+						local rarityColor = getDisplayColor(fishName, rarityName)
 						if nameLbl then
 							nameLbl.Text = fishName
 							nameLbl.TextColor3 = Color3.new(1,1,1)
