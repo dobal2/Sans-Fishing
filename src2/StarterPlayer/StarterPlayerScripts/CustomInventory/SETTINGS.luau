@@ -59,23 +59,36 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local function updateInventorySize()
-	local itemCount = #module.FishList
-	for _ in pairs(module.OBJECTS.Inventory) do
-		-- non-fish tool objects also count
-		itemCount = itemCount + 0 -- already counted in FishList; tool objects are rods/bubbles
-	end
-	-- Count actual frames in inventory
-	local frameCount = 0
-	if inventoryFrame and inventoryFrame.Frame then
-		for _ in pairs(inventoryFrame.Frame:GetChildren()) do
-			frameCount = frameCount + 1
+	local scrollFrame = inventoryFrame and inventoryFrame.Frame
+	if not scrollFrame then return end
+
+	local function setCanvasSize()
+		local layout = scrollFrame:FindFirstChildOfClass("UIGridLayout")
+			or scrollFrame:FindFirstChildOfClass("UIListLayout")
+		local padding = scrollFrame:FindFirstChildOfClass("UIPadding")
+		local bottomPadding = 24
+		if padding then
+			bottomPadding += padding.PaddingBottom.Offset
+			bottomPadding += scrollFrame.AbsoluteSize.Y * padding.PaddingBottom.Scale
 		end
+
+		local neededHeight = scrollFrame.AbsoluteSize.Y
+		if layout then
+			neededHeight = math.max(neededHeight, layout.AbsoluteContentSize.Y + bottomPadding)
+		else
+			for _, child in ipairs(scrollFrame:GetChildren()) do
+				if child:IsA("GuiObject") and child.Visible then
+					local childBottom = (child.AbsolutePosition.Y - scrollFrame.AbsolutePosition.Y) + child.AbsoluteSize.Y
+					neededHeight = math.max(neededHeight, childBottom + bottomPadding)
+				end
+			end
+		end
+
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.ceil(neededHeight))
 	end
-	local rows = math.max(5, math.ceil(frameCount / 10))
-	local neededHeight = rows * 52 + 6
-	if inventoryFrame and inventoryFrame.Frame then
-		inventoryFrame.Frame.CanvasSize = UDim2.new(0, 0, 0, neededHeight)
-	end
+
+	setCanvasSize()
+	task.defer(setCanvasSize)
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────

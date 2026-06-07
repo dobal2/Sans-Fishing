@@ -8,6 +8,7 @@ local AUTO_RECONNECT_TIME = 19 * 60  -- 19 minutes
 
 local autoReconnectRequest = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("AutoReconnectRequest")
 local getAutoFishing = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Misc"):WaitForChild("GetAutoFishing")
+local rotateOnRestoredAutoCast = false
 
 local function restoreAutoRotate()
 	local char = player.Character
@@ -20,11 +21,11 @@ end
 
 local function rotateCharacterForAuto()
 	local char = player.Character
-	if not char then return end
-	if char:GetAttribute("AutoFishingRotated") == true then return end
+	if not char then return false end
+	if char:GetAttribute("AutoFishingRotated") == true then return true end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hrp or not hum or hum.Health <= 0 then return end
+	if not hrp or not hum or hum.Health <= 0 then return false end
 
 	local pos = hrp.Position
 	local currentAngle = math.atan2(hrp.CFrame.LookVector.X, hrp.CFrame.LookVector.Z)
@@ -37,6 +38,7 @@ local function rotateCharacterForAuto()
 			hum.AutoRotate = true
 		end
 	end)
+	return true
 end
 
 -- 접속 시 auto 상태 복원
@@ -73,6 +75,7 @@ task.spawn(function()
 	else
 		task.wait(2)
 	end
+	rotateOnRestoredAutoCast = true
 	player:SetAttribute("AutoFishing", true)
 end)
 
@@ -182,6 +185,7 @@ player.AttributeChanged:Connect(function(attr)
 		equipTime = soon
 		afkTimer = 0
 	elseif attr == "AutoFishing" and player:GetAttribute("AutoFishing") ~= true then
+		rotateOnRestoredAutoCast = false
 		restoreAutoRotate()
 		local char = player.Character
 		if char then
@@ -266,7 +270,9 @@ RunService.Heartbeat:Connect(function()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum or hum.Health <= 0 then return end
 
-		rotateCharacterForAuto()
+		if rotateOnRestoredAutoCast and rotateCharacterForAuto() then
+			rotateOnRestoredAutoCast = false
+		end
 		lastCastTime = now
 		local autoCastEvent = tool:FindFirstChild("AutoCastEvent")
 		if autoCastEvent then

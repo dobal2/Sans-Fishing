@@ -1,0 +1,658 @@
+# Channel: #left
+# Category: 채팅 채널
+# Exported: Tue, 02 Jun 2026 15:42:40 GMT
+# Messages: 326
+============================================================
+
+[2026. 5. 31. 오전 12:49:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=4h 40m 7s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=676 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 12:56:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28s | 🕐 총 플레이타임=1m 29s | 🪙 코인=5151 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=3 | 🔮 스킬=없음
+[2026. 5. 31. 오전 12:58:04] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 27s | 🕐 총 플레이타임=2h 2m 7s | 🪙 코인=431365 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=40 | 🔮 스킬=FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv3, Root Lv1
+[2026. 5. 31. 오전 1:08:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=4h 59m 13s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=772 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 1:09:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=54s | 🕐 총 플레이타임=54s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 1:09:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 8s | 🕐 총 플레이타임=8m 8s | 🪙 코인=4153 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 1:10:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 38s | 🕐 총 플레이타임=9m 38s | 🪙 코인=2188 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=Root Lv1
+[2026. 5. 31. 오전 1:21:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 19s | 🕐 총 플레이타임=8m 13s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 1:27:42] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=5h 18m 18s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=862 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 1:31:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 21s | 🕐 총 플레이타임=25m 29s | 🪙 코인=22272 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=12 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 1:37:03] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 48s | 🕐 총 플레이타임=29m 17s | 🪙 코인=22272 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=54 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 1:40:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 23s | 🕐 총 플레이타임=1m 23s | 🪙 코인=2300 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 1:46:50] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=5h 37m 23s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=962 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 1:49:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 0s | 🕐 총 플레이타임=41m 16s | 🪙 코인=94697 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=60 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv3, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 1:56:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 17s | 🕐 총 플레이타임=8m 17s | 🪙 코인=10425 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 5. 31. 오전 2:00:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 0s | 🕐 총 플레이타임=41m 10s | 🪙 코인=48242 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=18 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1,
+[2026. 5. 31. 오전 2:05:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=5h 56m 29s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1057 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 2:25:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=6h 15m 35s | 🪙 코인=52315 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1153 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 2:29:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=38m 34s | 🕐 총 플레이타임=1h 12m 52s | 🪙 코인=456838 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=24 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 2:46:03] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 31s | 🕐 총 플레이타임=16m 31s | 🪙 코인=49354 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 2:53:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28m 24s | 🕐 총 플레이타임=6h 43m 59s | 🪙 코인=1418636 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1249 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 3:09:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14m 46s | 🕐 총 플레이타임=14m 46s | 🪙 코인=503 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2
+[2026. 5. 31. 오전 3:12:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=7h 3m 3s | 🪙 코인=1418636 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1397 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 3:18:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 14s | 🕐 총 플레이타임=7m 14s | 🪙 코인=4417 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 3:21:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 18s | 🕐 총 플레이타임=9m 31s | 🪙 코인=141 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=19 | 🔮 스킬=LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 3:31:43] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=7h 22m 8s | 🪙 코인=1418636 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1515 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 3:54:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=22m 25s | 🕐 총 플레이타임=7h 44m 33s | 🪙 코인=1493936 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1609 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 4:11:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=35s | 🕐 총 플레이타임=35s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 4:12:26] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 35s | 🕐 총 플레이타임=4m 35s | 🪙 코인=4882 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 4:13:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=8h 3m 39s | 🪙 코인=1493936 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=1749 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 4:18:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 52s | 🕐 총 플레이타임=11m 52s | 🪙 코인=37537 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 4:33:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20m 35s | 🕐 총 플레이타임=8h 24m 14s | 🪙 코인=235606 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=1863 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 4:39:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 31s | 🕐 총 플레이타임=41m 17s | 🪙 코인=452914 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv3, QuickBite Lv1, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오전 4:39:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=45m 40s | 🕐 총 플레이타임=53m 56s | 🪙 코인=356 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 5:05:45] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=31m 50s | 🕐 총 플레이타임=8h 56m 4s | 🪙 코인=492984 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=1952 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 5:17:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 43s | 🕐 총 플레이타임=19m 43s | 🪙 코인=85078 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 5. 31. 오전 5:24:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=9h 15m 9s | 🪙 코인=492984 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=2128 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 5:37:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 17s | 🕐 총 플레이타임=45m 32s | 🪙 코인=44697 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=77 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv3, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 5:44:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=47s | 🕐 총 플레이타임=47s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 5:49:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=24m 16s | 🕐 총 플레이타임=9h 39m 24s | 🪙 코인=492984 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=2254 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 5:55:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=32m 33s | 🕐 총 플레이타임=32m 33s | 🪙 코인=17776 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=20 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, S
+[2026. 5. 31. 오전 6:19:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 20s | 🕐 총 플레이타임=4m 20s | 🪙 코인=1405 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, Root Lv1
+[2026. 5. 31. 오전 6:21:04] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=31m 54s | 🕐 총 플레이타임=10h 11m 18s | 🪙 코인=1515889 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=2387 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 6:35:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28m 50s | 🕐 총 플레이타임=28m 50s | 🪙 코인=9803 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오전 6:40:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=10h 30m 24s | 🪙 코인=1515889 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=2584 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 6:44:06] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 9s | 🕐 총 플레이타임=7m 9s | 🪙 코인=1463 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 6:44:50] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 36s | 🕐 총 플레이타임=10h 34m 59s | 🪙 코인=1515889 | 🎣 낚싯대=ElectricRod | ⭐ 스킬포인트=2708 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2, QuickBite L
+[2026. 5. 31. 오전 7:09:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=25m 7s | 🕐 총 플레이타임=32m 15s | 🪙 코인=134858 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 7:18:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 15s | 🕐 총 플레이타임=14m 53s | 🪙 코인=2419 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=19 | 🔮 스킬=AutoFish Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 7:18:34] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 49s | 🕐 총 플레이타임=50m 20s | 🪙 코인=70040 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=88 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv3, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 7:28:24] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=51m 19s | 🪙 코인=134858 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=66 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 7:46:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=52s | 🕐 총 플레이타임=52s | 🪙 코인=211 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 7:47:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=1h 10m 24s | 🪙 코인=134858 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=166 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 7:48:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 3s | 🕐 총 플레이타임=1m 3s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 7:58:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18m 23s | 🕐 총 플레이타임=18m 23s | 🪙 코인=42928 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 8:00:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 16s | 🕐 총 플레이타임=1h 23m 40s | 🪙 코인=186664 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=34 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오전 8:02:31] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 42s | 🕐 총 플레이타임=1h 25m 21s | 🪙 코인=186714 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=9 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오전 8:04:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 57s | 🕐 총 플레이타임=1m 57s | 🪙 코인=546 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 5. 31. 오전 8:14:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 5s | 🕐 총 플레이타임=27m 7s | 🪙 코인=106652 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 5. 31. 오전 8:19:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=22m 53s | 🕐 총 플레이타임=23m 3s | 🪙 코인=12924 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=25 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 8:20:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 58s | 🕐 총 플레이타임=33m 5s | 🪙 코인=31312 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=12 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, S
+[2026. 5. 31. 오전 8:25:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 59s | 🕐 총 플레이타임=16m 59s | 🪙 코인=8805 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=9 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 8:32:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=29m 57s | 🕐 총 플레이타임=1h 55m 18s | 🪙 코인=459343 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=14 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오전 8:39:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 8s | 🕐 총 플레이타임=42m 11s | 🪙 코인=12924 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=64 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 8:51:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=2h 14m 22s | 🪙 코인=459343 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=198 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오전 9:02:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=23m 46s | 🕐 총 플레이타임=1h 5m 56s | 🪙 코인=282150 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=19 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 9:11:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=35m 36s | 🕐 총 플레이타임=35m 36s | 🪙 코인=74370 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 9:12:28] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20m 51s | 🕐 총 플레이타임=2h 35m 13s | 🪙 코인=1124452 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=166 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오전 9:22:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=30m 6s | 🕐 총 플레이타임=30m 6s | 🪙 코인=33001 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 5. 31. 오전 9:22:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=30m 6s | 🕐 총 플레이타임=30m 6s | 🪙 코인=52002 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 9:34:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=32m 8s | 🕐 총 플레이타임=1h 38m 3s | 🪙 코인=82150 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=110 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오전 9:54:06] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18m 14s | 🕐 총 플레이타임=18m 14s | 🪙 코인=73928 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 9:54:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 46s | 🕐 총 플레이타임=10m 46s | 🪙 코인=105345 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오전 9:54:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 9s | 🕐 총 플레이타임=1h 57m 11s | 🪙 코인=82150 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=128 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv2,
+[2026. 5. 31. 오전 10:06:14] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17s | 🕐 총 플레이타임=17s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 10:23:40] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=29m 33s | 🕐 총 플레이타임=2h 26m 43s | 🪙 코인=465422 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv2,
+[2026. 5. 31. 오전 10:29:20] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 7s | 🕐 총 플레이타임=14m 35s | 🪙 코인=153 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv3, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오전 10:49:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5s | 🕐 총 플레이타임=5s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오전 10:53:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=30m 13s | 🕐 총 플레이타임=2h 56m 56s | 🪙 코인=93101 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=143 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv2,
+[2026. 5. 31. 오전 10:55:44] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 43s | 🕐 총 플레이타임=17m 43s | 🪙 코인=9375 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=11 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv3, Root Lv1, SellBonus Lv2
+[2026. 5. 31. 오전 11:03:42] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 24s | 🕐 총 플레이타임=2m 24s | 🪙 코인=870 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 5. 31. 오전 11:13:45] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 33s | 🕐 총 플레이타임=35m 15s | 🪙 코인=14259 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, Root Lv1, SellBonus Lv2
+[2026. 5. 31. 오전 11:21:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28m 7s | 🕐 총 플레이타임=28m 12s | 🪙 코인=76272 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=12 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, SellBonus Lv1, Wei
+[2026. 5. 31. 오전 11:36:01] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 25s | 🕐 총 플레이타임=52m 50s | 🪙 코인=58285 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=40 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 5. 31. 오후 12:01:26] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=54s | 🕐 총 플레이타임=1h 47m 54s | 🪙 코인=119711 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=152 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv2,
+[2026. 5. 31. 오후 12:38:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14m 20s | 🕐 총 플레이타임=14m 20s | 🪙 코인=21840 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오후 12:38:44] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 31s | 🕐 총 플레이타임=1h 59m 54s | 🪙 코인=803593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=32 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 12:39:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=27s | 🕐 총 플레이타임=27s | 🪙 코인=14020 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 12:40:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 59s | 🕐 총 플레이타임=2h 2m 15s | 🪙 코인=198207 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 12:50:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 33s | 🕐 총 플레이타임=19m 33s | 🪙 코인=4371 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오후 1:03:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 42s | 🕐 총 플레이타임=29m 14s | 🪙 코인=7647 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=5 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오후 1:17:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 52s | 🕐 총 플레이타임=1m 52s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 1:26:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=24m 57s | 🕐 총 플레이타임=24m 57s | 🪙 코인=142193 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=10 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오후 1:48:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 46s | 🕐 총 플레이타임=14h 31m 32s | 🪙 코인=2167590 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=173 | 🔮 스킬=AutoFish Lv1, FriendBonus Lv3, LuckUp Lv4, Root Lv1, SellBonus Lv2
+[2026. 5. 31. 오후 1:52:23] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1h 40m 53s | 🕐 총 플레이타임=1h 40m 53s | 🪙 코인=173302 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=22 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오후 1:53:39] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 8s | 🕐 총 플레이타임=1m 8s | 🪙 코인=10316 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 1:54:06] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 38s | 🕐 총 플레이타임=1h 42m 30s | 🪙 코인=294100 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=38 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv2,
+[2026. 5. 31. 오후 2:27:16] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=34m 6s | 🕐 총 플레이타임=34m 6s | 🪙 코인=9396 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=14 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, Root Lv1, SellBonus Lv1, WeightUp Lv1
+[2026. 5. 31. 오후 2:27:27] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=47m 6s | 🕐 총 플레이타임=2h 8m 14s | 🪙 코인=195139 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오후 2:37:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 3s | 🕐 총 플레이타임=26m 3s | 🪙 코인=51904 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=13 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, PowerUp Lv1, Root Lv1, SellBonus Lv1, W
+[2026. 5. 31. 오후 2:38:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=54s | 🕐 총 플레이타임=2h 0m 47s | 🪙 코인=803593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=164 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 2:40:24] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 40s | 🕐 총 플레이타임=28m 43s | 🪙 코인=64141 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=13 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, PowerUp Lv1, Root Lv1, SellBonus Lv1, W
+[2026. 5. 31. 오후 2:48:44] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 14s | 🕐 총 플레이타임=2m 0s | 🪙 코인=737 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 5. 31. 오후 3:13:11] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5s | 🕐 총 플레이타임=5s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 3:30:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=15m 40s | 🕐 총 플레이타임=15m 40s | 🪙 코인=44674 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 5. 31. 오후 3:50:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 0s | 🕐 총 플레이타임=1m 0s | 🪙 코인=1025 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=Root Lv1
+[2026. 5. 31. 오후 4:04:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=43s | 🕐 총 플레이타임=43s | 🪙 코인=1829552 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 4:07:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 58s | 🕐 총 플레이타임=3m 40s | 🪙 코인=1845712 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 4:13:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 48s | 🕐 총 플레이타임=26m 48s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 4:24:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 42s | 🕐 총 플레이타임=8m 42s | 🪙 코인=5672 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 4:32:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=45m 52s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=83 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 4:37:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 11s | 🕐 총 플레이타임=19m 52s | 🪙 코인=10282 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=25 | 🔮 스킬=없음
+[2026. 5. 31. 오후 4:40:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 2s | 🕐 총 플레이타임=2h 1m 49s | 🪙 코인=803593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=164 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 4:42:01] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=27m 23s | 🕐 총 플레이타임=27m 23s | 🪙 코인=115250 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=6 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, S
+[2026. 5. 31. 오후 4:52:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=1h 4m 58s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=131 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 5:07:01] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 5s | 🕐 총 플레이타임=45m 56s | 🪙 코인=119725 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=5 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, WeightUp Lv1
+[2026. 5. 31. 오후 5:07:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=25m 31s | 🕐 총 플레이타임=52m 53s | 🪙 코인=122862 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 5. 31. 오후 5:08:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=54m 51s | 🕐 총 플레이타임=58m 31s | 🪙 코인=1158416 | 🎣 낚싯대=UnknownRod | ⭐ 스킬포인트=7 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv4, PowerUp Lv1,
+[2026. 5. 31. 오후 5:11:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 6s | 🕐 총 플레이타임=1h 24m 3s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=195 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 5:11:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 57s | 🕐 총 플레이타임=1m 57s | 🪙 코인=4022 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 5:30:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=1h 43m 7s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=263 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 5:34:59] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 10s | 🕐 총 플레이타임=34m 38s | 🪙 코인=900941 | 🎣 낚싯대=FriendRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 5:46:12] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=25m 59s | 🕐 총 플레이타임=3h 48m 55s | 🪙 코인=548089 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=16 | 🔮 스킬=AutoFish Lv1, AutoUp Lv3, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 5:47:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=27m 52s | 🕐 총 플레이타임=11h 1m 20s | 🪙 코인=12088530 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=2283 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv6, PowerUp Lv3,
+[2026. 5. 31. 오후 5:49:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 5s | 🕐 총 플레이타임=2h 2m 12s | 🪙 코인=118616 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=328 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 5. 31. 오후 6:02:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 47s | 🕐 총 플레이타임=2h 14m 59s | 🪙 코인=172421 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv2,
+[2026. 5. 31. 오후 6:33:24] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 55s | 🕐 총 플레이타임=11h 46m 44s | 🪙 코인=15316483 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=2724 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv6, PowerUp Lv3,
+[2026. 5. 31. 오후 6:36:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=24s | 🕐 총 플레이타임=25h 4m 6s | 🪙 코인=13434680 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=260 | 🔮 스킬=없음
+[2026. 5. 31. 오후 6:37:20] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=35s | 🕐 총 플레이타임=25h 4m 41s | 🪙 코인=13434680 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=260 | 🔮 스킬=없음
+[2026. 5. 31. 오후 6:41:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 45s | 🕐 총 플레이타임=25h 8m 25s | 🪙 코인=13443330 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=260 | 🔮 스킬=없음
+[2026. 5. 31. 오후 7:29:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19s | 🕐 총 플레이타임=19s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 7:42:45] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 21s | 🕐 총 플레이타임=8m 58s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 5. 31. 오후 8:14:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 40s | 🕐 총 플레이타임=37m 52s | 🪙 코인=59008 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=29 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, Sel
+[2026. 5. 31. 오후 8:22:12] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 43s | 🕐 총 플레이타임=25h 20m 7s | 🪙 코인=13675470 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=273 | 🔮 스킬=없음
+[2026. 5. 31. 오후 10:18:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=15s | 🕐 총 플레이타임=2h 2m 4s | 🪙 코인=904593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=176 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 10:19:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14s | 🕐 총 플레이타임=2h 2m 17s | 🪙 코인=904593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=176 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 10:20:22] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=22s | 🕐 총 플레이타임=2h 2m 39s | 🪙 코인=904593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=176 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 10:38:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 41s | 🕐 총 플레이타임=3h 57m 39s | 🪙 코인=1101726 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=34 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 5. 31. 오후 11:22:23] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 12s | 🕐 총 플레이타임=2h 8m 13s | 🪙 코인=904593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=200 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 11:30:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 29s | 🕐 총 플레이타임=2h 10m 11s | 🪙 코인=904593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=208 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 11:40:45] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 20s | 🕐 총 플레이타임=51m 15s | 🪙 코인=13578 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=21 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 5. 31. 오후 11:44:41] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 39s | 🕐 총 플레이타임=2h 14m 50s | 🪙 코인=907593 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=208 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 11:49:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 24s | 🕐 총 플레이타임=59m 38s | 🪙 코인=99978 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=22 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 5. 31. 오후 11:50:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=44s | 🕐 총 플레이타임=1h 58m 38s | 🪙 코인=29077 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=14 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 5. 31. 오후 11:58:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18m 46s | 🕐 총 플레이타임=18m 46s | 🪙 코인=3825 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1, WeightUp Lv1
+[2026. 6. 1. 오전 12:32:26] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 44s | 🕐 총 플레이타임=2h 0m 21s | 🪙 코인=29077 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=16 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 12:33:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 3s | 🕐 총 플레이타임=2h 1m 24s | 🪙 코인=29077 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=36 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 1:47:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 23s | 🕐 총 플레이타임=2h 22m 53s | 🪙 코인=910743 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=308 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 2:00:46] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=46s | 🕐 총 플레이타임=2h 2m 9s | 🪙 코인=29077 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=48 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 2:00:50] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 8s | 🕐 총 플레이타임=2h 25m 1s | 🪙 코인=910743 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=468 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 2:09:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 11s | 🕐 총 플레이타임=17m 55s | 🪙 코인=12324 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=31 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1
+[2026. 6. 1. 오전 2:46:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=24s | 🕐 총 플레이타임=24s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오전 2:47:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=52s | 🕐 총 플레이타임=2h 25m 53s | 🪙 코인=910743 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=508 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오전 7:11:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 47s | 🕐 총 플레이타임=48m 36s | 🪙 코인=123649 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=41 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 6. 1. 오전 7:37:20] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=26m 15s | 🕐 총 플레이타임=1h 14m 51s | 🪙 코인=211493 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=112 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite Lv1, Root Lv1, Sel
+[2026. 6. 1. 오전 8:44:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=32m 6s | 🕐 총 플레이타임=32m 6s | 🪙 코인=144479 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, SellBonus Lv2
+[2026. 6. 1. 오전 10:06:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 15s | 🕐 총 플레이타임=16m 15s | 🪙 코인=3970 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 1. 오전 10:49:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 15s | 🕐 총 플레이타임=2h 27m 8s | 🪙 코인=910743 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=512 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오후 2:18:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 54s | 🕐 총 플레이타임=12m 54s | 🪙 코인=15593 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1
+[2026. 6. 1. 오후 6:32:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=48s | 🕐 총 플레이타임=48s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오후 6:32:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 5s | 🕐 총 플레이타임=1h 17m 41s | 🪙 코인=22847 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2
+[2026. 6. 1. 오후 6:32:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18m 58s | 🕐 총 플레이타임=18m 58s | 🪙 코인=16712 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=10 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 1. 오후 7:25:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 44s | 🕐 총 플레이타임=4m 44s | 🪙 코인=732 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 1. 오후 8:58:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 33s | 🕐 총 플레이타임=11m 33s | 🪙 코인=102000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오후 9:08:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 29s | 🕐 총 플레이타임=2m 29s | 🪙 코인=2178 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오후 9:18:40] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 33s | 🕐 총 플레이타임=3m 33s | 🪙 코인=1567 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 1. 오후 9:48:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 13s | 🕐 총 플레이타임=16m 13s | 🪙 코인=8673 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1
+[2026. 6. 1. 오후 10:07:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=23m 50s | 🕐 총 플레이타임=23m 50s | 🪙 코인=43568 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 1. 오후 10:13:50] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 34s | 🕐 총 플레이타임=2h 31m 34s | 🪙 코인=1042754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=536 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 1. 오후 10:16:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=29s | 🕐 총 플레이타임=2h 32m 2s | 🪙 코인=1042754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=572 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 1. 오후 10:17:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28s | 🕐 총 플레이타임=1h 0m 6s | 🪙 코인=100478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=57 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:17:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=49s | 🕐 총 플레이타임=1h 0m 55s | 🪙 코인=100478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=57 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:18:33] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=29s | 🕐 총 플레이타임=1h 1m 23s | 🪙 코인=100478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=57 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:19:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=55s | 🕐 총 플레이타임=1h 2m 17s | 🪙 코인=100478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=57 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:20:04] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=47s | 🕐 총 플레이타임=2h 32m 49s | 🪙 코인=1042754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=580 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 1. 오후 10:23:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 17s | 🕐 총 플레이타임=1h 3m 34s | 🪙 코인=478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=57 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:23:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9s | 🕐 총 플레이타임=1h 3m 42s | 🪙 코인=478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=62 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:24:01] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=33s | 🕐 총 플레이타임=1h 4m 15s | 🪙 코인=478 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=62 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv3, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 1. 오후 10:26:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 26s | 🕐 총 플레이타임=2h 3m 35s | 🪙 코인=29077 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=58 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오후 10:27:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 40s | 🕐 총 플레이타임=2h 5m 14s | 🪙 코인=33777 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=58 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오후 10:28:12] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14s | 🕐 총 플레이타임=2h 5m 27s | 🪙 코인=33777 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=78 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv4, PointBoost L
+[2026. 6. 1. 오후 10:28:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17s | 🕐 총 플레이타임=52m 38s | 🪙 코인=17384 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=9 | 🔮 스킬=AutoFish Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 1. 오후 10:32:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20s | 🕐 총 플레이타임=20s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오후 10:34:11] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 9s | 🕐 총 플레이타임=25h 21m 15s | 🪙 코인=13675970 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=307 | 🔮 스킬=없음
+[2026. 6. 1. 오후 11:26:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=52s | 🕐 총 플레이타임=3m 10s | 🪙 코인=500 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 1. 오후 11:31:28] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=39s | 🕐 총 플레이타임=30m 24s | 🪙 코인=7913 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2
+[2026. 6. 1. 오후 11:41:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=43s | 🕐 총 플레이타임=43s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 12:00:39] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18m 0s | 🕐 총 플레이타임=18m 42s | 🪙 코인=78016 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 12:48:59] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 26s | 🕐 총 플레이타임=2h 34m 24s | 🪙 코인=1142754 | 🎣 낚싯대=EquinoxRod | ⭐ 스킬포인트=580 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오전 12:56:27] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14m 28s | 🕐 총 플레이타임=14m 28s | 🪙 코인=17135 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 1:25:14] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=47m 35s | 🕐 총 플레이타임=47m 35s | 🪙 코인=183844 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=13 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 2. 오전 1:45:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 16s | 🕐 총 플레이타임=1m 16s | 🪙 코인=2739 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 1:58:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 34s | 🕐 총 플레이타임=5h 1m 31s | 🪙 코인=30293 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 2:58:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 48s | 🕐 총 플레이타임=7m 48s | 🪙 코인=1604 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 3:05:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 45s | 🕐 총 플레이타임=10m 45s | 🪙 코인=33632 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 3:10:45] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 27s | 🕐 총 플레이타임=2m 27s | 🪙 코인=1318 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 3:20:32] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 58s | 🕐 총 플레이타임=4m 58s | 🪙 코인=51530 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 4:00:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 3s | 🕐 총 플레이타임=3m 3s | 🪙 코인=205 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 4:03:35] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=39m 33s | 🕐 총 플레이타임=39m 33s | 🪙 코인=86771 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 4:11:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=31m 27s | 🕐 총 플레이타임=31m 27s | 🪙 코인=23609 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv3, PowerUp Lv1, Root Lv1, SellBonus Lv2, WeightUp Lv1
+[2026. 6. 2. 오전 4:25:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 56s | 🕐 총 플레이타임=5m 56s | 🪙 코인=4971 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 5:07:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 55s | 🕐 총 플레이타임=1m 55s | 🪙 코인=3753 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 5:10:03] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 45s | 🕐 총 플레이타임=12m 45s | 🪙 코인=2578 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 5:23:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20s | 🕐 총 플레이타임=1m 9s | 🪙 코인=30900 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 5:29:16] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 54s | 🕐 총 플레이타임=2m 54s | 🪙 코인=1289 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 5:29:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 6s | 🕐 총 플레이타임=2m 6s | 🪙 코인=1933 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 5:56:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 46s | 🕐 총 플레이타임=16m 0s | 🪙 코인=8391 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 5:57:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20m 53s | 🕐 총 플레이타임=34m 1s | 🪙 코인=142630 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=9 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 5:57:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 27s | 🕐 총 플레이타임=19m 27s | 🪙 코인=19094 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=5 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv2, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1,
+[2026. 6. 2. 오전 6:12:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 25s | 🕐 총 플레이타임=8m 25s | 🪙 코인=2448 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1
+[2026. 6. 2. 오전 6:33:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 57s | 🕐 총 플레이타임=6m 57s | 🪙 코인=15438 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 6:41:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 49s | 🕐 총 플레이타임=1m 49s | 🪙 코인=794 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 6:46:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=21s | 🕐 총 플레이타임=33s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 6:46:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 57s | 🕐 총 플레이타임=10m 57s | 🪙 코인=10751 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv2
+[2026. 6. 2. 오전 6:50:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 32s | 🕐 총 플레이타임=11m 21s | 🪙 코인=136168 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 6:51:07] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 16s | 🕐 총 플레이타임=4m 16s | 🪙 코인=2846 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 7:00:04] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 52s | 🕐 총 플레이타임=13m 7s | 🪙 코인=3430 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1
+[2026. 6. 2. 오전 7:15:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=33m 49s | 🕐 총 플레이타임=37m 23s | 🪙 코인=167095 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 7:20:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20m 50s | 🕐 총 플레이타임=20m 50s | 🪙 코인=41317 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1, WeightUp Lv1
+[2026. 6. 2. 오전 7:23:39] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 35s | 🕐 총 플레이타임=2m 35s | 🪙 코인=2701 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 7:29:08] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 12s | 🕐 총 플레이타임=50m 34s | 🪙 코인=423863 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=55 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오전 7:35:10] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=43m 48s | 🕐 총 플레이타임=55m 9s | 🪙 코인=69015 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=13 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오전 7:46:37] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 24s | 🕐 총 플레이타임=8m 24s | 🪙 코인=8258 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오전 8:49:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=41s | 🕐 총 플레이타임=41s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 8:53:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=36s | 🕐 총 플레이타임=36s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 8:56:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=28m 29s | 🕐 총 플레이타임=28m 29s | 🪙 코인=115207 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 9:19:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=23m 1s | 🕐 총 플레이타임=51m 30s | 🪙 코인=48296 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=4 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오전 10:03:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 42s | 🕐 총 플레이타임=11m 48s | 🪙 코인=163187 | 🎣 낚싯대=EquinoxRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 10:07:32] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 2s | 🕐 총 플레이타임=7m 2s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 10:10:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 27s | 🕐 총 플레이타임=19m 15s | 🪙 코인=110941 | 🎣 낚싯대=EquinoxRod | ⭐ 스킬포인트=9 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 10:38:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 6s | 🕐 총 플레이타임=1m 6s | 🪙 코인=1861 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=Root Lv1
+[2026. 6. 2. 오전 10:47:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=25s | 🕐 총 플레이타임=2h 23m 43s | 🪙 코인=510049 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오전 10:51:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 39s | 🕐 총 플레이타임=8m 36s | 🪙 코인=7916 | 🎣 낚싯대=EquinoxRod | ⭐ 스킬포인트=15 | 🔮 스킬=AutoFish Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 10:55:18] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 51s | 🕐 총 플레이타임=2h 31m 34s | 🪙 코인=487719 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오전 11:12:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 37s | 🕐 총 플레이타임=2m 3s | 🪙 코인=755 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오전 11:55:26] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=37s | 🕐 총 플레이타임=4m 2s | 🪙 코인=11337 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=7 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 12:20:54] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 15s | 🕐 총 플레이타임=42m 4s | 🪙 코인=69686 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, S
+[2026. 6. 2. 오후 12:21:34] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 47s | 🕐 총 플레이타임=12m 47s | 🪙 코인=468 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 12:25:02] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 48s | 🕐 총 플레이타임=45m 52s | 🪙 코인=157394 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=14 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 2. 오후 2:02:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 45s | 🕐 총 플레이타임=2m 45s | 🪙 코인=1405 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 2:06:21] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 56s | 🕐 총 플레이타임=4m 56s | 🪙 코인=818 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 2:14:48] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 54s | 🕐 총 플레이타임=1m 54s | 🪙 코인=964 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 2:20:35] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 25s | 🕐 총 플레이타임=1m 25s | 🪙 코인=3972 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 2:39:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 36s | 🕐 총 플레이타임=1m 36s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 2:42:27] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 24s | 🕐 총 플레이타임=6m 24s | 🪙 코인=950 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 3:11:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=32m 5s | 🕐 총 플레이타임=32m 5s | 🪙 코인=34959 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=7 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite Lv1, Root Lv1, Sel
+[2026. 6. 2. 오후 3:14:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 46s | 🕐 총 플레이타임=2h 12m 30s | 🪙 코인=266186 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=41 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1, QuickBite L
+[2026. 6. 2. 오후 3:15:01] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 51s | 🕐 총 플레이타임=19m 27s | 🪙 코인=23520 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, Root Lv1, S
+[2026. 6. 2. 오후 3:23:33] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=37s | 🕐 총 플레이타임=2h 35m 1s | 🪙 코인=1142754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=596 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 4:16:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=39s | 🕐 총 플레이타임=39s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 4:23:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 54s | 🕐 총 플레이타임=1m 54s | 🪙 코인=693 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 4:26:22] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=21m 10s | 🕐 총 플레이타임=21m 10s | 🪙 코인=162318 | 🎣 낚싯대=InviteRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 4:39:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=15s | 🕐 총 플레이타임=15s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 4:41:39] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 5s | 🕐 총 플레이타임=2h 36m 5s | 🪙 코인=1142754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=600 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 4:48:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=42m 38s | 🕐 총 플레이타임=42m 38s | 🪙 코인=1647 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=23 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, Root Lv1
+[2026. 6. 2. 오후 4:56:30] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 48s | 🕐 총 플레이타임=1m 48s | 🪙 코인=1155 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 5:11:27] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=22m 39s | 🕐 총 플레이타임=1h 5m 16s | 🪙 코인=812 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=42 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv2, PowerUp Lv1, Root Lv1, S
+[2026. 6. 2. 오후 5:13:11] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 42s | 🕐 총 플레이타임=13m 42s | 🪙 코인=14294 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv2
+[2026. 6. 2. 오후 5:16:04] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14m 14s | 🕐 총 플레이타임=40m 37s | 🪙 코인=116819 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 5:17:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 32s | 🕐 총 플레이타임=1h 10m 47s | 🪙 코인=51849 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=43 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv2, LuckUp Lv2, PowerUp Lv1, Root Lv1, S
+[2026. 6. 2. 오후 5:20:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 39s | 🕐 총 플레이타임=12m 39s | 🪙 코인=36550 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 5:26:03] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 43s | 🕐 총 플레이타임=10m 43s | 🪙 코인=102500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 5:29:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 5s | 🕐 총 플레이타임=4m 5s | 🪙 코인=3572 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 5:53:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 32s | 🕐 총 플레이타임=25h 55m 35s | 🪙 코인=194387 | 🎣 낚싯대=VoidRod | ⭐ 스킬포인트=11 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv5, PowerUp Lv1,
+[2026. 6. 2. 오후 6:06:31] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 43s | 🕐 총 플레이타임=17m 43s | 🪙 코인=659 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=24 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 6:32:41] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 18s | 🕐 총 플레이타임=5m 18s | 🪙 코인=1587 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 7:07:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 26s | 🕐 총 플레이타임=1m 26s | 🪙 코인=2387 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 7:23:35] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=41m 52s | 🕐 총 플레이타임=1h 3m 2s | 🪙 코인=106765 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=7 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, HitZoneUp Lv1, LuckUp Lv2, PowerUp Lv1, QuickBite L
+[2026. 6. 2. 오후 7:30:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 38s | 🕐 총 플레이타임=1m 38s | 🪙 코인=1150 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 7:30:52] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 21s | 🕐 총 플레이타임=7m 21s | 🪙 코인=3739 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 7:45:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 27s | 🕐 총 플레이타임=2h 39m 32s | 🪙 코인=1142754 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=612 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 7:52:22] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=45s | 🕐 총 플레이타임=45s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 7:53:23] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14m 1s | 🕐 총 플레이타임=14m 1s | 🪙 코인=7032 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv2
+[2026. 6. 2. 오후 7:55:40] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 15s | 🕐 총 플레이타임=16m 16s | 🪙 코인=7032 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=23 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, QuickBite Lv1, Root Lv1, SellBonus Lv2
+[2026. 6. 2. 오후 7:56:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11m 42s | 🕐 총 플레이타임=11m 42s | 🪙 코인=110332 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 8:06:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8m 51s | 🕐 총 플레이타임=20m 32s | 🪙 코인=106802 | 🎣 낚싯대=RobuxRod | ⭐ 스킬포인트=22 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 8:15:49] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 59s | 🕐 총 플레이타임=1m 59s | 🪙 코인=687 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 8:15:56] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=51m 45s | 🕐 총 플레이타임=1h 54m 47s | 🪙 코인=367705 | 🎣 낚싯대=CloverRod | ⭐ 스킬포인트=33 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv2, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오후 8:17:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1h 29m 30s | 🕐 총 플레이타임=1h 29m 30s | 🪙 코인=68117 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=38 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv1, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오후 8:20:40] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=27s | 🕐 총 플레이타임=27s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 8:27:34] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 14s | 🕐 총 플레이타임=2m 14s | 🪙 코인=814 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 8:41:39] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=15m 17s | 🕐 총 플레이타임=15m 17s | 🪙 코인=45408 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 8:46:57] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 54s | 🕐 총 플레이타임=5h 43m 12s | 🪙 코인=2231300 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 9:03:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 25s | 🕐 총 플레이타임=2h 41m 49s | 🪙 코인=1143154 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=640 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 9:13:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=13m 52s | 🕐 총 플레이타임=13m 52s | 🪙 코인=5141 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 9:14:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=16m 47s | 🕐 총 플레이타임=16m 47s | 🪙 코인=37556 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=8 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 9:20:15] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 51s | 🕐 총 플레이타임=4m 51s | 🪙 코인=5514 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 9:21:11] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=11s | 🕐 총 플레이타임=11s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 9:48:09] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=4m 36s | 🕐 총 플레이타임=4m 36s | 🪙 코인=7615 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 9:58:06] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 8s | 🕐 총 플레이타임=3m 8s | 🪙 코인=1618 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 10:03:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=25s | 🕐 총 플레이타임=2h 45m 43s | 🪙 코인=2040029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=664 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 10:06:42] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 38s | 🕐 총 플레이타임=43m 35s | 🪙 코인=10844 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FriendBonus Lv1, LuckUp Lv3, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 10:08:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=5m 10s | 🕐 총 플레이타임=2h 50m 53s | 🪙 코인=1990029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=668 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 10:08:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=10m 44s | 🕐 총 플레이타임=10m 44s | 🪙 코인=20472 | 🎣 낚싯대=CrystalRod | ⭐ 스킬포인트=5 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv3, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 10:09:43] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=9m 31s | 🕐 총 플레이타임=5h 52m 42s | 🪙 코인=872663 | 🎣 낚싯대=ArcaneRod | ⭐ 스킬포인트=3 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv4, QuickBite Lv2, Root Lv1, Se
+[2026. 6. 2. 오후 10:10:51] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=8s | 🕐 총 플레이타임=8s | 🪙 코인=2000 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 10:11:19] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=46s | 🕐 총 플레이타임=2h 51m 38s | 🪙 코인=1990029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=792 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 10:12:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 20s | 🕐 총 플레이타임=2m 20s | 🪙 코인=4212 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 10:13:40] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 30s | 🕐 총 플레이타임=47m 4s | 🪙 코인=27620 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FriendBonus Lv1, LuckUp Lv3, QuickBite Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 10:21:43] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12m 32s | 🕐 총 플레이타임=12m 32s | 🪙 코인=111128 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1
+[2026. 6. 2. 오후 10:39:58] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 57s | 🕐 총 플레이타임=1m 57s | 🪙 코인=4370 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 10:44:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 54s | 🕐 총 플레이타임=6m 54s | 🪙 코인=5253 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 2. 오후 10:48:13] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=31s | 🕐 총 플레이타임=31s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 10:59:25] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=12s | 🕐 총 플레이타임=2h 52m 53s | 🪙 코인=1990029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=808 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:03:59] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=14s | 🕐 총 플레이타임=2h 53m 23s | 🪙 코인=1990029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=812 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:04:06] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=18s | 🕐 총 플레이타임=2h 53m 41s | 🪙 코인=1990029 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=816 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:06:27] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 2s | 🕐 총 플레이타임=17m 2s | 🪙 코인=4538 | 🎣 낚싯대=BoneRod | ⭐ 스킬포인트=1 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv2, Root Lv1, SellBonus Lv1, WeightUp Lv1
+[2026. 6. 2. 오후 11:12:36] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 55s | 🕐 총 플레이타임=2h 55m 36s | 🪙 코인=119401 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=28 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:16:34] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=1m 6s | 🕐 총 플레이타임=2h 56m 53s | 🪙 코인=119401 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=28 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:16:34] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=19m 7s | 🕐 총 플레이타임=1h 48m 37s | 🪙 코인=68567 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=12 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오후 11:17:11] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=32s | 🕐 총 플레이타임=2h 56m 19s | 🪙 코인=119401 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=28 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:20:42] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 20s | 🕐 총 플레이타임=2h 59m 38s | 🪙 코인=119401 | 🎣 낚싯대=SilkRod | ⭐ 스킬포인트=32 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L
+[2026. 6. 2. 오후 11:22:47] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 8s | 🕐 총 플레이타임=1h 35m 38s | 🪙 코인=192106 | 🎣 낚싯대=RainbowRod | ⭐ 스킬포인트=12 | 🔮 스킬=AutoFish Lv1, AutoUp Lv1, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv2, LuckUp Lv3, PowerUp Lv1,
+[2026. 6. 2. 오후 11:23:49] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 26s | 🕐 총 플레이타임=7m 26s | 🪙 코인=14635 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, Root Lv1
+[2026. 6. 2. 오후 11:29:00] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=31s | 🕐 총 플레이타임=31s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 11:29:17] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=20s | 🕐 총 플레이타임=20s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 11:35:20] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=52s | 🕐 총 플레이타임=52s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 2. 오후 11:48:49] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=17m 59s | 🕐 총 플레이타임=17m 59s | 🪙 코인=43510 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, FriendBonus Lv1, LuckUp Lv3, Root Lv1, SellBonus Lv1, WeightUp Lv1
+[2026. 6. 3. 오전 12:03:29] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=6m 34s | 🕐 총 플레이타임=6m 34s | 🪙 코인=6371 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=4 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 3. 오전 12:03:53] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=40s
+[2026. 6. 3. 오전 12:17:05] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 46s | 🕐 총 플레이타임=2m 46s | 🪙 코인=1257 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=LuckUp Lv1, Root Lv1
+[2026. 6. 3. 오전 12:21:14] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=7m 45s | 🕐 총 플레이타임=7m 45s | 🪙 코인=9049 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=2 | 🔮 스킬=AutoFish Lv1, FishingPoint Lv1, LuckUp Lv1, Root Lv1, SellBonus Lv1
+[2026. 6. 3. 오전 12:22:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=36s | 🕐 총 플레이타임=36s | 🪙 코인=2500 | 🎣 낚싯대=FishingRod | ⭐ 스킬포인트=0 | 🔮 스킬=없음
+[2026. 6. 3. 오전 12:23:38] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 50s | 🕐 총 플레이타임=2m 50s | 🪙 코인=1415 | 🎣 낚싯대=Silver Rod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 3. 오전 12:27:55] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=3m 14s | 🕐 총 플레이타임=3m 14s | 🪙 코인=7889 | 🎣 낚싯대=GoldRod | ⭐ 스킬포인트=0 | 🔮 스킬=AutoFish Lv1, LuckUp Lv1, Root Lv1
+[2026. 6. 3. 오전 12:28:31] Sans Fishing: 
+  [Embed] title=🚪 플레이어 퇴장 | ⏱️ 이번 세션=2m 58s | 🕐 총 플레이타임=3h 2m 35s | 🪙 코인=196508 | 🎣 낚싯대=MagneticRod | ⭐ 스킬포인트=108 | 🔮 스킬=AutoFish Lv1, AutoUp Lv2, FishingPoint Lv1, FriendBonus Lv3, HitZoneUp Lv3, LuckUp Lv5, PointBoost L

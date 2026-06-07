@@ -125,9 +125,14 @@ game:BindToClose(function()
 			local trapIdValue = obj:FindFirstChild("TrapId")
 			local trapTypeValue = obj:FindFirstChild("TrapType")
 			if ownerValue and ownerValue.Value == player.Name and trapIdValue and trapTypeValue and obj.PrimaryPart then
-				DataManager:UpdateData(player, "FishTrapData_" .. trapIdValue.Value, {
+				local trapKey = "FishTrapData_" .. trapIdValue.Value
+				local playerData = DataManager:GetData(player)
+				local existingData = playerData and playerData[trapKey]
+				DataManager:UpdateData(player, trapKey, {
 					position = { x = obj.PrimaryPart.Position.X, y = obj.PrimaryPart.Position.Y, z = obj.PrimaryPart.Position.Z },
 					rotation = { x = obj.PrimaryPart.Rotation.X, y = obj.PrimaryPart.Rotation.Y, z = obj.PrimaryPart.Rotation.Z },
+					storedFish = existingData and existingData.storedFish or {},
+					nextCatchTime = existingData and existingData.nextCatchTime or tick(),
 					lastSaveTime = tick(),
 					trapId = trapIdValue.Value,
 					trapType = trapTypeValue.Value,

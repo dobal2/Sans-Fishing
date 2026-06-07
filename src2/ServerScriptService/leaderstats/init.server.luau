@@ -9,6 +9,19 @@ local ROBUX_ROD_GAMEPASS_ID = 1410895892
 
 local ROBUX_FISHTRAP_GAMEPASS_ID = 1423175879
 
+local leaderboardExcludedUsernames = {
+	Coin = {
+		["bluehome79"] = true,
+		["tallmo_bim"] = true,
+		["mkdoingsu"] = true,
+		["thatcoolgamedev"] = true,
+	},
+	Donation = {},
+	Time = {},
+}
+
+local leaderboardNameCache = {}
+
 local specialUserList = {
 	-- Add by UserId (recommended)
 	3027682121,
@@ -48,6 +61,29 @@ local function isSpecialUser(player)
 		end
 	end
 	return false
+end
+
+local function getLeaderboardUsername(userId)
+	if leaderboardNameCache[userId] then
+		return leaderboardNameCache[userId]
+	end
+
+	local success, result = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	local name = success and result or ("User_" .. tostring(userId))
+	leaderboardNameCache[userId] = name
+	return name
+end
+
+local function isExcludedFromLeaderboard(userId, leaderboardLabel)
+	local excludedNames = leaderboardExcludedUsernames[leaderboardLabel]
+	if not excludedNames then
+		return false
+	end
+
+	local name = string.lower(getLeaderboardUsername(userId))
+	return excludedNames[name] == true
 end
 
 -- Check gamepass ownership
@@ -658,17 +694,34 @@ Players.PlayerAdded:Connect(function(plr)
 
 		-- Notify all clients if joining player appears in any leaderboard top 10
 		local leaderboardChecks = {
-			{ getter = "GetTopCoinPlayers",     label = "Coin",     color = "#FFD700" },
-			{ getter = "GetTopDonationPlayers", label = "Donation", color = "#00FF00" },
-			{ getter = "GetTopPlaytimePlayers", label = "Time",     color = "#00BFFF" },
+			{ getter = "GetTopCoinPlayers",     label = "Coin",     color = "#FFD700", limit = 50, valueKey = "Coins" },
+			{ getter = "GetTopDonationPlayers", label = "Donation", color = "#00FF00", limit = 100, valueKey = "Donations", requirePositive = true },
+			{ getter = "GetTopPlaytimePlayers", label = "Time",     color = "#00BFFF", limit = 50, valueKey = "Playtime", requirePositive = true },
 		}
 
 		for _, check in ipairs(leaderboardChecks) do
-			local topPlayers = datamanager[check.getter](datamanager, 10)
-			for i, entry in ipairs(topPlayers) do
+			local topPlayers = datamanager[check.getter](datamanager, check.limit)
+			if not topPlayers then
+				continue
+			end
+
+			local visibleRank = 0
+			for _, entry in ipairs(topPlayers) do
+				local value = entry[check.valueKey] or 0
+				local isVisibleEntry = (not check.requirePositive or value > 0) and not isExcludedFromLeaderboard(entry.UserId, check.label)
+				if isVisibleEntry then
+					visibleRank += 1
+				end
+
+				if visibleRank > 10 then
+					break
+				end
+
 				if entry.UserId == plr.UserId then
-					local message = string.format("%s leaderboard top %d player %s has joined the game!", check.label, i, plr.Name)
-					leaderboardNotificationEvent:FireAllClients(message, check.color)
+					if isVisibleEntry then
+						local message = string.format("%s leaderboard top %d player %s has joined the game!", check.label, visibleRank, plr.Name)
+						leaderboardNotificationEvent:FireAllClients(message, check.color)
+					end
 					break
 				end
 			end

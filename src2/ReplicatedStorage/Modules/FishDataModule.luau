@@ -109,7 +109,7 @@ FishData.Rarities = {
 	},
 	{
 		name = "Soul",
-		chance = 0.01,
+		chance = 0.007,
 		fishes = {
 			{ fishName = "Determination", value = 120000, model = fishFolder:WaitForChild("Determination"), minWeight = 1.0, maxWeight = 100.0 },
 			{ fishName = "Patience", value = 120000, model = fishFolder:WaitForChild("Patience"), minWeight = 1.0, maxWeight = 100.0 },
@@ -510,7 +510,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 		["Mystic"] = 1.8,
 		["Fantasy"] = 0.5,
 		["Unknown"] = 0.1,
-		["Soul"] = 0.01
+		["Soul"] = 0.007
 	}
 
 	-- Check gamepasses
@@ -542,7 +542,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 			["Mystic"] = 4.0,
 			["Fantasy"] = 1.0,
 			["Unknown"] = 0.2,
-			["Soul"] = 0.01
+			["Soul"] = 0.007
 		}
 	end
 
@@ -746,7 +746,7 @@ function FishData.GetRandomFish(rodName, player, noWeather)
 						minWeight = selectedFish.minWeight,
 						maxWeight = selectedFish.maxWeight,
 						weight = weight,
-						chance = 0
+						chance = rarity.chance
 					}
 					if noWeather then return fishInfo end
 					return WeatherSystem.ApplyWeatherEffects(fishInfo)

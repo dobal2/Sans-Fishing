@@ -1,0 +1,24 @@
+# Channel: #error
+# Category: 채팅 채널
+# Exported: Tue, 02 Jun 2026 15:42:41 GMT
+# Messages: 6
+============================================================
+
+[2026. 6. 2. 오전 1:56:46] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1505557738519003256/3NmA5pxnHskrhVBA35U8n-E4m2bGl1GW3WsPqgPmT_sIoLG11Yt6scs3h5O0Pkwqgo41`
+Error: `HTTP 429`
+[2026. 6. 2. 오전 5:47:54] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1505557738519003256/3NmA5pxnHskrhVBA35U8n-E4m2bGl1GW3WsPqgPmT_sIoLG11Yt6scs3h5O0Pkwqgo41`
+Error: `HTTP 429`
+[2026. 6. 2. 오전 5:47:55] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1505557810765893712/UgekshEu0uwRW0EaprAAErn2vQH-BKvqeOWKqgh_3w9FWktX_55PCku_NbYwrf1gp8-u`
+Error: `HTTP 429`
+[2026. 6. 2. 오전 6:42:15] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1505557738519003256/3NmA5pxnHskrhVBA35U8n-E4m2bGl1GW3WsPqgPmT_sIoLG11Yt6scs3h5O0Pkwqgo41`
+Error: `HTTP 429`
+[2026. 6. 2. 오후 4:16:22] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1505557738519003256/3NmA5pxnHskrhVBA35U8n-E4m2bGl1GW3WsPqgPmT_sIoLG11Yt6scs3h5O0Pkwqgo41`
+Error: `HTTP 429`
+[2026. 6. 2. 오후 7:52:09] Sans Fishing: 
+  [Embed] title=Webhook Error | desc=URL: `https://webhook.lewisakura.moe/api/webhooks/1507595695622721547/GpcMcrPmLIFLKBmZw5QD2wr1X22k84Uqz6n6EcNQ4oZH5VYFWdEhQpkd5DMg25S5OaZD`
+Error: `HTTP 429`

@@ -47,16 +47,12 @@ local function stripAllVariantPrefixes(name)
 	return name
 end
 
-local function getOriginalBaseFromFishData(toolName, oldWeight)
+local function getFishDataFromToolName(toolName)
 	if not FishData then return nil end
 	local fishPart = toolName:match("(.+) %[.+%] %- .+kg")
 	if not fishPart then return nil end
 	local cleanName = stripAllVariantPrefixes(fishPart)
-	local fishData = FishData.GetFishByName(cleanName)
-	if not fishData then return nil end
-	local minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
-	local ratio = (minW == maxW) and 0 or math.clamp((oldWeight - minW) / (maxW - minW), 0, 1)
-	return math.floor(fishData.value * (1.2 + math.pow(ratio, 0.8) * 7.0))
+	return FishData.GetFishByName(cleanName)
 end
 
 local GAMBLE_COST          = 4000
@@ -107,6 +103,16 @@ end
 local function hasFestivalPrefix(name)
 	local stripped = stripAllVariantPrefixes(name)
 	return name:sub(1, #name - #stripped):find("Festival") ~= nil
+end
+
+local function hasGoldPrefix(name)
+	local stripped = stripAllVariantPrefixes(name)
+	return name:sub(1, #name - #stripped):find("Gold") ~= nil
+end
+
+local function hasSansPrefix(name)
+	local stripped = stripAllVariantPrefixes(name)
+	return name:sub(1, #name - #stripped):find("Sans") ~= nil
 end
 
 local function removeIceEffect(tool)
@@ -255,30 +261,15 @@ local function calculateWeightChange(current)
 end
 
 local function calculateUnifiedPrice(fishValue, oldWeight, newWeight, willBeFrozen, willBeFestival, willBeGold, willBeSans, toolName)
-	local originalBase = fishValue:GetAttribute("OriginalBaseValue")
-	if not originalBase then
-		originalBase = getOriginalBaseFromFishData(toolName, oldWeight)
-		if not originalBase then
-			-- Fallback: reverse-engineer from current value stripping all multipliers
-			local currentPrice = fishValue.Value
-			local oldRatio = math.clamp((oldWeight - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT), 0, 1)
-			local oldWeightMult = 1.2 + math.pow(oldRatio, 0.8) * 7.0
-			local frozenMult, festivalMult = getWeatherMultipliers()
-			local fishPart = toolName:match("(.+) %[") or ""
-			local oldMutMult = 1.0
-			if hasFrozenPrefix(fishPart) and hasFestivalPrefix(fishPart) then oldMutMult = frozenMult * festivalMult
-			elseif hasFrozenPrefix(fishPart) then oldMutMult = frozenMult
-			elseif hasFestivalPrefix(fishPart) then oldMutMult = festivalMult end
-			-- Detect old Gold/Sans from name
-			local oldPrefixLen = #fishPart - #stripAllVariantPrefixes(fishPart)
-			local oldPrefix = fishPart:sub(1, oldPrefixLen)
-			if oldPrefix:find("Gold") then oldMutMult = oldMutMult * 2.0 end
-			if oldPrefix:find("Sans") then oldMutMult = oldMutMult * 3.0 end
-			originalBase = math.floor(currentPrice / (oldWeightMult * oldMutMult))
-		end
-		fishValue:SetAttribute("OriginalBaseValue", originalBase)
-	end
-	local newRatio = math.clamp((newWeight - MIN_WEIGHT) / (MAX_WEIGHT - MIN_WEIGHT), 0, 1)
+	local fishData = getFishDataFromToolName(toolName)
+	if not fishData then return nil end
+
+	local originalBase = fishData.value or fishValue:GetAttribute("OriginalBaseValue")
+	if not originalBase then return nil end
+	fishValue:SetAttribute("OriginalBaseValue", originalBase)
+
+	local minW, maxW = fishData.minWeight or MIN_WEIGHT, fishData.maxWeight or MAX_WEIGHT
+	local newRatio = (minW == maxW) and 0 or math.clamp((newWeight - minW) / (maxW - minW), 0, 1)
 	local newWeightMult = 1.2 + math.pow(newRatio, 0.8) * 7.0
 	local frozenMult, festivalMult = getWeatherMultipliers()
 	local newMutMult = 1.0
@@ -335,6 +326,10 @@ local function performGamble(player, tool)
 		gambleNotificationEvent:FireClient(player, 0, true, "invalid_fish")
 		return
 	end
+	if not getFishDataFromToolName(tool.Name) then
+		gambleNotificationEvent:FireClient(player, 0, true, "invalid_fish")
+		return
+	end
 	coins.Value -= GAMBLE_COST
 	datamanager:UpdateData(player, "Coins", coins.Value)
 	pcall(function()
@@ -342,16 +337,26 @@ local function performGamble(player, tool)
 			GAMBLE_COST, coins.Value, "Gamble", "GambleFish")
 	end)
 	local newWeight = calculateWeightChange(weight)
+	local wasFrozen = hasFrozenPrefix(fishName)
+	local wasFestival = hasFestivalPrefix(fishName)
+	local wasGold = hasGoldPrefix(fishName)
+	local wasSans = hasSansPrefix(fishName)
 	local newName, willBeFrozen, willBeFestival, willBeGold, willBeSans = applyMutations(fishName, tool, newWeight)
 	local newPrice = calculateUnifiedPrice(fishValue, weight, newWeight, willBeFrozen, willBeFestival, willBeGold, willBeSans, tool.Name)
+	if not newPrice then
+		gambleNotificationEvent:FireClient(player, 0, true, "invalid_fish")
+		return
+	end
 	fishValue.Value = newPrice
 	fishWeight.Value = newWeight
 	tool.Name = string.format("%s [%s] - %.1fkg", newName, rarity, newWeight)
 	resizeFishHandle(tool, weight, newWeight)
 	gambleNotificationEvent:FireClient(player, GAMBLE_COST, false, "success", {
 		oldWeight = weight, newWeight = newWeight, newPrice = newPrice,
-		wasFrozen = hasFrozenPrefix(fishName), willBeFrozen = willBeFrozen,
-		wasFestival = hasFestivalPrefix(fishName), willBeFestival = willBeFestival,
+		wasFrozen = wasFrozen, willBeFrozen = willBeFrozen,
+		wasFestival = wasFestival, willBeFestival = willBeFestival,
+		wasGold = wasGold, willBeGold = willBeGold,
+		wasSans = wasSans, willBeSans = willBeSans,
 	})
 end
 

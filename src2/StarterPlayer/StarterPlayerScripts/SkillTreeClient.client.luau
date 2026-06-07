@@ -17,6 +17,14 @@ local robuxBuySound  = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("Ro
 local errorSound     = ReplicatedStorage:WaitForChild("Sounds"):WaitForChild("error")
 local noticeEvent    = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("NoticeEventForClient")
 
+local MAX_VISIBLE_FUTURE_STAGES = 2
+local NUMBER_SUFFIXES = {
+	{1e63, "Vg"}, {1e60, "Nod"}, {1e57, "Ocd"}, {1e54, "Spd"}, {1e51, "Sxd"},
+	{1e48, "Qid"}, {1e45, "Qad"}, {1e42, "Td"}, {1e39, "Dd"}, {1e36, "Ud"},
+	{1e33, "Dc"}, {1e30, "No"}, {1e27, "Oc"}, {1e24, "Sp"}, {1e21, "Sx"},
+	{1e18, "Qi"}, {1e15, "Qa"}, {1e12, "T"}, {1e9, "B"}, {1e6, "M"}, {1e3, "K"},
+}
+
 
 local closePendingTask = nil
 
@@ -33,13 +41,12 @@ local function formatNumber(n)
 		end
 	end
 
-	if n >= 1000000 then
-		return fmt(n / 1000000, "M")
-	elseif n >= 1000 then
-		return fmt(n / 1000, "K")
-	else
-		return tostring(n)
+	for _, unit in ipairs(NUMBER_SUFFIXES) do
+		if n >= unit[1] then
+			return fmt(n / unit[1], unit[2])
+		end
 	end
+	return tostring(n)
 end
 
 -- ── 유틸 ─────────────────────────────────────────────────────────────────────
@@ -68,6 +75,35 @@ local function refreshUI()
 
 	local rootUnlocked = (data.levels["Root"] or 0) >= 1
 
+	local function missingLevels(skillName, requiredLevel)
+		return math.max(0, requiredLevel - (data.levels[skillName] or 0))
+	end
+
+	local function getVisibleDistance(skillName, stage, curLevel)
+		local distance = math.max(0, stage - curLevel)
+
+		if skillName ~= "Root" then
+			distance += missingLevels("Root", 1)
+		end
+		if skillName == "FriendBonus" then
+			distance += missingLevels("LuckUp", 2)
+		end
+		if skillName == "HitZoneUp" or skillName == "WeightUp" or skillName == "PowerUp" then
+			distance += missingLevels("FishingPoint", 1)
+		end
+		if skillName == "HitZoneUp" then
+			distance += missingLevels("PowerUp", 1)
+		end
+		if skillName == "AutoUp" or skillName == "QuickBite" then
+			distance += missingLevels("AutoFish", 1)
+		end
+		if skillName == "PointBoost" then
+			distance += missingLevels("SellBonus", 1)
+		end
+
+		return distance
+	end
+
 	for _, btn in ipairs(canvas:GetDescendants()) do
 		if not btn:IsA("ImageButton") then continue end
 		local skillName, stage = parseNodeName(btn.Name)
@@ -87,6 +123,37 @@ local function refreshUI()
 			end
 		end
 
+		local function setIconVisible(iconName, visible)
+			local count = 0
+			for _, desc in ipairs(btn:GetDescendants()) do
+				if desc.Name == iconName and desc:IsA("GuiObject") then
+					desc.Visible = visible
+					count += 1
+				end
+			end
+			return count
+		end
+
+		local function keepIconHidden(iconName)
+			local count = 0
+			for _, desc in ipairs(btn:GetDescendants()) do
+				if desc.Name == iconName and desc:IsA("GuiObject") then
+					count += 1
+					desc.Visible = false
+					local attrName = "SkillTreeKeepHidden_" .. iconName
+					if not desc:GetAttribute(attrName) then
+						desc:SetAttribute(attrName, true)
+						desc:GetPropertyChangedSignal("Visible"):Connect(function()
+							if desc.Visible then
+								desc.Visible = false
+							end
+						end)
+					end
+				end
+			end
+			return count
+		end
+
 		local function lockNode()
 			btn.Image = "rbxassetid://102739874658337"
 			btn.Active = false
@@ -95,6 +162,14 @@ local function refreshUI()
 		end
 
 		-- FriendBonus는 LuckUp Lv2 필요
+		if getVisibleDistance(skillName, stage, curLevel) > MAX_VISIBLE_FUTURE_STAGES then
+			btn.Visible = false
+			btn.Active = false
+			setAllVisible(false)
+			continue
+		end
+		btn.Visible = true
+
 		if skillName == "FriendBonus" and (data.levels["LuckUp"] or 0) < 2 then
 			lockNode()
 			continue
@@ -143,10 +218,8 @@ local function refreshUI()
 			btn.Active = false
 			setAllVisible(true)
 			if reqLabel then reqLabel.Visible = false end
-			local coinIcon = btn:FindFirstChild("CoinIcon")
-			if coinIcon then coinIcon.Visible = false end
-			local fishIcon = btn:FindFirstChild("FishIcon")
-			if fishIcon then fishIcon.Visible = false end
+			keepIconHidden("CoinIcon")
+			keepIconHidden("FishIcon")
 		elseif stage == curLevel + 1 then
 			-- 구매 가능한 다음 단계
 			btn.Image = "rbxassetid://132014904422528"
@@ -162,12 +235,10 @@ local function refreshUI()
 					or  Color3.fromRGB(255, 255, 255)
 			end
 			-- 화폐 종류에 맞지 않는 아이콘 숨기기
-			local coinIcon = btn:FindFirstChild("CoinIcon")
-			local fishIcon = btn:FindFirstChild("FishIcon")
 			if cfg.currency == "Coins" then
-				if fishIcon then fishIcon.Visible = false end
+				setIconVisible("FishIcon", false)
 			else
-				if coinIcon then coinIcon.Visible = false end
+				setIconVisible("CoinIcon", false)
 			end
 		else
 			-- 아직 잠긴 단계

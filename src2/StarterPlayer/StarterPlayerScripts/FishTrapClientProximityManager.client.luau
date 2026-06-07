@@ -83,7 +83,18 @@ task.spawn(function()
 	cachedRobuxFishTrapOwned = hasGamepass(player, ROBUX_FISHTRAP_GAMEPASS_ID)
 end)
 
+local NUMBER_SUFFIXES = {
+	{1e63, "Vg"}, {1e60, "Nod"}, {1e57, "Ocd"}, {1e54, "Spd"}, {1e51, "Sxd"},
+	{1e48, "Qid"}, {1e45, "Qad"}, {1e42, "Td"}, {1e39, "Dd"}, {1e36, "Ud"},
+	{1e33, "Dc"}, {1e30, "No"}, {1e27, "Oc"}, {1e24, "Sp"}, {1e21, "Sx"},
+	{1e18, "Qi"}, {1e15, "Qa"}, {1e12, "T"}, {1e9, "B"}, {1e6, "M"},
+}
+
 local function formatCoins(n)
+	n = math.floor(tonumber(n) or 0)
+	for _, unit in ipairs(NUMBER_SUFFIXES) do
+		if n >= unit[1] then return string.format("%.2f%s", n / unit[1], unit[2]) end
+	end
 	local s = tostring(math.floor(n))
 	local result = ""
 	local len = #s
@@ -229,13 +240,6 @@ local proximityToFishTrap = {
 	[masterProximity] = "MasterFishTrap",
 	[robuxProximity] = "RobuxFishTrap"
 }
-
-for proximity, fishTrapName in pairs(proximityToFishTrap) do
-	local trapName = fishTrapName
-	proximity.Triggered:Connect(function()
-		openFrame(trapName)
-	end)
-end
 
 -- Update ActionText for a ProximityPrompt
 local function updateProximityText(proximity, fishTrapName)

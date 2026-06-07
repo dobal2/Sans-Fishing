@@ -254,7 +254,7 @@ RunService.Heartbeat:Connect(function()
 
 	local found = nil
 	for _, entry in ipairs(nodes) do
-		if entry.button and entry.button.Parent and isMouseOver(entry.button) then
+		if entry.button and entry.button.Parent and entry.button.Visible and isMouseOver(entry.button) then
 			found = entry
 			break
 		end

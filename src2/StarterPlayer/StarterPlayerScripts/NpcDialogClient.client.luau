@@ -161,13 +161,23 @@ local function initGambler()
 			if messageType == "success" and extraData then
 				local weightChange = extraData.newWeight - extraData.oldWeight
 				local dir = weightChange > 0 and "increased" or "decreased"
-				local frozenStatus = ""
-				if extraData.wasFrozen and not extraData.willBeFrozen then
-					frozenStatus = " <font color='rgb(150,220,255)'>(Unfrozen)</font>"
-				elseif not extraData.wasFrozen and extraData.willBeFrozen then
-					frozenStatus = " <font color='rgb(150,220,255)'>(Frozen!)</font>"
+				local mutationChanges = {}
+				local function addMutationChange(wasActive, willBeActive, label, color)
+					if wasActive and not willBeActive then
+						table.insert(mutationChanges, ("<font color='%s'>Lost %s</font>"):format(color, label))
+					elseif not wasActive and willBeActive then
+						table.insert(mutationChanges, ("<font color='%s'>Gained %s</font>"):format(color, label))
+					end
 				end
-				dialog:hideGui(("Weight %s by <font color='rgb(255,220,0)'>%.1fkg</font>%s"):format(dir, math.abs(weightChange), frozenStatus))
+				addMutationChange(extraData.wasFrozen, extraData.willBeFrozen, "Frozen", "rgb(150,220,255)")
+				addMutationChange(extraData.wasFestival, extraData.willBeFestival, "Festival", "rgb(255,150,220)")
+				addMutationChange(extraData.wasGold, extraData.willBeGold, "Gold", "rgb(255,220,0)")
+				addMutationChange(extraData.wasSans, extraData.willBeSans, "Sans", "rgb(120,190,255)")
+				local mutationText = ""
+				if #mutationChanges > 0 then
+					mutationText = " (" .. table.concat(mutationChanges, ", ") .. ")"
+				end
+				dialog:hideGui(("Weight %s by <font color='rgb(255,220,0)'>%.1fkg</font>%s"):format(dir, math.abs(weightChange), mutationText))
 			end
 		end
 		enablePromptEvent:FireServer(true, "gambler")

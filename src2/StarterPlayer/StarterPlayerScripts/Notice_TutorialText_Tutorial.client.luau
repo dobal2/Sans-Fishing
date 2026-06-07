@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -13,7 +14,6 @@ local tutorialCompleteRemote = ReplicatedStorage:WaitForChild("TutorialCompleteR
 local tutorialGoldRewardRemote = ReplicatedStorage:WaitForChild("TutorialGoldRewardRemote")
 local tutorialBeam = ReplicatedStorage:WaitForChild("TutorialBeam")
 local cursorLabelTemplate = ReplicatedStorage:WaitForChild("CurSorLabel")
-local shopSellerDialogEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Shop"):WaitForChild("ShopSellerDialog")
 
 local fishingPoint = workspace:WaitForChild("TutorialWaterPoint")
 local sellerPart   = workspace:WaitForChild("Sell Shop"):WaitForChild("Seller"):WaitForChild("HumanoidRootPart")
@@ -22,6 +22,11 @@ local upgradeNpc   = workspace:WaitForChild("Upgrade Shop"):WaitForChild("ShopSe
 local TUTORIAL_COLOR = Color3.fromRGB(255, 220, 80)
 local TWEEN_IN  = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TWEEN_OUT = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local FOCUS_OVERLAY_TRANSPARENCY = 0.5
+local FOCUS_OVERLAY_PADDING = 12
+local FOCUS_OVERLAY_MIN_PADDING = 8
+local LOADING_GUI_NAME = "Loading"
+local LOADING_FINISHED_ATTRIBUTE = "LoadingScreenFinished"
 
 local currentStep = ""
 local tutorialCompleted = false
@@ -34,8 +39,22 @@ local targetAttach = nil
 -- ── CursorLabel ───────────────────────────────────────────────────────────────
 local currentCursor = nil
 local cursorConns = {}
+local focusOverlayGui = nil
+local focusOverlayConn = nil
+
+local function hideFocusOverlay()
+	if focusOverlayConn then
+		focusOverlayConn:Disconnect()
+		focusOverlayConn = nil
+	end
+	if focusOverlayGui then
+		focusOverlayGui:Destroy()
+		focusOverlayGui = nil
+	end
+end
 
 local function hideCursor()
+	hideFocusOverlay()
 	if currentCursor and currentCursor.Parent then
 		currentCursor:Destroy()
 	end
@@ -47,8 +66,121 @@ local function hideCursor()
 end
 
 local CURSOR_PULSE = TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local FOCUS_OVERLAY_TWEEN = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local function showCursorOn(target)
+local function showFocusOverlay(target)
+	hideFocusOverlay()
+	if not target or not target.Parent then return end
+
+	local targetScreenGui = target:FindFirstAncestorOfClass("ScreenGui")
+	if not targetScreenGui then return end
+
+	local overlayGui = Instance.new("Frame")
+	overlayGui.Name = "TutorialFocusOverlay"
+	overlayGui.BackgroundTransparency = 1
+	overlayGui.BorderSizePixel = 0
+	overlayGui.Size = UDim2.fromScale(1, 1)
+	overlayGui.Position = UDim2.fromScale(0, 0)
+	overlayGui.Active = false
+	overlayGui.ZIndex = 1000
+	overlayGui.Parent = targetScreenGui
+
+	local frames = {}
+	for _, name in ipairs({"Top", "Bottom", "Left", "Right"}) do
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.BackgroundColor3 = Color3.new(0, 0, 0)
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		frame.Active = false
+		frame.ZIndex = 1000
+		frame.Parent = overlayGui
+		frames[name] = frame
+		TweenService:Create(frame, FOCUS_OVERLAY_TWEEN, {BackgroundTransparency = FOCUS_OVERLAY_TRANSPARENCY}):Play()
+	end
+
+	local highlight = Instance.new("Frame")
+	highlight.Name = "Highlight"
+	highlight.BackgroundTransparency = 1
+	highlight.BorderSizePixel = 0
+	highlight.ZIndex = 1001
+	highlight.Parent = overlayGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.14, 0)
+	corner.Parent = highlight
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = TUTORIAL_COLOR
+	stroke.Thickness = 3
+	stroke.Transparency = 1
+	stroke.Parent = highlight
+	TweenService:Create(stroke, FOCUS_OVERLAY_TWEEN, {Transparency = 0.05}):Play()
+
+	local function updateOverlay()
+		if not target.Parent or not workspace.CurrentCamera then
+			hideFocusOverlay()
+			return
+		end
+
+		local viewport = overlayGui.AbsoluteSize
+		if viewport.X <= 0 or viewport.Y <= 0 then
+			viewport = workspace.CurrentCamera.ViewportSize
+		end
+		local containerPos = overlayGui.AbsolutePosition
+		local pos = target.AbsolutePosition
+		local size = target.AbsoluteSize
+		local responsivePadding = math.max(FOCUS_OVERLAY_MIN_PADDING, math.min(FOCUS_OVERLAY_PADDING, math.floor(math.min(viewport.X, viewport.Y) * 0.015)))
+		local desiredWidth = math.min(viewport.X, math.max(1, size.X + responsivePadding * 2))
+		local desiredHeight = math.min(viewport.Y, math.max(1, size.Y + responsivePadding * 2))
+		local targetCenterX = pos.X - containerPos.X + size.X * 0.5
+		local targetCenterY = pos.Y - containerPos.Y + size.Y * 0.5
+		local left = math.clamp(math.floor(targetCenterX - desiredWidth * 0.5), 0, math.max(0, viewport.X - desiredWidth))
+		local top = math.clamp(math.floor(targetCenterY - desiredHeight * 0.5), 0, math.max(0, viewport.Y - desiredHeight))
+		local right = math.min(viewport.X, math.ceil(left + desiredWidth))
+		local bottom = math.min(viewport.Y, math.ceil(top + desiredHeight))
+
+		frames.Top.Position = UDim2.fromOffset(0, 0)
+		frames.Top.Size = UDim2.fromOffset(viewport.X, top)
+
+		frames.Bottom.Position = UDim2.fromOffset(0, bottom)
+		frames.Bottom.Size = UDim2.fromOffset(viewport.X, math.max(0, viewport.Y - bottom))
+
+		frames.Left.Position = UDim2.fromOffset(0, top)
+		frames.Left.Size = UDim2.fromOffset(left, math.max(0, bottom - top))
+
+		frames.Right.Position = UDim2.fromOffset(right, top)
+		frames.Right.Size = UDim2.fromOffset(math.max(0, viewport.X - right), math.max(0, bottom - top))
+
+		highlight.Position = UDim2.fromOffset(left, top)
+		highlight.Size = UDim2.fromOffset(math.max(0, right - left), math.max(0, bottom - top))
+	end
+
+	focusOverlayGui = overlayGui
+	focusOverlayConn = RunService.RenderStepped:Connect(updateOverlay)
+	updateOverlay()
+end
+
+local function waitForLoadingScreenClosed()
+	if player:GetAttribute(LOADING_FINISHED_ATTRIBUTE) == true then
+		task.wait(0.2)
+		return
+	end
+
+	local loadingGui = playerGui:FindFirstChild(LOADING_GUI_NAME) or playerGui:WaitForChild(LOADING_GUI_NAME, 10)
+	while loadingGui and loadingGui.Parent do
+		task.wait()
+	end
+
+	local deadline = os.clock() + 2
+	while player:GetAttribute(LOADING_FINISHED_ATTRIBUTE) ~= true and os.clock() < deadline do
+		task.wait()
+	end
+
+	task.wait(0.2)
+end
+
+local function showCursorOn(target, scale)
 	if currentCursor and currentCursor.Parent then
 		currentCursor:Destroy()
 		currentCursor = nil
@@ -58,15 +190,65 @@ local function showCursorOn(target)
 	clone.Parent = target
 
 	local uiScale = Instance.new("UIScale")
-	uiScale.Scale = 1
+	local cursorScale = scale or 1
+	uiScale.Scale = cursorScale
 	uiScale.Parent = clone
 
-	TweenService:Create(uiScale, CURSOR_PULSE, {Scale = 0.82}):Play()
+	TweenService:Create(uiScale, CURSOR_PULSE, {Scale = cursorScale * 0.82}):Play()
 
 	currentCursor = clone
 end
 
 -- NPC 대화창 열리면 첫 번째 선택지에 커서 표시
+local function showCursorOver(target, scale)
+	if currentCursor and currentCursor.Parent then
+		currentCursor:Destroy()
+		currentCursor = nil
+	end
+	if not target or not target.Parent then return end
+
+	local clone = Instance.new("ImageLabel")
+	clone.Name = "TutorialCursorOverlay"
+	clone.BackgroundTransparency = 1
+	clone.BorderSizePixel = 0
+	clone.Image = cursorLabelTemplate.Image
+	clone.ImageColor3 = cursorLabelTemplate.ImageColor3
+	clone.ImageTransparency = cursorLabelTemplate.ImageTransparency
+	clone.AnchorPoint = Vector2.new(0.5, 0.5)
+	clone.Visible = true
+	clone.Parent = mainGui
+	clone.ZIndex = 1000
+
+	local uiScale = Instance.new("UIScale")
+	local cursorScale = scale or 1
+	uiScale.Scale = cursorScale
+	uiScale.Parent = clone
+
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.Parent = clone
+
+	local function updateCursor()
+		if not target.Parent or not clone.Parent then return end
+		local pos = target.AbsolutePosition
+		local size = target.AbsoluteSize
+		local cursorSize = math.clamp(math.max(size.X, size.Y) * 0.9, 42, 92)
+		clone.Size = UDim2.fromOffset(cursorSize, cursorSize)
+		clone.Position = UDim2.fromOffset(
+			pos.X + size.X * 0.72,
+			pos.Y + size.Y * 0.38
+		)
+	end
+
+	updateCursor()
+	local updateConn = RunService.RenderStepped:Connect(updateCursor)
+	table.insert(cursorConns, updateConn)
+
+	TweenService:Create(uiScale, CURSOR_PULSE, {Scale = cursorScale * 0.82}):Play()
+
+	currentCursor = clone
+end
+
 local function watchDialogForCursor(guiName)
 	task.spawn(function()
 		local responseGui = playerGui:WaitForChild(guiName, 30)
@@ -75,6 +257,7 @@ local function watchDialogForCursor(guiName)
 		if not responseFrame then return end
 
 		local function tryShowBtn()
+			if not responseGui.Enabled then return end
 			local btn1 = responseFrame:FindFirstChild("1")
 			if btn1 and btn1.Parent then showCursorOn(btn1) end
 		end
@@ -249,78 +432,6 @@ local function completeTutorial()
 	task.delay(4, hidePersistentNotice)
 end
 
-local function startPressAutoButtonStep()
-	currentStep = "press_auto_button"
-	showPersistentNotice("Press the Auto button to start auto fishing!")
-
-	local autoFrame = mainGui:FindFirstChild("AutoButton")
-	local autoBtn = autoFrame and autoFrame:FindFirstChild("TextButton")
-	if autoBtn then
-		showCursorOn(autoBtn)
-		local clickConn
-		clickConn = autoBtn.MouseButton1Click:Connect(function()
-			if currentStep ~= "press_auto_button" then return end
-			clickConn:Disconnect()
-			hideCursor()
-			hidePersistentNotice()
-			task.wait(0.3)
-			completeTutorial()
-		end)
-		table.insert(cursorConns, clickConn)
-	else
-		completeTutorial()
-	end
-end
-
-local function startEquipRodForAutoStep()
-	currentStep = "equip_rod_for_auto"
-	showPersistentNotice("Equip your fishing rod to use Auto Fishing!")
-
-	if hasRodEquipped() then
-		hidePersistentNotice()
-		task.wait(0.3)
-		startPressAutoButtonStep()
-		return
-	end
-
-	task.spawn(function()
-		local inv = playerGui:WaitForChild("Custom Inventory", 15)
-		if not inv or currentStep ~= "equip_rod_for_auto" then return end
-		local hotBar = inv:WaitForChild("hotBar", 10)
-		if not hotBar or currentStep ~= "equip_rod_for_auto" then return end
-
-		local slot = hotBar:FindFirstChild("1")
-		if slot then
-			if currentStep == "equip_rod_for_auto" then showCursorOn(slot) end
-		else
-			local addedConn
-			addedConn = hotBar.ChildAdded:Connect(function(child)
-				if child.Name == "1" and currentStep == "equip_rod_for_auto" then
-					addedConn:Disconnect()
-					showCursorOn(child)
-				end
-			end)
-			table.insert(cursorConns, addedConn)
-		end
-	end)
-
-	local function onEquipped(tool)
-		if tool:IsA("Tool") and tool.Name:sub(-3) == "Rod" and currentStep == "equip_rod_for_auto" then
-			hideCursor()
-			hidePersistentNotice()
-			task.wait(0.3)
-			startPressAutoButtonStep()
-		end
-	end
-
-	local function setupChar(char)
-		char.ChildAdded:Connect(onEquipped)
-	end
-
-	if player.Character then setupChar(player.Character) end
-	player.CharacterAdded:Connect(setupChar)
-end
-
 local function startAutoFishNodeStep()
 	currentStep = "buy_autofish_node"
 	removeBeam()
@@ -331,7 +442,7 @@ local function startAutoFishNodeStep()
 
 	local autoFishVal = skills:FindFirstChild("AutoFish")
 	if autoFishVal and autoFishVal.Value >= 1 then
-		startEquipRodForAutoStep()
+		completeTutorial()
 		return
 	end
 
@@ -349,7 +460,7 @@ local function startAutoFishNodeStep()
 			hideCursor()
 			hidePersistentNotice()
 			task.wait(0.3)
-			startEquipRodForAutoStep()
+			completeTutorial()
 		end
 	end)
 end
@@ -401,31 +512,41 @@ local function startUpgradeStep()
 	currentStep = "buy_silver_rod"
 	showPersistentNotice("Great! Now go to the Upgrade Shop and buy the Silver Rod!")
 	createBeam(upgradeNpc)
+	watchDialogForCursor("DialogResponses_Shop Keeper")
 
 	local upgradeFrame = mainGui:FindFirstChild("Upgrade")
+	local upgradeImgBtn = upgradeFrame and upgradeFrame:FindFirstChild("TextButton")
+	local upgradeButtonClicked = false
 	showCursorOn(upgradeFrame)
 
-	-- HUD Upgrade button: just hide the upgrade button cursor
-	local upgradeImgBtn = upgradeFrame and upgradeFrame:FindFirstChild("TextButton")
+	task.spawn(function()
+		while currentStep == "buy_silver_rod" and not upgradeButtonClicked do
+			local shopGuiInst = playerGui:FindFirstChild("ShopGui")
+			local dialogGui = playerGui:FindFirstChild("DialogResponses_Shop Keeper")
+			local shopOpen = shopGuiInst and shopGuiInst.Enabled
+			local dialogOpen = dialogGui and dialogGui.Enabled
+			local bFrame = shopGuiInst and shopGuiInst:FindFirstChild("buyframe")
+			local nameText = bFrame and bFrame:FindFirstChild("Name")
+			if dialogOpen or (shopOpen and nameText and nameText.Text == "Silver Rod") then
+				break
+			end
+			if upgradeFrame and upgradeFrame.Parent and (not currentCursor or currentCursor.Parent ~= upgradeFrame) then
+				showCursorOn(upgradeFrame)
+			end
+			task.wait(0.2)
+		end
+	end)
+
 	if upgradeImgBtn then
 		local clickConn
 		clickConn = upgradeImgBtn.MouseButton1Click:Connect(function()
 			if clickConn then clickConn:Disconnect() end
+			upgradeButtonClicked = true
 			hideCursor()
+			watchDialogForCursor("DialogResponses_Shop Keeper")
 		end)
 		table.insert(cursorConns, clickConn)
 	end
-
-	-- Listen for the server firing the Shop Keeper dialog open event.
-	-- This fires regardless of whether player used HUD button or ProximityPrompt directly.
-	local shopDialogConn
-	shopDialogConn = shopSellerDialogEvent.OnClientEvent:Connect(function()
-		if currentStep ~= "buy_silver_rod" then return end
-		shopDialogConn:Disconnect()
-		hideCursor()
-		watchDialogForCursor("DialogResponses_Shop Keeper")
-	end)
-	table.insert(cursorConns, shopDialogConn)
 
 	-- Watch ShopGui buybutton (Silver Rod 선택됐을 때만)
 	task.spawn(function()
@@ -436,16 +557,19 @@ local function startUpgradeStep()
 		local buyBtn = bBtnFrame and bBtnFrame:FindFirstChild("TextButton")
 		local nameText = bFrame and bFrame:FindFirstChild("Name")
 		if not buyBtn or not nameText then return end
+		local buyCursorTarget = bBtnFrame or buyBtn
 
 		local nameConn
 		local function updateShopCursor()
 			if currentStep ~= "buy_silver_rod" then return end
-			if shopGuiInst.Enabled and nameText.Text == "Silver Rod" then
-				if not currentCursor or not currentCursor.Parent then
-					showCursorOn(buyBtn)
+			if not shopGuiInst.Enabled then return end
+			if bFrame and not bFrame.Visible then return end
+			if nameText.Text == "Silver Rod" or nameText.Text == "name" or nameText.Text == "" then
+				if not currentCursor or currentCursor.Parent ~= buyCursorTarget then
+					showCursorOn(buyCursorTarget)
 				end
 			else
-				if currentCursor and currentCursor.Parent then
+				if currentCursor and currentCursor.Parent == buyCursorTarget then
 					currentCursor:Destroy()
 					currentCursor = nil
 				end
@@ -455,6 +579,10 @@ local function startUpgradeStep()
 		nameConn = nameText:GetPropertyChangedSignal("Text"):Connect(updateShopCursor)
 		table.insert(cursorConns, nameConn)
 
+		local visibleConn
+		visibleConn = bFrame:GetPropertyChangedSignal("Visible"):Connect(updateShopCursor)
+		table.insert(cursorConns, visibleConn)
+
 		local shopConn
 		shopConn = shopGuiInst:GetPropertyChangedSignal("Enabled"):Connect(function()
 			updateShopCursor()
@@ -462,6 +590,13 @@ local function startUpgradeStep()
 		table.insert(cursorConns, shopConn)
 
 		updateShopCursor()
+
+		task.spawn(function()
+			while currentStep == "buy_silver_rod" and shopGuiInst.Parent and bFrame.Parent do
+				updateShopCursor()
+				task.wait(0.15)
+			end
+		end)
 	end)
 
 	if not sr then return end
@@ -489,6 +624,7 @@ local function startSellStep()
 	removeBeam()
 	showPersistentNotice("Great catch! Now go to the shop and sell your fish!")
 	createBeam(sellerPart)
+	watchDialogForCursor("DialogResponses_Seller")
 
 	local sellFrame = mainGui:FindFirstChild("Sell")
 	showCursorOn(sellFrame)
@@ -519,6 +655,15 @@ end
 
 local function startCastStep()
 	currentStep = "cast_rod"
+
+	if player:GetAttribute("IsFishing") == true then
+		currentStep = "wait_for_bite"
+		removeBeam()
+		hideCursor()
+		showPersistentNotice("Wait for a fish to bite your bait!")
+		return
+	end
+
 	showPersistentNotice("Great! Now go to the water and click to cast your bait!")
 
 	local anchor = Instance.new("Frame")
@@ -575,13 +720,17 @@ startEquipStep = function()
 
 		local slot = hotBar:FindFirstChild("1")
 		if slot then
-			if currentStep == "equip_rod" then showCursorOn(slot) end
+			if currentStep == "equip_rod" then
+				showFocusOverlay(slot)
+				showCursorOn(slot, 1.6)
+			end
 		else
 			local addedConn
 			addedConn = hotBar.ChildAdded:Connect(function(child)
 				if child.Name == "1" and currentStep == "equip_rod" then
 					addedConn:Disconnect()
-					showCursorOn(child)
+					showFocusOverlay(child)
+					showCursorOn(child, 1.6)
 				end
 			end)
 			table.insert(cursorConns, addedConn)
@@ -660,6 +809,7 @@ task.spawn(function()
 	end
 	local isTutorialed = player:WaitForChild("IsTutorialed", 30)
 	if not isTutorialed or isTutorialed.Value then return end
-	task.wait(2)
+	waitForLoadingScreenClosed()
+	task.wait(0.2)
 	startTutorial()
 end)

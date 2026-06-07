@@ -53,6 +53,9 @@ end
 local FishingServer = {}
 FishingServer.__index = FishingServer
 
+local BASE_BITE_WAIT_MIN = 2.2
+local BASE_BITE_WAIT_MAX = 4
+
 function FishingServer.init(tool)
 	local self = setmetatable({}, FishingServer)
 	self.tool = tool
@@ -879,8 +882,8 @@ function FishingServer:_checkMaterial()
 					quickBiteReduction = SkillHelper_qb.GetEffect(self.player, "QuickBite")
 				end
 			end
-			local minWait = math.max(0.5, 3 - quickBiteReduction)
-			local maxWait = math.max(minWait + 0.5, 5 - quickBiteReduction)
+			local minWait = math.max(0.5, BASE_BITE_WAIT_MIN - quickBiteReduction)
+			local maxWait = math.max(minWait + 0.5, BASE_BITE_WAIT_MAX - quickBiteReduction)
 			task.wait(minWait + math.random() * (maxWait - minWait))
 
 			if self.cancelled then return end
@@ -899,7 +902,8 @@ function FishingServer:_checkMaterial()
 			self.fishingSoundLoop:Play()
 
 			local isTutorialed = self.player:FindFirstChild("IsTutorialed")
-			if isTutorialed and isTutorialed.Value == false then
+			if isTutorialed and isTutorialed.Value == false and self.player:GetAttribute("TutorialForcedCommonUsed") ~= true then
+				self.player:SetAttribute("TutorialForcedCommonUsed", true)
 				self.player:SetAttribute("ForcedRarity", "Common")
 			end
 			local fishInfo = FishData.GetRandomFish(self.tool.Name, self.player)
@@ -1589,11 +1593,16 @@ function FishingServer:_resolveFishing(player, result)
 			-- Success notification
 			do
 				local fn = fishInfo.fishName or ""
-				local pct = (fishInfo.chance or 0) / 100
+				local pct = 0
 				-- Divide by fish count within rarity (each fish equally probable within rarity)
 				local rarityName = fishInfo.name
 				for _, rarity in ipairs(FishData.Rarities) do
 					if rarity.name == rarityName then
+						local rarityChance = fishInfo.chance
+						if not rarityChance or rarityChance <= 0 then
+							rarityChance = rarity.chance or 0
+						end
+						pct = rarityChance / 100
 						local n = #rarity.fishes
 						if n > 1 then pct = pct / n end
 						break

@@ -272,19 +272,25 @@ task.spawn(function()
 		for slot, fishIdx in pairs(inventoryHandler.HotBarFish) do
 			local fi = inventoryHandler.FishList[fishIdx]
 			if fi then
-				savedPinsBySlot[slot] = {name = fi.name, weight = fi.weight}
+				savedPinsBySlot[slot] = {index = fishIdx, name = fi.name, weight = fi.weight}
 			end
 		end
 		inventoryHandler:syncInventory(fishList2, false)
 		updateFishCount()
 		local used = {}
 		for slot, saved in pairs(savedPinsBySlot) do
-			for newIdx, fi in ipairs(inventoryHandler.FishList) do
-				if not used[newIdx] and fi.name == saved.name
-					and math.abs((fi.weight or 0) - (saved.weight or 0)) < 0.001 then
-					inventoryHandler:setHotBarFishSlotPublic(slot, newIdx)
-					used[newIdx] = true
-					break
+			local sameIndex = tonumber(saved.index)
+			if sameIndex and inventoryHandler.FishList[sameIndex] and not used[sameIndex] then
+				inventoryHandler:setHotBarFishSlotPublic(slot, sameIndex)
+				used[sameIndex] = true
+			else
+				for newIdx, fi in ipairs(inventoryHandler.FishList) do
+					if not used[newIdx] and fi.name == saved.name
+						and math.abs((fi.weight or 0) - (saved.weight or 0)) < 0.001 then
+						inventoryHandler:setHotBarFishSlotPublic(slot, newIdx)
+						used[newIdx] = true
+						break
+					end
 				end
 			end
 		end

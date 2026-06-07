@@ -240,6 +240,38 @@ local function GetFishDataByName(name)
 	return nil
 end
 
+local function safeValueRatio(weight, minW, maxW)
+	if minW == maxW then return 0 end
+	local ratio = (weight - minW) / (maxW - minW)
+	if ratio ~= ratio or ratio == math.huge or ratio == -math.huge then return 0 end
+	return math.clamp(ratio, 0, 1)
+end
+
+local function getFestivalMultiplier()
+	return (WeatherSystemModule.WeatherTypes and
+		WeatherSystemModule.WeatherTypes.Firework and
+		WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
+end
+
+local function calculateFishItemValue(itemName, weight, isFrozen, isFestival, isSansVariant, isGoldVariant)
+	local fishData = GetFishDataByName(itemName)
+	if not fishData then
+		return 0
+	end
+
+	local minW = fishData.minWeight or 1
+	local maxW = fishData.maxWeight or minW
+	local valueRatio = safeValueRatio(tonumber(weight) or minW, minW, maxW)
+	local adjustedValue = math.floor((fishData.value or 0) * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
+
+	if isFrozen then adjustedValue = math.floor(adjustedValue * 2.0) end
+	if isFestival then adjustedValue = math.floor(adjustedValue * getFestivalMultiplier()) end
+	if isSansVariant then adjustedValue = math.floor(adjustedValue * 3.0) end
+	if isGoldVariant then adjustedValue = math.floor(adjustedValue * 2.0) end
+
+	return math.max(0, adjustedValue)
+end
+
 -- Size helpers (same as original)
 local function scaleHandleByRatio(handle, scaleRatio)
 	if not handle or not handle:IsA("BasePart") then return end
@@ -490,6 +522,15 @@ cloneAndEquipFish = function(player, index)
 			fishItem.isFestival    = prefixPart:find("Festival") ~= nil
 			fishItem.isSansVariant = prefixPart:find("Sans")    ~= nil
 			fishItem.isGoldVariant = prefixPart:find("Gold")    ~= nil and strippedBase:sub(1,4):lower() ~= "gold"
+			fishItem.value = calculateFishItemValue(
+				fishItem.name,
+				fishItem.weight,
+				fishItem.isFrozen,
+				fishItem.isFestival,
+				fishItem.isSansVariant,
+				fishItem.isGoldVariant
+			)
+			syncInventory(player)
 			scheduleSave(player)
 		end
 	end)
@@ -500,29 +541,22 @@ end
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local function buildFishItemData(fishInfo)
-	local minW = fishInfo.minWeight or 1
-	local maxW = fishInfo.maxWeight or 1
-	local baseValue = fishInfo.value or 0
-	local valueRatio = math.clamp((fishInfo.weight - minW) / math.max(maxW - minW, 0.001), 0, 1)
-	local adjustedValue = math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
-
 	local isFrozen      = fishInfo.isFrozen == true
 	local isFestival    = fishInfo.isFestival == true
 	local isSansVariant = fishInfo.isSansVariant == true
 	local isGoldVariant = fishInfo.isGoldVariant == true
 
-	-- Apply variant multipliers
-	if isFrozen then adjustedValue = math.floor(adjustedValue * 2.0) end
-	if isFestival then
-		local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
-			WeatherSystemModule.WeatherTypes.Firework and
-			WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
-		adjustedValue = math.floor(adjustedValue * festivalMultiplier)
-	end
-	if isSansVariant then adjustedValue = math.floor(adjustedValue * 3.0) end
-	if isGoldVariant then adjustedValue = math.floor(adjustedValue * 2.0) end
-
 	local fullName = string.format("%s [%s] - %.1fkg", fishInfo.fishName, fishInfo.name, fishInfo.weight)
+	local fishData = GetFishDataByName(fullName)
+	local baseValue = (fishData and fishData.value) or fishInfo.value or 0
+	local adjustedValue = calculateFishItemValue(
+		fullName,
+		fishInfo.weight,
+		isFrozen,
+		isFestival,
+		isSansVariant,
+		isGoldVariant
+	)
 
 	return {
 		name      = fullName,
@@ -620,13 +654,6 @@ end
 -- ─────────────────────────────────────────────────────────────────────────────
 -- PlayerAdded: load saved fish data into PlayerFishData table
 -- ─────────────────────────────────────────────────────────────────────────────
-
-local function safeValueRatio(weight, minW, maxW)
-	if minW == maxW then return 0 end
-	local ratio = (weight - minW) / (maxW - minW)
-	if ratio ~= ratio or ratio == math.huge or ratio == -math.huge then return 0 end
-	return math.clamp(ratio, 0, 1)
-end
 
 Players.PlayerAdded:Connect(function(player)
 	local TIMEOUT = 40
@@ -747,24 +774,12 @@ Players.PlayerAdded:Connect(function(player)
 			local savedValue = type(itemEntry) == "table" and tonumber(itemEntry.value) or nil
 			local savedBaseValue = type(itemEntry) == "table" and tonumber(itemEntry.baseValue) or nil
 
-			local minW, maxW = 1, 1
 			local baseValue = savedBaseValue or savedValue or 0
 			if fishData then
-				minW, maxW = fishData.minWeight or 1, fishData.maxWeight or 1
 				baseValue = fishData.value or baseValue
 			end
 
-			local valueRatio = safeValueRatio(weight, minW, maxW)
-			local adjustedValue = savedValue or math.floor(baseValue * (1.2 + math.pow(valueRatio, 0.8) * 7.0))
-
-			local festivalMultiplier = (WeatherSystemModule.WeatherTypes and
-				WeatherSystemModule.WeatherTypes.Firework and
-				WeatherSystemModule.WeatherTypes.Firework.effects.valueMultiplier) or 1.5
-
-			if hasFrozen   then adjustedValue = math.floor(adjustedValue * 2.0) end
-			if hasFestival then adjustedValue = math.floor(adjustedValue * festivalMultiplier) end
-			if hasSans     then adjustedValue = math.floor(adjustedValue * 3.0) end
-			if hasGold     then adjustedValue = math.floor(adjustedValue * 2.0) end
+			local adjustedValue = calculateFishItemValue(itemName, weight, hasFrozen, hasFestival, hasSans, hasGold)
 
 			-- Reconstruct fishName (with variant prefix) from itemName
 			local fishName = itemName:match("^(.-)%s*%[") or savedFishName or (fishData and fishData.fishName) or itemName
@@ -981,7 +996,16 @@ SellFishBindable.OnInvoke = function(player, mode)
 					PlayerEquippedTool[player]  = nil
 					PlayerEquippedIndex[player] = nil
 				end
-				totalBaseValue += fishItem.value
+				local safeValue = calculateFishItemValue(
+					fishItem.name,
+					fishItem.weight,
+					fishItem.isFrozen,
+					fishItem.isFestival,
+					fishItem.isSansVariant,
+					fishItem.isGoldVariant
+				)
+				fishItem.value = safeValue
+				totalBaseValue += safeValue
 				itemsSoldCount += 1
 			end
 		end
@@ -1016,7 +1040,15 @@ SellFishBindable.OnInvoke = function(player, mode)
 		PlayerEquippedTool[player]  = nil
 		PlayerEquippedIndex[player] = nil
 
-		totalBaseValue = fishItem.value
+		totalBaseValue = calculateFishItemValue(
+			fishItem.name,
+			fishItem.weight,
+			fishItem.isFrozen,
+			fishItem.isFestival,
+			fishItem.isSansVariant,
+			fishItem.isGoldVariant
+		)
+		fishItem.value = totalBaseValue
 		itemsSoldCount = 1
 		table.remove(fishList, equippedIdx)
 	end

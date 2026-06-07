@@ -2,12 +2,19 @@ local TweenService       = game:GetService("TweenService")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local ServerStorage      = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Players            = game:GetService("Players")
 
 local FishData              = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FishDataModule"))
-local fishTrapDataManager   = require(game.ServerScriptService:WaitForChild("FishTrapManager"):WaitForChild("DataManager"))
+local fishTrapDataManager   = require(ServerScriptService:WaitForChild("FishTrapManager"):WaitForChild("DataManager"))
 
 local ShowNoticeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("ShowNoticeEvent")
+local FillFishTrapBindable = ServerScriptService:FindFirstChild("FillFishTrapBindable")
+if not FillFishTrapBindable then
+	FillFishTrapBindable = Instance.new("BindableEvent")
+	FillFishTrapBindable.Name = "FillFishTrapBindable"
+	FillFishTrapBindable.Parent = ServerScriptService
+end
 
 local FISH_TRAP_HARVEST_PRODUCT_ID = 3381869322
 
@@ -26,7 +33,28 @@ local function isRodOrTrap(itemName)
 	return lower:match("rod$") ~= nil or lower:match("trap") ~= nil
 end
 
+local function restoreEquippedFishTrapTool(player, trapName)
+	local character = player.Character
+	if not character then return end
 
+	local tool = character:FindFirstChild(trapName)
+	if not tool or not tool:IsA("Tool") then return end
+	if not tool:GetAttribute("PlacedTransparent") then return end
+
+	tool:SetAttribute("PlacedTransparent", nil)
+	for _, descendant in ipairs(tool:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 0
+			descendant.CanCollide = false
+			descendant.CanTouch = true
+			descendant.CanQuery = true
+		elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+			descendant.Transparency = 0
+		elseif descendant:IsA("ParticleEmitter") or descendant:IsA("Trail") or descendant:IsA("Beam") then
+			descendant.Enabled = true
+		end
+	end
+end
 
 local function buildFishTool(fishesFolder, fishInfo)
 	local template = fishesFolder:FindFirstChild(fishInfo.fishName)
@@ -161,15 +189,25 @@ function FishTrapCore.init(fishTrap)
 	end
 
 	local function deliverFishList(player, fishList)
-		local fishesFolder = ServerStorage:FindFirstChild("Fishes")
-		if not fishesFolder then return 0 end
-		local bp = player:FindFirstChild("Backpack")
-		if not bp then return 0 end
+		local fishCaughtBindable = ServerScriptService:FindFirstChild("FishCaughtBindable")
+		if not fishCaughtBindable then
+			warn("FishTrapCore: FishCaughtBindable not found")
+			return 0
+		end
+
+		if not player:FindFirstChild("ItemReady") then
+			player:WaitForChild("ItemReady", 10)
+		end
+
+		if not player:FindFirstChild("ItemReady") then
+			warn("FishTrapCore: ItemReady not found for", player.Name)
+			return 0
+		end
+
 		local given = 0
 		for _, fishInfo in ipairs(fishList) do
-			local tool = buildFishTool(fishesFolder, fishInfo)
-			if tool then
-				tool.Parent = bp
+			if fishInfo and fishInfo.fishName then
+				fishCaughtBindable:Fire(player, fishInfo)
 				given += 1
 			end
 		end
@@ -186,6 +224,7 @@ function FishTrapCore.init(fishTrap)
 		if #storedFish == 0 then
 			clearTrapData()
 			sendRestoreSignal(owner)
+			restoreEquippedFishTrapTool(player, trapType)
 			isRunning = false
 			if fishTrap.Parent then fishTrap:Destroy() end
 			ShowNoticeEvent:FireClient(player, "Empty fish trap collected!")
@@ -195,10 +234,17 @@ function FishTrapCore.init(fishTrap)
 
 		local fishToGive = {table.unpack(storedFish)}
 		local given = deliverFishList(player, fishToGive)
+		if given <= 0 then
+			ShowNoticeEvent:FireClient(player, "Failed to collect fish trap. Try again.")
+			isHarvesting = false
+			return
+		end
+
 		for _ = 1, given do table.remove(storedFish, 1) end
 
 		clearTrapData()
 		sendRestoreSignal(owner)
+		restoreEquippedFishTrapTool(player, trapType)
 		isRunning = false
 		if fishTrap.Parent then fishTrap:Destroy() end
 		ShowNoticeEvent:FireClient(player, string.format("Fish Trap collected! Got %d fish.", given))
@@ -234,6 +280,11 @@ function FishTrapCore.init(fishTrap)
 		end
 		local toSteal = {table.unpack(storedFish)}
 		local given = deliverFishList(thief, toSteal)
+		if given <= 0 then
+			ShowNoticeEvent:FireClient(thief, "Failed to steal fish trap. Try again.")
+			return
+		end
+
 		storedFish = {}
 
 		clearTrapData()
@@ -246,6 +297,7 @@ function FishTrapCore.init(fishTrap)
 		if owner then
 			local ownerPlayer = Players:FindFirstChild(owner)
 			if ownerPlayer then
+				restoreEquippedFishTrapTool(ownerPlayer, trapType)
 				ShowNoticeEvent:FireClient(ownerPlayer,
 					string.format("%s stole all %d fish from your trap!", thief.Name, given))
 			end
@@ -271,6 +323,16 @@ function FishTrapCore.init(fishTrap)
 		promptSteal(player)
 	end)
 
+	FillFishTrapBindable.Event:Connect(function(targetPlayer, targetTrapKey, fishList, updatedNextCatchTime)
+		if not targetPlayer or targetPlayer.Name ~= owner then return end
+		if targetTrapKey ~= "FishTrapData_" .. tostring(trapId) then return end
+
+		storedFish = fishList or {}
+		nextCatchTime = updatedNextCatchTime or nextCatchTime
+		updateUI()
+		updateNextCatchUI()
+	end)
+
 	local function catchFish()
 		if #storedFish >= MAX_CAPACITY then return end
 		local fishInfo = FishData.GetRandomFish(trapType, nil, true)
@@ -292,8 +354,8 @@ function FishTrapCore.init(fishTrap)
 			while isRunning do
 				local now = tick()
 				if now >= nextCatchTime and #storedFish < MAX_CAPACITY then
-					catchFish()
 					nextCatchTime = now + CATCH_INTERVAL
+					catchFish()
 				end
 				updateNextCatchUI()
 				if math.floor(now) % 60 == 0 then saveTrapData() end

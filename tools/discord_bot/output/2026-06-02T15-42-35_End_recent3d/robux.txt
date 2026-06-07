@@ -1,0 +1,18 @@
+# Channel: #robux
+# Category: 채팅 채널
+# Exported: Tue, 02 Jun 2026 15:42:42 GMT
+# Messages: 6
+============================================================
+
+[2026. 5. 31. 오전 6:43:45] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | 패스=Robux Rod
+[2026. 5. 31. 오후 4:37:32] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | desc=🔧 **[STUDIO]** | 패스=Robux Rod
+[2026. 5. 31. 오후 4:37:54] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | desc=🔧 **[STUDIO]** | 패스=Robux Rod
+[2026. 6. 1. 오전 12:27:36] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | desc=🔧 **[STUDIO]** | 패스=Power x2
+[2026. 6. 2. 오전 6:50:36] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | 패스=Robux Rod
+[2026. 6. 2. 오후 7:58:34] Sans Fishing: 
+  [Embed] title=💎 게임패스 구매 | 패스=Robux Rod

@@ -58,11 +58,19 @@ local function getName(userId)
 	return name
 end
 
+local NUMBER_SUFFIXES = {
+	{1e63, "Vg"}, {1e60, "Nod"}, {1e57, "Ocd"}, {1e54, "Spd"}, {1e51, "Sxd"},
+	{1e48, "Qid"}, {1e45, "Qad"}, {1e42, "Td"}, {1e39, "Dd"}, {1e36, "Ud"},
+	{1e33, "Dc"}, {1e30, "No"}, {1e27, "Oc"}, {1e24, "Sp"}, {1e21, "Sx"},
+	{1e18, "Qi"}, {1e15, "Qa"}, {1e12, "T"}, {1e9, "B"}, {1e6, "M"}, {1e3, "K"},
+}
+
 local function formatCoins(n)
-	if n >= 1000000000 then return string.format("%.1fB", n/1000000000)
-	elseif n >= 1000000 then return string.format("%.1fM", n/1000000)
-	elseif n >= 1000    then return string.format("%.1fK", n/1000)
-	else return tostring(n) end
+	n = math.floor(tonumber(n) or 0)
+	for _, unit in ipairs(NUMBER_SUFFIXES) do
+		if n >= unit[1] then return string.format("%.1f%s", n / unit[1], unit[2]) end
+	end
+	return tostring(n)
 end
 
 local lastEntries = {}

@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
 local ProfileService = require(script.Parent.Parent.ProfileService)
 
 local function generateTrapId()
@@ -13,7 +14,8 @@ local FISHTRAP_CONFIGS = {
 	["RobuxFishTrap"]    = { catchInterval = 300, maxCapacity = 60, displayName = "Robux Fish Trap" },
 }
 
-local ProfileStore = ProfileService.New("FishingGameStore", {})
+local PROFILE_STORE_NAME = RunService:IsStudio() and "FishingGameStore_Studio" or "FishingGameStore"
+local ProfileStore = ProfileService.New(PROFILE_STORE_NAME, {})
 local Profiles = {}
 
 local DataManager = {}

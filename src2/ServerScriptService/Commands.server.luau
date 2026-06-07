@@ -41,6 +41,13 @@ if not shutdownTimerEvent then
 	shutdownTimerEvent.Parent = ReplicatedStorage
 end
 
+local FillFishTrapBindable = ServerScriptService:FindFirstChild("FillFishTrapBindable")
+if not FillFishTrapBindable then
+	FillFishTrapBindable = Instance.new("BindableEvent")
+	FillFishTrapBindable.Name = "FillFishTrapBindable"
+	FillFishTrapBindable.Parent = ServerScriptService
+end
+
 local shutdownThread = nil
 local shutdownEndAt  = nil
 
@@ -1419,10 +1426,10 @@ local function command(plr, chat)
 	if chat:lower():sub(1, #Prefix + 8) == Prefix .. "trapfill" then
 		if hasPermission(plr, "trapfill") then
 			local FISHTRAP_CONFIGS = {
-				["BasicFishTrap"]    = { maxCapacity = 30 },
-				["AdvancedFishTrap"] = { maxCapacity = 40 },
-				["MasterFishTrap"]   = { maxCapacity = 50 },
-				["RobuxFishTrap"]    = { maxCapacity = 100 },
+				["BasicFishTrap"]    = { catchInterval = 600, maxCapacity = 20 },
+				["AdvancedFishTrap"] = { catchInterval = 480, maxCapacity = 30 },
+				["MasterFishTrap"]   = { catchInterval = 360, maxCapacity = 40 },
+				["RobuxFishTrap"]    = { catchInterval = 300, maxCapacity = 60 },
 			}
 			local args = string.split(chat, " ")
 			local targetName = args[2] or plr.Name
@@ -1436,12 +1443,14 @@ local function command(plr, chat)
 				local filled = false
 				for key, trap in pairs(trapData) do
 					if type(trap) ~= "table" or not key:find("FishTrapData_") then continue end
+					if trap.isActive == false then continue end
+
 					local trapType = trap.trapType or "BasicFishTrap"
 					local config = FISHTRAP_CONFIGS[trapType] or FISHTRAP_CONFIGS["BasicFishTrap"]
 					local storedFish = trap.storedFish or {}
 					local toFill = config.maxCapacity - #storedFish
 					for _ = 1, toFill do
-						local fishInfo = FishDataModule.GetRandomFish(trapType, nil)
+						local fishInfo = FishDataModule.GetRandomFish(trapType, nil, true)
 						if fishInfo then
 							table.insert(storedFish, {
 								name      = fishInfo.name,
@@ -1455,7 +1464,10 @@ local function command(plr, chat)
 						end
 					end
 					trap.storedFish = storedFish
+					trap.nextCatchTime = tick() + config.catchInterval
+					trap.lastSaveTime = tick()
 					FishTrapDataManager:UpdateData(v, key, trap)
+					FillFishTrapBindable:Fire(v, key, storedFish, trap.nextCatchTime)
 					filled = true
 					announceRemote:FireClient(plr, string.format("%s trap filled: %d fish", v.Name, #storedFish), "SYSTEM")
 				end

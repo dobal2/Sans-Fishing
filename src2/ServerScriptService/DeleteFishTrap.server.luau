@@ -40,14 +40,63 @@ local function buildFishInfo(storedFish)
 	}
 end
 
+local function restoreEquippedFishTrapTool(player, trapName)
+	local character = player.Character
+	if not character then return end
+
+	local tool = character:FindFirstChild(trapName)
+	if not tool or not tool:IsA("Tool") then return end
+	if not tool:GetAttribute("PlacedTransparent") then return end
+
+	tool:SetAttribute("PlacedTransparent", nil)
+	for _, descendant in ipairs(tool:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 0
+			descendant.CanCollide = false
+			descendant.CanTouch = true
+			descendant.CanQuery = true
+		elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+			descendant.Transparency = 0
+		elseif descendant:IsA("ParticleEmitter") or descendant:IsA("Trail") or descendant:IsA("Beam") then
+			descendant.Enabled = true
+		end
+	end
+end
+
+local function deliverStoredFish(player, storedFishList)
+	local fishCaughtBindable = ServerScriptService:FindFirstChild("FishCaughtBindable")
+	if not fishCaughtBindable then
+		warn("DeleteFishTrap: FishCaughtBindable not found")
+		return 0
+	end
+
+	if not player:FindFirstChild("ItemReady") then
+		player:WaitForChild("ItemReady", 10)
+	end
+
+	if not player:FindFirstChild("ItemReady") then
+		warn("DeleteFishTrap: ItemReady not found for", player.Name)
+		return 0
+	end
+
+	local total = 0
+	for _, storedFish in ipairs(storedFishList) do
+		local fishInfo = buildFishInfo(storedFish)
+		if fishInfo.fishName then
+			fishCaughtBindable:Fire(player, fishInfo)
+			total += 1
+		end
+	end
+
+	return total
+end
+
 CollectFishTrapRemote.OnServerEvent:Connect(function(player)
 	local tool = getEquippedFishTrap(player)
 	if not tool then
 		ShowNoticeEvent:FireClient(player, "Hold a Fish Trap to collect it!")
 		return
 	end
-
-	local FishCaughtBindable = ServerScriptService:FindFirstChild("FishCaughtBindable")
 
 	local totalFishAdded = 0
 	local removed = false
@@ -60,15 +109,18 @@ CollectFishTrapRemote.OnServerEvent:Connect(function(player)
 			local allData = FishTrapDataManager:GetData(player)
 			local trapData = allData and allData[trapKey]
 
-			if trapData and trapData.storedFish and FishCaughtBindable then
-				for _, storedFish in ipairs(trapData.storedFish) do
-					local fishInfo = buildFishInfo(storedFish)
-					FishCaughtBindable:Fire(player, fishInfo)
-					totalFishAdded += 1
+			if trapData and trapData.storedFish and #trapData.storedFish > 0 then
+				local delivered = deliverStoredFish(player, trapData.storedFish)
+				if delivered <= 0 then
+					ShowNoticeEvent:FireClient(player, "Failed to collect fish trap. Try again.")
+					return
 				end
+				totalFishAdded += delivered
 			end
 
 			FishTrapDataManager:UpdateData(player, "FishTrapData_" .. trapIdVal.Value, nil)
+			local trapTypeVal = obj:FindFirstChild("TrapType")
+			restoreEquippedFishTrapTool(player, trapTypeVal and trapTypeVal.Value or tool.Name)
 			obj:Destroy()
 			removed = true
 		end

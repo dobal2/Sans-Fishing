@@ -17,12 +17,28 @@ local GUI = ReplicatedStorage:WaitForChild("FishingGui")
 local RandomGen = Random.new()
 local ANIMATION_FADE_TIME = 0.15
 local PREDICTED_WAITING_DELAY = 0.55
+local TUTORIAL_MIN_PROGRESS = 1
 
 -- Tutorial event
 local tutorialEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice"):WaitForChild("TutorialEvent")
 
 -- Per-tool instance map
 local instanceMap = {}
+
+function FishingClient:_isTutorialActive()
+	local isTutorialed = self.player and self.player:FindFirstChild("IsTutorialed")
+	return isTutorialed and isTutorialed.Value == false
+end
+
+function FishingClient:_protectTutorialProgress()
+	if not self:_isTutorialActive() then
+		return false
+	end
+
+	self.currentProgress = math.max(self.currentProgress, TUTORIAL_MIN_PROGRESS)
+	self:_updateProgressBar()
+	return true
+end
 
 function FishingClient.init(tool)
 	if instanceMap[tool] then
@@ -64,6 +80,7 @@ function FishingClient.init(tool)
 	self:_preloadAnimations()
 
 	self.isProcessing = false
+	self._processingStartedAt = nil
 	self.inputCooldown = 0
 	self.player = game.Players.LocalPlayer
 	self.remote = tool:WaitForChild("RemoteEvent", 5)
@@ -300,53 +317,82 @@ end
 
 -- Hit text effect
 function FishingClient:_showHitText(hitType, hitPosition)
-	if not self.frame then return end
+	if not self.frame or not self.slider then return end
 
-	local textContent = hitType == "strong" and "Perfect!" or "Good"
-	local textColor = hitType == "strong" and Color3.fromRGB(255, 12, 16) or Color3.fromRGB(46, 204, 113)
+	local textContent = "Good"
+	local textColor = Color3.fromRGB(46, 204, 113)
+	if hitType == "strong" then
+		textContent = "Perfect!"
+		textColor = Color3.fromRGB(255, 12, 16)
+	elseif hitType == "miss" then
+		textContent = "Oops!"
+		textColor = Color3.fromRGB(255, 145, 45)
+	end
+	local framePos = self.frame.AbsolutePosition
+	local frameSize = self.frame.AbsoluteSize
+	local textWidth = math.clamp(frameSize.X * 0.22, 96, 150)
+	local textHeight = math.clamp(frameSize.Y * 0.20, 34, 52)
+	local sliderCenter = self.slider.AbsolutePosition + self.slider.AbsoluteSize * 0.5
+	local textX = math.clamp(sliderCenter.X - framePos.X, textWidth * 0.5, math.max(textWidth * 0.5, frameSize.X - textWidth * 0.5))
+	local textY = math.clamp(sliderCenter.Y - framePos.Y - 44, textHeight * 0.5, math.max(textHeight * 0.5, frameSize.Y - textHeight * 0.5))
 
 	local hitText = Instance.new("TextLabel")
 	hitText.Name = "HitText"
 	hitText.Text = textContent
-	hitText.Size = UDim2.new(0, 120, 0, 40)
+	hitText.AnchorPoint = Vector2.new(0.5, 0.5)
+	hitText.Size = UDim2.fromOffset(textWidth, textHeight)
 	hitText.BackgroundTransparency = 1
 	hitText.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
-	hitText.TextSize = 28
+	hitText.TextScaled = true
 	hitText.TextColor3 = textColor
 	hitText.TextStrokeTransparency = 0
 	hitText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	hitText.ZIndex = 10
-
-	local sliderPos = self.slider.Position
-	hitText.Position = UDim2.new(sliderPos.X.Scale, sliderPos.X.Offset - 60, sliderPos.Y.Scale, sliderPos.Y.Offset - 60)
+	hitText.Rotation = -4
+	hitText.Position = UDim2.fromOffset(textX, textY)
 	hitText.Parent = self.frame
+
+	local textSizeConstraint = Instance.new("UITextSizeConstraint")
+	textSizeConstraint.MinTextSize = 24
+	textSizeConstraint.MaxTextSize = 34
+	textSizeConstraint.Parent = hitText
+
+	local popScale = Instance.new("UIScale")
+	popScale.Scale = 1
+	popScale.Parent = hitText
 
 	task.spawn(function()
 		local moveUp = TweenService:Create(hitText,
 			TweenInfo.new(1.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{
-				Position = UDim2.new(sliderPos.X.Scale, sliderPos.X.Offset - 60, sliderPos.Y.Scale, sliderPos.Y.Offset - 120),
+				Position = UDim2.fromOffset(textX, math.max(textHeight * 0.5, textY - 60)),
 				TextTransparency = 1,
 				TextStrokeTransparency = 1
 			}
 		)
 		moveUp:Play()
 
-		local scaleEffect = TweenService:Create(hitText,
+		local shake = TweenService:Create(hitText,
+			TweenInfo.new(0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{Rotation = 4}
+		)
+		shake:Play()
+
+		local scaleEffect = TweenService:Create(popScale,
 			TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-			{Size = UDim2.new(0, 140, 0, 50)}
+			{Scale = 1.16}
 		)
 		scaleEffect:Play()
-
 		scaleEffect.Completed:Wait()
 
-		local scaleBack = TweenService:Create(hitText,
+		local scaleBack = TweenService:Create(popScale,
 			TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{Size = UDim2.new(0, 120, 0, 40)}
+			{Scale = 1}
 		)
 		scaleBack:Play()
 
 		moveUp.Completed:Wait()
+		shake:Cancel()
 		hitText:Destroy()
 	end)
 end
@@ -418,20 +464,7 @@ function FishingClient:_hasStrengthBuff()
 	return self.player:GetAttribute("StrengthBubbleBuff") == true
 end
 
-function FishingClient:_processFishingInput()
-	if self._successFired then return end
-	if self.isProcessing then
-		return
-	end
-
-	local currentTime = tick()
-	if self.lastClickTime and (currentTime - self.lastClickTime) < 0.15 then
-		return
-	end
-	self.lastClickTime = currentTime
-
-	self.isProcessing = true
-
+function FishingClient:_processFishingInputUnsafe()
 	local sliderLeft = self.slider.AbsolutePosition.X
 	local sliderRight = sliderLeft + self.slider.AbsoluteSize.X
 	local hitLeft = self.hitZone.AbsolutePosition.X
@@ -506,23 +539,63 @@ function FishingClient:_processFishingInput()
 	else
 		self.currentProgress = math.max(self.currentProgress - 15, 0)
 		self:_updateProgressBar()
+		self:_showHitText("miss", sliderLeft)
 
 		failSound:Play()
 
 		if self.currentProgress <= 0 and not self._drainFired then
-			self._drainFired = true
-			if self._drainConn then self._drainConn:Disconnect(); self._drainConn = nil end
-			tutorialEvent:Fire("fishing_failed")
-			self.remote:FireServer("fail")
+			if self:_protectTutorialProgress() then
+				self:_resetHitZone()
+			else
+				self._drainFired = true
+				if self._drainConn then self._drainConn:Disconnect(); self._drainConn = nil end
+				tutorialEvent:Fire("fishing_failed")
+				self.remote:FireServer("fail")
+			end
 		else
 			self:_resetHitZone()
 		end
 	end
 
-	task.spawn(function()
-		task.wait(0.05)
-		self.isProcessing = false
-	end)
+end
+
+function FishingClient:_processFishingInput()
+	if self._successFired then return end
+
+	if self.isProcessing then
+		if self._processingStartedAt and tick() - self._processingStartedAt > 1 then
+			warn("Fishing input processing recovered from stuck state")
+			self.isProcessing = false
+			self._processingStartedAt = nil
+		else
+			return
+		end
+	end
+
+	if not self.newGUI or not self.newGUI.Parent then return end
+	if not self.frame or not self.frame.Parent then return end
+	if not self.slider or not self.slider.Parent then return end
+	if not self.hitZone or not self.hitZone.Parent then return end
+
+	local currentTime = tick()
+	if self.lastClickTime and (currentTime - self.lastClickTime) < 0.15 then
+		return
+	end
+	self.lastClickTime = currentTime
+
+	self.isProcessing = true
+	self._processingStartedAt = currentTime
+
+	local ok, err = xpcall(function()
+		self:_processFishingInputUnsafe()
+	end, debug.traceback)
+
+	self.isProcessing = false
+	self._processingStartedAt = nil
+
+	if not ok then
+		warn("Fishing input processing failed:", err)
+	end
 end
 
 -- Rarity → base shake intensity
@@ -1110,13 +1183,52 @@ function FishingClient:_stopAllAnimations()
 
 end
 
+function FishingClient:_isActiveLargeUIBlockingInput()
+	local playerGui = self.player and self.player:FindFirstChild("PlayerGui")
+	if not playerGui then return false end
+
+	local active = playerGui:GetAttribute("ActiveLargeUI")
+	if not active then return false end
+
+	if active == "ShopGui" then
+		local gui = playerGui:FindFirstChild("ShopGui")
+		local frame = gui and gui:FindFirstChild("buyframe")
+		return gui and gui.Enabled and frame and frame.Visible
+	elseif active == "SkillTree" then
+		local gui = playerGui:FindFirstChild("SkillTree")
+		return gui and gui.Enabled
+	elseif active == "RobuxShop" then
+		local gui = playerGui:FindFirstChild("RobuxShop")
+		local frame = gui and gui:FindFirstChild("Shop")
+		return gui and gui.Enabled and frame and frame.Visible
+	elseif active == "Index" then
+		local gui = playerGui:FindFirstChild("Index")
+		local frame
+		if gui then
+			for _, child in ipairs(gui:GetChildren()) do
+				if child.Name == "Index" and child:IsA("Frame") then
+					frame = child
+					break
+				end
+			end
+		end
+		return gui and gui.Enabled and frame and frame.Visible
+	elseif active == "Inventory" then
+		local gui = playerGui:FindFirstChild("Custom Inventory")
+		local inventory = gui and (gui:FindFirstChild("Inventory") or gui:FindFirstChild("inventory") or gui:FindFirstChild("Main"))
+		return gui and gui.Enabled and inventory and inventory.Visible
+	end
+
+	return false
+end
+
 -- Immediate input handler
 function FishingClient:_handleUserInput(inputObject, gameProcessed)
 	-- 모바일 터치는 카메라 조작과 겹쳐 gameProcessed=true가 되므로
 	-- 미니게임 중 Touch 입력은 gameProcessed 무시
 	local isTouch = inputObject.UserInputType == Enum.UserInputType.Touch
 	if gameProcessed and not (isTouch and self.newGUI) then return end
-	if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
+	if self:_isActiveLargeUIBlockingInput() then return end
 
 	if not self.newGUI then return end
 
@@ -1201,7 +1313,7 @@ function FishingClient:_bind()
 			if self.progressTween then self.progressTween:Cancel(); self.progressTween = nil end
 			if self.newGUI then self.newGUI:Destroy(); self.newGUI = nil end
 			self.frame = nil; self.strongZone = nil; self.progressBar = nil; self.progressFill = nil
-			self.originalFramePosition = nil; self.isProcessing = false; self.currentProgress = 0
+			self.originalFramePosition = nil; self.isProcessing = false; self._processingStartedAt = nil; self.currentProgress = 0
 			self.locked = false; self.baitThrown = false; self.baitThrowTime = 0
 			self.gameEndCooldown = tick() + 1.5
 			for _, gui in ipairs(self.player:WaitForChild("PlayerGui"):GetChildren()) do
@@ -1410,10 +1522,15 @@ function FishingClient:_openGui(rarity, serverToolName, serverDifficultyMod)
 	self._successFired = false
 	self._drainConn = game:GetService("RunService").Heartbeat:Connect(function(dt)
 		if not self._drainConn then return end
-		if self.player.PlayerGui:GetAttribute("ActiveLargeUI") then return end
-		self.currentProgress = math.max(self.currentProgress - dt * drainRate, 0)
+		if self:_isActiveLargeUIBlockingInput() then return end
+		local minProgress = self:_isTutorialActive() and TUTORIAL_MIN_PROGRESS or 0
+		self.currentProgress = math.max(self.currentProgress - dt * drainRate, minProgress)
 		self:_updateProgressBar()
 		if self.currentProgress <= 0 and not self._drainFired and not self._successFired then
+			if self:_protectTutorialProgress() then
+				return
+			end
+
 			self._drainFired = true
 			self._drainConn:Disconnect()
 			self._drainConn = nil
@@ -1487,6 +1604,7 @@ function FishingClient:_closeGui()
 	self.progressFill = nil
 	self.originalFramePosition = nil
 	self.isProcessing = false
+	self._processingStartedAt = nil
 
 	self.currentProgress = 0
 
